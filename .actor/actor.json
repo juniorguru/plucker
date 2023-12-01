@@ -1,8 +1,8 @@
 {
 	"actorSpecification": 1,
-	"name": "plucker",
-	"title": "Getting started with Python and Scrapy",
-	"description": "Scrapes titles of websites using Scrapy.",
+	"name": "juniorguru-plucker",
+	"title": "Junior Guru Plucker",
+	"description": "Scraper of entry-level job postings",
 	"version": "0.0",
 	"meta": {
 		"templateId": "python-scrapy"

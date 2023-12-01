@@ -1,5 +1,18 @@
 ## Plucker
 
+TODO:
+
+- Try deploy
+- Implement the actual spider
+- Automate `poetry export -f requirements.txt --output requirements.txt`
+
+How to run:
+
+- `poetry run apify run`
+- `poetry run python -m juniorguru_plucker`
+
+---
+
 A template example built with Scrapy to scrape page titles from URLs defined in the input parameter. It shows how to use Apify SDK for Python and Scrapy pipelines to save results.
 
 ## Included features

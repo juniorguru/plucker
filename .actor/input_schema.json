@@ -1,17 +1,20 @@
 {
-    "title": "Python Scrapy Scraper",
+    "title": "Junior Guru Plucker input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-        "start_urls": {
-            "title": "Start URLs",
+        "sources": {
+            "title": "Sources to scrape",
             "type": "array",
-            "description": "URLs to start with",
-            "prefill": [
-                { "url": "https://apify.com" }
+            "description": "Names of sources to scrape",
+            "default": [
+                "all"
             ],
-            "editor": "requestListSources"
+            "items": {
+                "type": "string",
+                "enum": ["all", "startupjobs"]
+            },
+            "editor": "select"
         }
-    },
-    "required": ["start_urls"]
+    }
 }

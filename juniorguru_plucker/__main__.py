@@ -83,7 +83,7 @@ import asyncio
 import os
 import nest_asyncio
 from scrapy.utils.reactor import install_reactor
-from .main import main
+from juniorguru_plucker.main import main
 
 # To ensure seamless compatibility between asynchronous libraries Twisted (used by Scrapy) and AsyncIO (used by Apify),
 # it is highly recommended to use AsyncioSelectorReactor as the Twisted reactor
@@ -91,7 +91,7 @@ install_reactor('twisted.internet.asyncioreactor.AsyncioSelectorReactor')
 nest_asyncio.apply()
 
 # Specify the path to the Scrapy project settings module
-os.environ['SCRAPY_SETTINGS_MODULE'] = 'plucker.settings'
+os.environ['SCRAPY_SETTINGS_MODULE'] = 'juniorguru_plucker.settings'
 
 # Run the Apify main coroutine
 asyncio.run(main())

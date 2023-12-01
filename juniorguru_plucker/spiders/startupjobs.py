@@ -3,18 +3,18 @@ from __future__ import annotations
 from typing import Generator
 from urllib.parse import urljoin
 
-from scrapy import Request, Spider
+from scrapy import Request, Spider as BaseSpider
 from scrapy.responsetypes import Response
 
-from ..items import TitleItem
+from juniorguru_plucker.items import TitleItem
 
 
-class TitleSpider(Spider):
+class Spider(BaseSpider):
     """
     Scrapes title pages and enqueues all links found on the page.
     """
 
-    name = 'title_spider'
+    name = 'startupjobs'
 
     # The `start_urls` specified in this class will be merged with the `start_urls` value from your Actor input
     # when the project is executed using Apify.
