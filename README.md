@@ -4,7 +4,6 @@ TODO:
 
 - Figure out storage for jobs (not titles)
 - Add one more jobs scraper
-- Implement poetry or automate `poetry export -f requirements.txt --output requirements.txt` (you can check our Beautifulsoup Scraper https://github.com/apify/actor-beautifulsoup-scraper/blob/master/.actor/Dockerfile, check the Dockerfile and pyproject.toml, it should be enough to make it work, I also added poetry.toml and Makefile with additional poetry-related features/settings)
 - Add Dependabot
 - Implement monorepo https://docs.apify.com/platform/actors/development/deployment/source-types#actor-monorepos
 - Add scraper of different type (ČNB?) and set it to weekly schedule
