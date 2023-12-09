@@ -4,7 +4,6 @@ RUN rm -rf /usr/src/app/*
 WORKDIR /usr/src/app
 
 COPY pyproject.toml ./
-COPY poetry.toml ./
 COPY poetry.lock ./
 
 RUN echo "Python version:" \
@@ -14,7 +13,9 @@ RUN echo "Python version:" \
  && echo "Installing Poetry:" \
  && pip install --no-cache-dir poetry~=1.7.1 \
  && echo "Installing dependencies:" \
+ && poetry config cache-dir /tmp/.poetry-cache \
  && poetry config virtualenvs.create false \
+ && poetry config virtualenvs.in-project true \
  && poetry install --only main --no-interaction --no-ansi \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
