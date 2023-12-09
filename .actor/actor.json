@@ -2,7 +2,7 @@
     "actorSpecification": 1,
     "name": "juniorguru-plucker",
     "title": "Junior Guru Plucker",
-    "description": "Scraper of entry-level job postings",
+    "description": "Junior Guru scrapers",
     "version": "0.0",
     "meta": {
         "templateId": "python-scrapy"

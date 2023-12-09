@@ -4,6 +4,7 @@ from typing import Generator
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Spider as BaseSpider
+from scrapy.http import XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.url_params import strip_utm_params
@@ -17,7 +18,7 @@ class Spider(BaseSpider):
     }
     start_urls = ["https://feedback.startupjobs.cz/feed/juniorguru.php"]
 
-    def parse(self, response) -> Generator[Job, None, None]:
+    def parse(self, response: XmlResponse) -> Generator[Job, None, None]:
         for n, offer in enumerate(response.xpath("//offer"), start=1):
             loader = Loader(item=Job(), response=response)
             offer_loader = loader.nested_xpath(f"//offer[{n}]")
@@ -37,7 +38,7 @@ class Spider(BaseSpider):
             yield loader.load_item()
 
 
-def drop_remote(types):
+def drop_remote(types: list[str]) -> list[str]:
     return [type_ for type_ in types if type_.lower() != "remote"]
 
 

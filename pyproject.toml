@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "juniorguru-plucker"
 version = "0.0"
-description = "Scraper of entry-level job postings"
+description = "Junior Guru scrapers"
 authors = ["Honza Javorek <mail@honzajavorek.cz>"]
 license = "MIT"
 readme = "README.md"
