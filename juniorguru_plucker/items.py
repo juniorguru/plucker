@@ -1,20 +1,28 @@
-"""
-Scrapy item models module
-
-This module defines Scrapy item models for scraped data. Items represent structured data
-extracted by spiders.
-
-For detailed information on creating and utilizing items, refer to the official documentation:
-https://docs.scrapy.org/en/latest/topics/items.html
-"""
-
 from scrapy import Field, Item
 
 
-class TitleItem(Item):
-    """
-    Represents a title item scraped from a web page.
-    """
+class Job(Item):
+    title = Field(required=True)
+    first_seen_on = Field(required=True)
+    lang = Field()
 
-    url = Field()
-    title = Field()
+    url = Field(required=True)
+    apply_url = Field()
+
+    company_name = Field(required=True)
+    company_url = Field()
+    company_logo_urls = Field()
+    company_logos = Field()
+    company_logo_path = Field()
+
+    locations_raw = Field()
+    remote = Field()
+    employment_types = Field()
+
+    description_html = Field(required=True)
+
+    source = Field(required=True)
+    source_urls = Field(required=True)
+
+    # def __repr__(self):
+    #     return repr_item(self, ["title", "url", "apply_url", "source"])
