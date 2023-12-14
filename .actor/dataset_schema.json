@@ -1,0 +1,79 @@
+{
+    "title": "Jobs",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Jobs",
+            "transformation": {
+                "fields": [
+                    "title",
+                    "first_seen_on",
+                    "url",
+                    "apply_url",
+                    "company_name",
+                    "company_url",
+                    "company_logo_urls",
+                    "locations_raw",
+                    "remote",
+                    "employment_types",
+                    "description_html",
+                    "source",
+                    "source_urls"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "title": {
+                        "label": "Title"
+                    },
+                    "first_seen_on": {
+                        "label": "First Seen On",
+                        "format": "date"
+                    },
+                    "url": {
+                        "label": "URL",
+                        "format": "link"
+                    },
+                    "apply_url": {
+                        "label": "Apply URL",
+                        "format": "link"
+                    },
+                    "company_name": {
+                        "label": "Company Name"
+                    },
+                    "company_url": {
+                        "label": "Company URL",
+                        "format": "link"
+                    },
+                    "company_logo_urls": {
+                        "label": "Company Logo URLs",
+                        "format": "array"
+                    },
+                    "locations_raw": {
+                        "label": "Locations Raw",
+                        "format": "array"
+                    },
+                    "remote": {
+                        "label": "Remote",
+                        "format": "boolean"
+                    },
+                    "employment_types": {
+                        "label": "Employment Types",
+                        "format": "array"
+                    },
+                    "description_html": {
+                        "label": "Description HTML"
+                    },
+                    "source": {
+                        "label": "Source"
+                    },
+                    "source_urls": {
+                        "label": "Source URLs",
+                        "format": "array"
+                    }
+                }
+            }
+        }
+    }
+}

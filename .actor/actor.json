@@ -10,33 +10,6 @@
     "input": "./input_schema.json",
     "dockerfile": "./Dockerfile",
     "storages": {
-        "dataset": {
-            "actorSpecification": 1,
-            "title": "URLs and their titles",
-            "views": {
-                "titles": {
-                    "title": "URLs and their titles",
-                    "transformation": {
-                        "fields": [
-                            "url",
-                            "title"
-                        ]
-                    },
-                    "display": {
-                        "component": "table",
-                        "properties": {
-                            "url": {
-                                "label": "URL",
-                                "format": "text"
-                            },
-                            "title": {
-                                "label": "Title",
-                                "format": "text"
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        "dataset": "./dataset_schema.json"
     }
 }
