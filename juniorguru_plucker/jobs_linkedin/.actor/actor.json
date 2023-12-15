@@ -4,8 +4,8 @@
     "title": "jobs-linkedin",
     "version": "0.0",
     "input": "../../input_schema.json",
-    "dockerfile": "../../../../Dockerfile",
-    "dockerContextDir": "../../../../",
+    "dockerfile": "../../../Dockerfile",
+    "dockerContextDir": "../../../",
     "storages": {
         "dataset": "../../dataset_schema.json"
     }
