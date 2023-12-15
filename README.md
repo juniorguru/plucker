@@ -2,8 +2,24 @@
 
 TODO:
 
-- Add scraper of different type (ČNB?) and set it to weekly schedule
-- Revamp README and clean up everything
+- [ ] Use exchange rates dataset in JG, implement local caching etc.
+- [ ] Simplify running the scrapers locally, document how to create new scrapers, revamp README
+- [ ] Automate generating schemas from items - generate whole actor.json for each actor from code dynamically
+- [ ] Put all items to items.py
+- [ ] Clean up as many settings and scrapy.cfg etc. as possible, remove unnecessary or dead code
+- [ ] Figure out if new actors can be created over API
+- [ ] Make a list of things JG should scrape through Apify:
+    - [ ] x PROXIES x
+    - [ ] Meetups
+    - [ ] Subscriptions Country
+    - [ ] Web Usage
+    - [ ] Blog
+    - [ ] Feminine names
+    - [ ] Courses UP
+    - [ ] Followers
+    - [ ] Jobs Logos?
+    - [ ] Memberful?
+    - [ ] Transactions?
 
 ---
 
