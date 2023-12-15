@@ -1,20 +1,6 @@
 {
-    "title": "Junior Guru Plucker input",
+    "title": "No Input",
     "type": "object",
     "schemaVersion": 1,
-    "properties": {
-        "sources": {
-            "title": "Sources to scrape",
-            "type": "array",
-            "description": "Names of sources to scrape",
-            "default": [
-                "all"
-            ],
-            "items": {
-                "type": "string",
-                "enum": ["all", "startupjobs"]
-            },
-            "editor": "select"
-        }
-    }
+    "properties": {}
 }
