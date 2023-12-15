@@ -8,7 +8,7 @@ from scrapy.http import XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.url_params import strip_utm_params
-from juniorguru_plucker.items import Job
+from juniorguru_plucker.job import Job
 
 
 class Spider(BaseSpider):

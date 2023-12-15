@@ -1,12 +1,12 @@
 {
     "actorSpecification": 1,
-    "name": "jobs-startupjobs",
-    "title": "jobs-startupjobs",
+    "name": "exchange-rates",
+    "title": "exchange-rates",
     "version": "0.0",
     "input": "../../input_schema.json",
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
-        "dataset": "../../job_schema.json"
+        "dataset": "../../exchange_rate_schema.json"
     }
 }

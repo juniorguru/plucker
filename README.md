@@ -3,7 +3,7 @@
 TODO:
 
 - Add scraper of different type (ČNB?) and set it to weekly schedule
-- Revamp README
+- Revamp README and clean up everything
 
 ---
 

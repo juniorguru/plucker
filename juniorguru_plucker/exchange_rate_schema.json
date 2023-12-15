@@ -1,0 +1,27 @@
+{
+    "title": "Jobs",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Jobs",
+            "transformation": {
+                "fields": [
+                    "code",
+                    "rate"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "code": {
+                        "label": "Code"
+                    },
+                    "rate": {
+                        "label": "Rate",
+                        "format": "number"
+                    }
+                }
+            }
+        }
+    }
+}
