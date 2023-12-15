@@ -39,25 +39,13 @@ def apply_apify_settings(settings: Settings) -> Settings:
 
 
 async def main() -> None:
-    print('ACTOR_PATH_IN_DOCKER_CONTEXT=', os.getenv('ACTOR_PATH_IN_DOCKER_CONTEXT'))
+    actor_path = os.environ['ACTOR_PATH_IN_DOCKER_CONTEXT']  # e.g. juniorguru_plucker/jobs_startupjobs
+    spider_module_name = f"{actor_path.replace('/', '.')}.spider"
 
     async with Actor:
-        Actor.log.info('Actor is being executed...')
-        # actor_input = await Actor.get_input() or {}
-        # spider_names = set(source for source in actor_input.get('sources', ['all']))
-
-        # if 'all' in spider_names:
-        #     for path in Path(__file__).parent.glob('spiders/*.py'):
-        #         if path.stem != '__init__':
-        #             spider_names.add(path.stem)
-        #     spider_names.remove('all')
-        spider_names = ['jobs_startupjobs']
-
-        Actor.log.info(f"Executing spiders: {', '.join(spider_names)}")
+        Actor.log.info(f'Actor {actor_path} is being executed…')
         settings = apply_apify_settings(get_project_settings())
         crawler = CrawlerProcess(settings, install_root_handler=False)
-        for spider_name in spider_names:
-            spider_module_name = f"juniorguru_plucker.{spider_name}.spider"
-            spider = importlib.import_module(spider_module_name)
-            crawler.crawl(spider.Spider)
+        Actor.log.info(f"Actor's spider: {spider_module_name}")
+        crawler.crawl(importlib.import_module(spider_module_name).Spider)
         crawler.start()
