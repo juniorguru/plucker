@@ -3,7 +3,6 @@
 TODO:
 
 - Implement monorepo https://docs.apify.com/platform/actors/development/deployment/source-types#actor-monorepos
-- Add one more jobs scraper
 - Add scraper of different type (ČNB?) and set it to weekly schedule
 - Revamp README
 

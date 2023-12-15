@@ -1,4 +1,5 @@
 FROM apify/actor-python:3.11
+ARG ACTOR_PATH_IN_DOCKER_CONTEXT
 
 RUN rm -rf /usr/src/app/*
 WORKDIR /usr/src/app
@@ -25,4 +26,5 @@ COPY . ./
 
 RUN python3 -m compileall -q .
 
+ENV ACTOR_PATH_IN_DOCKER_CONTEXT="${ACTOR_PATH_IN_DOCKER_CONTEXT}"
 CMD ["python3", "-m", "juniorguru_plucker"]

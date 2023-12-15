@@ -14,6 +14,7 @@
 # ```
 
 import importlib
+import os
 from pathlib import Path
 
 from scrapy.crawler import CrawlerProcess
@@ -38,22 +39,25 @@ def apply_apify_settings(settings: Settings) -> Settings:
 
 
 async def main() -> None:
+    print('ACTOR_PATH_IN_DOCKER_CONTEXT=', os.getenv('ACTOR_PATH_IN_DOCKER_CONTEXT'))
+
     async with Actor:
         Actor.log.info('Actor is being executed...')
-        actor_input = await Actor.get_input() or {}
-        spider_names = set(source for source in actor_input.get('sources', ['all']))
+        # actor_input = await Actor.get_input() or {}
+        # spider_names = set(source for source in actor_input.get('sources', ['all']))
 
-        if 'all' in spider_names:
-            for path in Path(__file__).parent.glob('spiders/*.py'):
-                if path.stem != '__init__':
-                    spider_names.add(path.stem)
-            spider_names.remove('all')
+        # if 'all' in spider_names:
+        #     for path in Path(__file__).parent.glob('spiders/*.py'):
+        #         if path.stem != '__init__':
+        #             spider_names.add(path.stem)
+        #     spider_names.remove('all')
+        spider_names = ['jobs_startupjobs']
 
         Actor.log.info(f"Executing spiders: {', '.join(spider_names)}")
         settings = apply_apify_settings(get_project_settings())
         crawler = CrawlerProcess(settings, install_root_handler=False)
         for spider_name in spider_names:
-            spider_module_name = f"{settings['NEWSPIDER_MODULE']}.{spider_name}"
+            spider_module_name = f"juniorguru_plucker.{spider_name}.spider"
             spider = importlib.import_module(spider_module_name)
             crawler.crawl(spider.Spider)
         crawler.start()
