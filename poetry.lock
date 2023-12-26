@@ -44,13 +44,13 @@ trio = ["trio (>=0.23)"]
 
 [[package]]
 name = "apify"
-version = "1.4.0"
+version = "1.4.1"
 description = "Apify SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify-1.4.0-py3-none-any.whl", hash = "sha256:f70090e8d1f47584fdc58f20464b2a2799462cdbfa7733c305724566081d61e2"},
-    {file = "apify-1.4.0.tar.gz", hash = "sha256:831fff4437d79a8c691a278604c41496213332cea24ace6f86e82f09382c11dc"},
+    {file = "apify-1.4.1-py3-none-any.whl", hash = "sha256:97c92864ac17f8fb5acf02eab710918c02da3be862bb1ef3c3a3bc8b3b591fd2"},
+    {file = "apify-1.4.1.tar.gz", hash = "sha256:89913798815942f3d18dd2075a7fabf31b6e8f0fc5a444fe617e78a32ddc414a"},
 ]
 
 [package.dependencies]
@@ -63,14 +63,14 @@ cryptography = ">=39.0.0"
 httpx = ">=0.24.1"
 psutil = ">=5.9.5"
 pyee = ">=11.0.1"
-scrapy = {version = ">=2.11.0,<2.12.0", optional = true, markers = "extra == \"scrapy\""}
+scrapy = {version = ">=2.11.0", optional = true, markers = "extra == \"scrapy\""}
 sortedcollections = ">=2.0.1"
 typing-extensions = ">=4.1.0"
 websockets = ">=10.1"
 
 [package.extras]
-dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.6,<0.2.0)", "twine (>=4.0.2,<4.1.0)", "types-aiofiles (>=23.2.0.0,<23.3.0.0)", "types-colorama (>=0.4.15.11,<0.5.0.0)", "types-psutil (>=5.9.5.12,<5.10.0.0)"]
-scrapy = ["scrapy (>=2.11.0,<2.12.0)"]
+dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.6,<0.2.0)", "twine (>=4.0.2,<4.1.0)", "types-aiofiles (>=23.2.0.0,<23.3.0.0)", "types-colorama (>=0.4.15.12,<0.5.0.0)", "types-psutil (>=5.9.5.17,<5.10.0.0)"]
+scrapy = ["scrapy (>=2.11.0)"]
 
 [[package]]
 name = "apify-client"
@@ -1250,4 +1250,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "4069a78ac498f117f8987cd7022fc88429e9169a83cc116f31fd04ce49097137"
+content-hash = "6fe356be1d38ee019b12cc1d4f66172f77a73138b527db7c47ed029892abaa2a"
