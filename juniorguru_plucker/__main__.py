@@ -21,16 +21,16 @@ from apify.log import ActorLogFormatter
 # Scrapy will default to `DEBUG`. This setting applies to all loggers. If you wish to change the logging level for
 # a specific logger, do it in this file.
 settings = get_project_settings()
-LOGGING_LEVEL = settings['LOG_LEVEL']
+LOGGING_LEVEL = settings["LOG_LEVEL"]
 
 handler = logging.StreamHandler()
 handler.setFormatter(ActorLogFormatter(include_logger_name=True))
 
-apify_logger = logging.getLogger('apify')
+apify_logger = logging.getLogger("apify")
 apify_logger.setLevel(LOGGING_LEVEL)
 apify_logger.addHandler(handler)
 
-apify_client_logger = logging.getLogger('apify_client')
+apify_client_logger = logging.getLogger("apify_client")
 apify_client_logger.setLevel(LOGGING_LEVEL)
 apify_client_logger.addHandler(handler)
 
@@ -40,6 +40,7 @@ apify_client_logger.addHandler(handler)
 # like this, so that our handler is attached right after Scrapy calls the `configure_logging` method, because
 # otherwise we would lose some log messages.
 old_configure_logging = scrapy_logging.configure_logging
+
 
 def new_configure_logging(*args: Any, **kwargs: Any) -> None:
     """
@@ -59,22 +60,23 @@ def new_configure_logging(*args: Any, **kwargs: Any) -> None:
 
     # We modify other loggers only by setting up their log level. A custom log handler is added
     # only to the root logger to avoid duplicate log messages.
-    scrapy_logger = logging.getLogger('scrapy')
+    scrapy_logger = logging.getLogger("scrapy")
     scrapy_logger.setLevel(LOGGING_LEVEL)
 
-    twisted_logger = logging.getLogger('twisted')
+    twisted_logger = logging.getLogger("twisted")
     twisted_logger.setLevel(LOGGING_LEVEL)
 
-    filelock_logger = logging.getLogger('filelock')
+    filelock_logger = logging.getLogger("filelock")
     filelock_logger.setLevel(LOGGING_LEVEL)
 
-    hpack_logger = logging.getLogger('hpack')
+    hpack_logger = logging.getLogger("hpack")
     hpack_logger.setLevel(LOGGING_LEVEL)
 
     # Set the HTTPX logger explicitly to the WARNING level, because it is too verbose and spams the logs with useless
     # messages, especially when running on the platform
-    httpx_logger = logging.getLogger('httpx')
+    httpx_logger = logging.getLogger("httpx")
     httpx_logger.setLevel(logging.WARNING)
+
 
 scrapy_logging.configure_logging = new_configure_logging
 
@@ -87,11 +89,11 @@ from juniorguru_plucker.main import main  # noqa: E402
 
 # To ensure seamless compatibility between asynchronous libraries Twisted (used by Scrapy) and AsyncIO (used by Apify),
 # it is highly recommended to use AsyncioSelectorReactor as the Twisted reactor
-install_reactor('twisted.internet.asyncioreactor.AsyncioSelectorReactor')
+install_reactor("twisted.internet.asyncioreactor.AsyncioSelectorReactor")
 nest_asyncio.apply()
 
 # Specify the path to the Scrapy project settings module
-os.environ['SCRAPY_SETTINGS_MODULE'] = 'juniorguru_plucker.settings'
+os.environ["SCRAPY_SETTINGS_MODULE"] = "juniorguru_plucker.settings"
 
 # Run the Apify main coroutine
 asyncio.run(main())

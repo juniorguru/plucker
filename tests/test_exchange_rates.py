@@ -36,19 +36,16 @@ def test_get_last_monday(date, expected):
 
 
 def test_parse_lines():
-    assert (
-        parse_lines(
-            dedent(
-                """
-        27.03.2023 #61
-        země|měna|množství|kód|kurz
-        Austrálie|dolar|1|AUD|14,648
-        Velká Británie|libra|1|GBP|27,030
-    """
-            )
+    assert parse_lines(
+        dedent(
+            """
+                27.03.2023 #61
+                země|měna|množství|kód|kurz
+                Austrálie|dolar|1|AUD|14,648
+                Velká Británie|libra|1|GBP|27,030
+            """
         )
-        == [
-            "Austrálie|dolar|1|AUD|14,648",
-            "Velká Británie|libra|1|GBP|27,030",
-        ]
-    )
+    ) == [
+        "Austrálie|dolar|1|AUD|14,648",
+        "Velká Británie|libra|1|GBP|27,030",
+    ]

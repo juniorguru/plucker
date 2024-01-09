@@ -35,7 +35,7 @@ def get_param(url, param_name):
     return values[0] if values else None
 
 
-def increment_param(url: str, param_name: str, inc: int=1) -> str:
+def increment_param(url: str, param_name: str, inc: int = 1) -> str:
     parts = urlparse(url)
     params = parse_qs(parts.query)
     params.setdefault(param_name, ["0"])
