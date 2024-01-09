@@ -1,25 +1,5 @@
 ## Plucker
 
-TODO:
-
-- [ ] Put all items to items.py
-- [ ] Simplify running the scrapers locally, document how to create new scrapers, revamp README
-- [ ] Automate or document generate_schema.py (at least CI check/pytest test whether the schema is updated)
-- [ ] Clean up as many settings and scrapy.cfg etc. as possible, remove unnecessary or dead code
-- [ ] Figure out if new actors can be created over API
-- [ ] Make a list of things JG should scrape through Apify:
-    - [ ] x PROXIES x
-    - [ ] Meetups
-    - [ ] Subscriptions Country
-    - [ ] Web Usage
-    - [ ] Blog
-    - [ ] Feminine names
-    - [ ] Courses UP
-    - [ ] Followers
-    - [ ] Jobs Logos?
-    - [ ] Memberful?
-    - [ ] Transactions?
-
 ---
 
 How to run:
