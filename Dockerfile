@@ -7,6 +7,10 @@ WORKDIR /usr/src/app
 COPY pyproject.toml ./
 COPY poetry.lock ./
 
+# Poetry respects the "readme" key in pyproject.toml, so when installing
+# the local package it complains about missing README.md if not present
+COPY README.md ./
+
 RUN echo "Python version:" \
  && python --version \
  && echo "Pip version:" \
