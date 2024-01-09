@@ -6,6 +6,6 @@
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
-        "dataset": "../../exchange_rate_schema.json"
+        "dataset": "../../exchangeRateSchema.json"
     }
 }

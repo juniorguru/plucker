@@ -20,3 +20,8 @@ class Job(Item):
 
     source = Field()
     source_urls = Field(apify_format='array')
+
+
+class ExchangeRate(Item):
+    code = Field()
+    rate = Field(apify_format='number')

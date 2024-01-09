@@ -38,7 +38,8 @@ def main(item_class_path: str):
     # print(json.dumps(schema, indent=2, ensure_ascii=False))
 
     module_path = Path(item_module.__file__)
-    schema_path = module_path.parent / f"{module_path.stem}_schema.json"
+    schema_name = item_class_name[0].lower() + item_class_name[1:]
+    schema_path = module_path.parent / f"{schema_name}Schema.json"
     schema_path.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + '\n')
 
 

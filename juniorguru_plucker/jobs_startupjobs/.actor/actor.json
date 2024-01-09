@@ -6,6 +6,6 @@
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
-        "dataset": "../../job_schema.json"
+        "dataset": "../../jobSchema.json"
     }
 }
