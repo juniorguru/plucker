@@ -2,7 +2,6 @@
 
 TODO:
 
-- [ ] Use exchange rates dataset in JG, implement local caching etc.
 - [ ] Simplify running the scrapers locally, document how to create new scrapers, revamp README
 - [ ] Automate generating schemas from items - generate whole actor.json for each actor from code dynamically
 - [ ] Put all items to items.py
