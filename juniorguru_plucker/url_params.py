@@ -35,11 +35,11 @@ def get_param(url, param_name):
     return values[0] if values else None
 
 
-def increment_param(url, param_name, inc=1):
+def increment_param(url: str, param_name: str, inc: int=1) -> str:
     parts = urlparse(url)
     params = parse_qs(parts.query)
     params.setdefault(param_name, ["0"])
-    params[param_name] = str(int(params[param_name][0]) + inc)
+    params[param_name] = [str(int(params[param_name][0]) + inc)]
     query = urlencode(params, doseq=True)
     return urlunparse(parts._replace(query=query))
 
@@ -49,9 +49,9 @@ def replace_in_params(url, s, repl, case_insensitive=False):
     params = parse_qs(parts.query)
 
     if case_insensitive:
-        replace = lambda value: re.sub(re.escape(s), repl, value, flags=re.I)
+        replace = lambda value: re.sub(re.escape(s), repl, value, flags=re.I)  # noqa: E731
     else:
-        replace = lambda value: value.replace(s, repl)
+        replace = lambda value: value.replace(s, repl)  # noqa: E731
 
     params = {
         param_name: [replace(value) for value in values]

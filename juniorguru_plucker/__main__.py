@@ -79,11 +79,11 @@ def new_configure_logging(*args: Any, **kwargs: Any) -> None:
 scrapy_logging.configure_logging = new_configure_logging
 
 # Now we can do the rest of the setup
-import asyncio
-import os
-import nest_asyncio
-from scrapy.utils.reactor import install_reactor
-from juniorguru_plucker.main import main
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import nest_asyncio  # noqa: E402
+from scrapy.utils.reactor import install_reactor  # noqa: E402
+from juniorguru_plucker.main import main  # noqa: E402
 
 # To ensure seamless compatibility between asynchronous libraries Twisted (used by Scrapy) and AsyncIO (used by Apify),
 # it is highly recommended to use AsyncioSelectorReactor as the Twisted reactor
