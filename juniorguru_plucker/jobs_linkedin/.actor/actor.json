@@ -3,7 +3,12 @@
     "name": "jobs-linkedin",
     "title": "jobs-linkedin",
     "version": "0.0",
-    "input": "../../input_schema.json",
+    "input": {
+        "title": "No Input",
+        "type": "object",
+        "schemaVersion": 1,
+        "properties": {}
+    },
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
