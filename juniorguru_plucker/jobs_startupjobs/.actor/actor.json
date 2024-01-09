@@ -3,12 +3,6 @@
     "name": "jobs-startupjobs",
     "title": "jobs-startupjobs",
     "version": "0.0",
-    "input": {
-        "title": "No Input",
-        "type": "object",
-        "schemaVersion": 1,
-        "properties": {}
-    },
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
