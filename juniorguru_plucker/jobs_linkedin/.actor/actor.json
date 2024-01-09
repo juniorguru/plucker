@@ -7,7 +7,16 @@
         "title": "No Input",
         "type": "object",
         "schemaVersion": 1,
-        "properties": {}
+        "properties": {
+            "proxyConfig": {
+                "title": "Proxy config",
+                "type": "object",
+                "description": "Specifies proxy servers",
+                "editor": "proxy",
+                "prefill": { "useApifyProxy": true },
+                "default": { "useApifyProxy": true }
+            }
+        }
     },
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",

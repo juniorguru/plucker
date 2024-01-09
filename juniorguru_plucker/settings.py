@@ -13,7 +13,7 @@ REQUEST_FINGERPRINTER_IMPLEMENTATION = '2.7'
 
 USER_AGENT = "JuniorGuruBot (+https://junior.guru)"
 
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False  # requesting APIs etc., so irrelevant, saving a few requests
 
 # SPIDER_MODULES = ['juniorguru_plucker.spiders']
 

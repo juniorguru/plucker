@@ -10,9 +10,6 @@ from juniorguru_plucker.exchange_rate import ExchangeRate
 
 class Spider(BaseSpider):
     name = "exchange-rates"
-    custom_settings = {
-        "ROBOTSTXT_OBEY": False,  # requesting API, so irrelevant, saving a few requests
-    }
 
     def start_requests(self) -> Generator[Request, None, None]:
         monday = get_last_monday(date.today())

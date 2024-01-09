@@ -18,7 +18,6 @@ from juniorguru_plucker.job import Job
 
 class Spider(BaseSpider):
     name = "linkedin"
-    custom_settings = {"ROBOTSTXT_OBEY": False}
 
     headers = {"Accept-Language": "en-us"}
     cookies = {"lang": "v=2&lang=en-us"}

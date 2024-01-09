@@ -15,7 +15,6 @@
 
 import importlib
 import os
-from pathlib import Path
 
 from scrapy.crawler import CrawlerProcess
 from scrapy.settings import Settings
@@ -23,17 +22,27 @@ from scrapy.utils.project import get_project_settings
 from apify import Actor
 
 
-def apply_apify_settings(settings: Settings) -> Settings:
+def apply_apify_settings(settings: Settings, proxy_config: dict | None = None) -> Settings:
+    # Use ApifyScheduler as the scheduler
+    settings['SCHEDULER'] = 'apify.scrapy.scheduler.ApifyScheduler'
+
     # Add the ActorDatasetPushPipeline into the item pipelines, assigning it the highest integer (1000),
     # ensuring it is executed as the final step in the pipeline sequence
     settings['ITEM_PIPELINES']['apify.scrapy.pipelines.ActorDatasetPushPipeline'] = 1000
+
+    # Disable the default RobotsTxtMiddleware, Apify's custom scheduler already handles robots.txt
+    settings['DOWNLOADER_MIDDLEWARES']['scrapy.downloadermiddlewares.robotstxt.RobotsTxtMiddleware'] = None
+
+    # Disable the default HttpProxyMiddleware and add ApifyHttpProxyMiddleware
+    settings['DOWNLOADER_MIDDLEWARES']['scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware'] = None
+    settings['DOWNLOADER_MIDDLEWARES']['apify.scrapy.middlewares.ApifyHttpProxyMiddleware'] = 950
 
     # Disable the default RetryMiddleware and add ApifyRetryMiddleware with the highest integer (1000)
     settings['DOWNLOADER_MIDDLEWARES']['scrapy.downloadermiddlewares.retry.RetryMiddleware'] = None
     settings['DOWNLOADER_MIDDLEWARES']['apify.scrapy.middlewares.ApifyRetryMiddleware'] = 1000
 
-    # Use ApifyScheduler as the scheduler
-    settings['SCHEDULER'] = 'apify.scrapy.scheduler.ApifyScheduler'
+    # Store the proxy configuration
+    settings['APIFY_PROXY_SETTINGS'] = proxy_config
 
     return settings
 
@@ -43,9 +52,14 @@ async def main() -> None:
     spider_module_name = f"{actor_path.replace('/', '.')}.spider"
 
     async with Actor:
-        Actor.log.info(f'Actor {actor_path} is being executed…')
-        settings = apply_apify_settings(get_project_settings())
+        Actor.log.info(f'Setting up actor {actor_path}')
+        actor_input = await Actor.get_input() or {}
+        proxy_config = actor_input.get('proxyConfig')
+        settings = apply_apify_settings(get_project_settings(), proxy_config=proxy_config)
         crawler = CrawlerProcess(settings, install_root_handler=False)
+
         Actor.log.info(f"Actor's spider: {spider_module_name}")
         crawler.crawl(importlib.import_module(spider_module_name).Spider)
+
+        Actor.log.info(f'Starting actor {actor_path}')
         crawler.start()
