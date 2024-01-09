@@ -1,27 +1,27 @@
 {
-    "title": "Jobs",
-    "actorSpecification": 1,
-    "views": {
-        "titles": {
-            "title": "Jobs",
-            "transformation": {
-                "fields": [
-                    "code",
-                    "rate"
-                ]
-            },
-            "display": {
-                "component": "table",
-                "properties": {
-                    "code": {
-                        "label": "Code"
-                    },
-                    "rate": {
-                        "label": "Rate",
-                        "format": "number"
-                    }
-                }
-            }
+  "title": "ExchangeRate",
+  "actorSpecification": 1,
+  "views": {
+    "titles": {
+      "title": "ExchangeRate",
+      "transformation": {
+        "fields": [
+          "code",
+          "rate"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "code": {
+            "label": "code"
+          },
+          "rate": {
+            "label": "rate",
+            "format": "number"
+          }
         }
+      }
     }
+  }
 }

@@ -2,9 +2,9 @@
 
 TODO:
 
-- [ ] Simplify running the scrapers locally, document how to create new scrapers, revamp README
-- [ ] Automate generating schemas from items - generate whole actor.json for each actor from code dynamically
 - [ ] Put all items to items.py
+- [ ] Simplify running the scrapers locally, document how to create new scrapers, revamp README
+- [ ] Automate or document generate_schema.py (at least CI check/pytest test whether the schema is updated)
 - [ ] Clean up as many settings and scrapy.cfg etc. as possible, remove unnecessary or dead code
 - [ ] Figure out if new actors can be created over API
 - [ ] Make a list of things JG should scrape through Apify:
