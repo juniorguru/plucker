@@ -1,7 +1,7 @@
 import argparse
 import json
-from pathlib import Path
 from importlib import import_module
+from pathlib import Path
 
 
 def main(item_class_path: str):

@@ -1,11 +1,12 @@
-from datetime import date, timedelta
 import re
+from datetime import date, timedelta
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
 from scrapy.loader import ItemLoader
 
+from juniorguru_plucker.items import Job
 from juniorguru_plucker.url_params import (
     get_param,
     increment_param,
@@ -13,7 +14,6 @@ from juniorguru_plucker.url_params import (
     strip_params,
     strip_utm_params,
 )
-from juniorguru_plucker.items import Job
 
 
 class Spider(BaseSpider):

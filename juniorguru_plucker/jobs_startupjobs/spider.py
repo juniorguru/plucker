@@ -1,5 +1,5 @@
-from datetime import datetime
 import html
+from datetime import datetime
 from typing import Generator
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -7,8 +7,8 @@ from scrapy import Spider as BaseSpider
 from scrapy.http import XmlResponse
 from scrapy.loader import ItemLoader
 
-from juniorguru_plucker.url_params import strip_utm_params
 from juniorguru_plucker.items import Job
+from juniorguru_plucker.url_params import strip_utm_params
 
 
 class Spider(BaseSpider):
