@@ -13,14 +13,18 @@
                 "type": "object",
                 "description": "Specifies proxy servers",
                 "editor": "proxy",
-                "prefill": { "useApifyProxy": true },
-                "default": { "useApifyProxy": true }
+                "prefill": {
+                    "useApifyProxy": true
+                },
+                "default": {
+                    "useApifyProxy": true
+                }
             }
         }
     },
     "dockerfile": "../../../Dockerfile",
     "dockerContextDir": "../../../",
     "storages": {
-        "dataset": "../../jobSchema.json"
+        "dataset": "../../schemas/jobSchema.json"
     }
 }

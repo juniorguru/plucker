@@ -1,0 +1,27 @@
+{
+    "title": "ExchangeRate",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "ExchangeRate",
+            "transformation": {
+                "fields": [
+                    "code",
+                    "rate"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "code": {
+                        "label": "code"
+                    },
+                    "rate": {
+                        "label": "rate",
+                        "format": "number"
+                    }
+                }
+            }
+        }
+    }
+}

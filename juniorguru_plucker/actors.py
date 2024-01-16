@@ -3,7 +3,7 @@ from typing import Generator, Type
 
 import nest_asyncio
 from apify import Actor
-from scrapy import Spider
+from scrapy import Item, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
@@ -84,3 +84,33 @@ class SpiderLoader(BaseSpiderLoader):
                 map(get_spider_module_name, iter_actor_paths("."))
             )
         self._load_all_spiders()
+
+
+def generate_schema(item_class: Type[Item]) -> dict:
+    properties = {
+        name: (
+            {
+                "label": name,
+                "format": kwargs.get("apify_format"),
+            }
+            if kwargs.get("apify_format")
+            else {
+                "label": name,
+            }
+        )
+        for name, kwargs in item_class.fields.items()
+    }
+    return {
+        "title": item_class.__name__,
+        "actorSpecification": 1,
+        "views": {
+            "titles": {
+                "title": item_class.__name__,
+                "transformation": {"fields": list(properties.keys())},
+                "display": {
+                    "component": "table",
+                    "properties": properties,
+                },
+            }
+        },
+    }

@@ -13,12 +13,15 @@ configure_logging(settings, sys.argv)
 # ruff: noqa: E402
 import asyncio
 import importlib
+import json
 from pathlib import Path
 
 import click
+from scrapy import Item
 
 from juniorguru_plucker.actors import (
     configure_async,
+    generate_schema,
     get_spider_module_name,
     iter_actor_paths,
     run_actor,
@@ -32,7 +35,7 @@ logger = logging.getLogger("juniorguru_plucker")
 @click.group()
 @click.option("-d", "--debug", default=False, is_flag=True)
 def main(debug: bool = False):
-    pass
+    pass  # --debug is processed in configure_logging()
 
 
 @main.command()
@@ -76,3 +79,27 @@ def crawl(
     else:
         logger.info(f"Crawling as Scrapy spider {spider_name!r}")
         run_spider(settings, spider_class)
+
+
+@main.command()
+@click.argument("items_module_name", default="juniorguru_plucker.items", type=str)
+@click.argument(
+    "output_path",
+    default="juniorguru_plucker/schemas",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
+    items_module = importlib.import_module(items_module_name)
+
+    for member_name in dir(items_module):
+        member = getattr(items_module, member_name)
+        if not isinstance(member, type):
+            continue
+        if not issubclass(member, Item):
+            continue
+        logger.info(f"Generating schema for {member_name}…")
+        schema = generate_schema(member)
+
+        schema_name = member_name[0].lower() + member_name[1:]
+        schema_path = output_path / f"{schema_name}Schema.json"
+        schema_path.write_text(json.dumps(schema, indent=4, ensure_ascii=False) + "\n")

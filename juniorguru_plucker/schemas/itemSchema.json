@@ -1,0 +1,16 @@
+{
+    "title": "Item",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Item",
+            "transformation": {
+                "fields": []
+            },
+            "display": {
+                "component": "table",
+                "properties": {}
+            }
+        }
+    }
+}

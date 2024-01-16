@@ -1,6 +1,7 @@
 import re
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
+
 UTM_PARAM_NAMES = ["utm_source", "utm_medium", "utm_campaign"]
 
 

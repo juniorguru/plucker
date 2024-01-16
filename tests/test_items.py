@@ -5,6 +5,7 @@ from scrapy import Item
 
 from juniorguru_plucker import items
 
+
 items_module_members = [getattr(items, name) for name in dir(items)]
 
 item_classes = [
