@@ -97,6 +97,8 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
             continue
         if not issubclass(member, Item):
             continue
+        if member == Item:
+            continue
         logger.info(f"Generating schema for {member_name}…")
         schema = generate_schema(member)
 
