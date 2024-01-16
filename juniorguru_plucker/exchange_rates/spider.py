@@ -9,7 +9,7 @@ from juniorguru_plucker.items import ExchangeRate
 
 
 class Spider(BaseSpider):
-    name = "exchange-rates"
+    name = "exchange_rates"
 
     def start_requests(self) -> Generator[Request, None, None]:
         monday = get_last_monday(date.today())

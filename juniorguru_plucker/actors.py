@@ -5,7 +5,8 @@ import nest_asyncio
 from apify import Actor
 from scrapy import Spider
 from scrapy.crawler import CrawlerProcess
-from scrapy.settings import Settings
+from scrapy.settings import BaseSettings, Settings
+from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.utils.reactor import install_reactor
 
 
@@ -66,6 +67,20 @@ def configure_async():
     nest_asyncio.apply()
 
 
-def iter_actor_paths(path: Path) -> Generator[Path, None, None]:
-    for actor_spec in path.rglob(".actor/actor.json"):
-        yield actor_spec.parent.parent
+def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
+    for actor_spec in Path(path).rglob(".actor/actor.json"):
+        yield actor_spec.parent.parent.relative_to(path)
+
+
+def get_spider_module_name(actor_path: Path | str) -> str:
+    return f"{str(actor_path).replace('/', '.')}.spider"
+
+
+class SpiderLoader(BaseSpiderLoader):
+    def __init__(self, settings: BaseSettings):
+        super().__init__(settings)
+        if not self.spider_modules:
+            self.spider_modules = list(
+                map(get_spider_module_name, iter_actor_paths("."))
+            )
+        self._load_all_spiders()

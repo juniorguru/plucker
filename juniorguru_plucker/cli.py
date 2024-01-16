@@ -16,7 +16,12 @@ from pathlib import Path
 
 import click
 
-from juniorguru_plucker.actor import configure_async, iter_actor_paths, run_actor
+from juniorguru_plucker.actors import (
+    configure_async,
+    get_spider_module_name,
+    iter_actor_paths,
+    run_actor,
+)
 
 
 @click.group()
@@ -42,15 +47,13 @@ def crawl(
         spider_module_name = f"juniorguru_plucker.{spider_name}.spider"
     elif actor_path:
         # e.g. juniorguru_plucker/exchange_rates
-        spider_module_name = f"{str(actor_path).replace('/', '.')}.spider"
+        spider_module_name = get_spider_module_name(actor_path)
     else:
         raise click.BadParameter("Either spider_name or actor_path must be specified")
 
     actor_path = Path(actor_path)
     if not (actor_path / ".actor/actor.json").is_file():
-        actors = ", ".join(
-            [str(path.relative_to(Path("."))) for path in iter_actor_paths(Path("."))]
-        )
+        actors = ", ".join([str(path) for path in iter_actor_paths(".")])
         raise click.BadParameter(
             f"Actor {actor_path} not found! Valid actors: {actors}"
         )

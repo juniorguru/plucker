@@ -20,3 +20,5 @@ ROBOTSTXT_OBEY = False  # requesting APIs etc., so irrelevant, saving a few requ
 # ITEM_PIPELINES = {
 #     # 'juniorguru_plucker.pipelines.TitleItemPipeline': 123,
 # }
+
+SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
