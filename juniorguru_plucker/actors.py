@@ -16,13 +16,13 @@ async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
         actor_input = await Actor.get_input() or {}
         proxy_config = actor_input.get("proxyConfig")
         settings = apply_apify_settings(settings, proxy_config=proxy_config)
-        crawler = CrawlerProcess(settings, install_root_handler=False)
+        run_spider(settings, spider_class)
 
-        Actor.log.info("Importing spider")
-        crawler.crawl(spider_class)
 
-        Actor.log.info("Starting spider")
-        crawler.start()
+def run_spider(settings: Settings, spider_class: Type[Spider]):
+    crawler = CrawlerProcess(settings, install_root_handler=False)
+    crawler.crawl(spider_class)
+    crawler.start()
 
 
 def apply_apify_settings(

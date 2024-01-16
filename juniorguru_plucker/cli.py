@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from scrapy.utils.project import get_project_settings
@@ -21,7 +22,11 @@ from juniorguru_plucker.actors import (
     get_spider_module_name,
     iter_actor_paths,
     run_actor,
+    run_spider,
 )
+
+
+logger = logging.getLogger("juniorguru_plucker")
 
 
 @click.group()
@@ -38,28 +43,36 @@ def main(debug: bool = False):
     required=False,
     envvar="ACTOR_PATH_IN_DOCKER_CONTEXT",
 )
+@click.option("--apify/--no-apify", default=False)
 def crawl(
     spider_name: str | None = None,
     actor_path: str | None | Path = None,
+    apify: bool = False,
 ):
     if spider_name:
-        actor_path = f"juniorguru_plucker/{spider_name}"
-        spider_module_name = f"juniorguru_plucker.{spider_name}.spider"
+        spider_package_name = spider_name.replace("-", "_")
+        actor_path = f"juniorguru_plucker/{spider_package_name}"
+        spider_module_name = f"juniorguru_plucker.{spider_package_name}.spider"
     elif actor_path:
         # e.g. juniorguru_plucker/exchange_rates
         spider_module_name = get_spider_module_name(actor_path)
     else:
         raise click.BadParameter("Either spider_name or actor_path must be specified")
 
-    actor_path = Path(actor_path)
-    if not (actor_path / ".actor/actor.json").is_file():
-        actors = ", ".join([str(path) for path in iter_actor_paths(".")])
-        raise click.BadParameter(
-            f"Actor {actor_path} not found! Valid actors: {actors}"
-        )
-
-    # os.environ["SCRAPY_SETTINGS_MODULE"] = "juniorguru_plucker.settings"
-    Spider = importlib.import_module(spider_module_name).Spider
+    logger.info(f"Importing spider from {spider_module_name!r}")
+    spider_class = importlib.import_module(spider_module_name).Spider
+    assert spider_class.name == spider_name
 
     configure_async()
-    asyncio.run(run_actor(settings, Spider))
+    if apify:
+        logger.info(f"Crawling as Apify actor {actor_path!r}")
+        actor_path = Path(actor_path)
+        if not (actor_path / ".actor/actor.json").is_file():
+            actors = ", ".join([str(path) for path in iter_actor_paths(".")])
+            raise click.BadParameter(
+                f"Actor {actor_path} not found! Valid actors: {actors}"
+            )
+        asyncio.run(run_actor(settings, spider_class))
+    else:
+        logger.info(f"Crawling as Scrapy spider {spider_name!r}")
+        run_spider(settings, spider_class)
