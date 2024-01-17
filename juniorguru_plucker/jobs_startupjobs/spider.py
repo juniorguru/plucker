@@ -8,6 +8,7 @@ from scrapy.http import XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
+from juniorguru_plucker.processors import parse_iso_date
 from juniorguru_plucker.url_params import strip_utm_params
 
 
@@ -47,7 +48,7 @@ class Loader(ItemLoader):
     company_name_in = MapCompose(html.unescape)
     employment_types_in = Compose(MapCompose(str.strip), drop_remote)
     employment_types_out = Identity()
-    first_seen_on_in = MapCompose(lambda s: datetime.fromisoformat(s).date())
+    first_seen_on_in = MapCompose(parse_iso_date)
     company_logo_urls_out = Identity()
     remote_in = MapCompose(bool)
     locations_raw_out = Identity()
