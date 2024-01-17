@@ -15,3 +15,7 @@ SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
 # ITEM_PIPELINES = {
 #     # 'juniorguru_plucker.pipelines.TitleItemPipeline': 123,
 # }
+
+CLOSESPIDER_ERRORCOUNT = 1
+
+CLOSESPIDER_TIMEOUT_NO_ITEM = 30  # seconds

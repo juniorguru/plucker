@@ -7,6 +7,7 @@ from scrapy import Item, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
+from scrapy.statscollectors import StatsCollector
 from scrapy.utils.reactor import install_reactor
 
 
@@ -20,9 +21,22 @@ async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
 
 
 def run_spider(settings: Settings, spider_class: Type[Spider]):
-    crawler = CrawlerProcess(settings, install_root_handler=False)
-    crawler.crawl(spider_class)
-    crawler.start()
+    crawler_process = CrawlerProcess(settings, install_root_handler=False)
+    crawler_process.crawl(spider_class)
+    stats_collector = get_stats_collector(crawler_process)
+    crawler_process.start()
+
+    if exc_count := stats_collector.get_value("spider_exceptions"):
+        raise RuntimeError(f"Scraping failed with {exc_count} exceptions raised")
+    if error_count := stats_collector.get_value("log_count/ERROR"):
+        raise RuntimeError(f"Scraping failed with {error_count} errors logged")
+
+
+def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
+    if len(crawler_process.crawlers) != 1:
+        raise RuntimeError("Exactly one crawler expected")
+    crawler = crawler_process.crawlers.pop()
+    return crawler.stats
 
 
 def apply_apify_settings(
