@@ -105,8 +105,3 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
         schema_name = member_name[0].lower() + member_name[1:]
         schema_path = output_path / f"{schema_name}Schema.json"
         schema_path.write_text(json.dumps(schema, indent=4, ensure_ascii=False) + "\n")
-
-
-@main.command()
-def check():
-    pass
