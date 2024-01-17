@@ -1,5 +1,4 @@
 import html
-from datetime import datetime
 from typing import Generator
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst

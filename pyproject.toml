@@ -16,6 +16,8 @@ nest-asyncio = "1.5.9"
 scrapy = "2.11.0"
 click = "8.1.7"
 markdown = "3.5.2"
+feedparser = "6.0.11"
+extruct = "0.16.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "7.4.4"
@@ -27,7 +29,8 @@ python_files = "test_*.py"
 testpaths = "tests"
 addopts = "--import-mode=importlib --ff --ruff --ruff-format"
 filterwarnings = [
-    "ignore:'cgi' is deprecated:DeprecationWarning",
+    "ignore:'cgi' is deprecated:DeprecationWarning",  # scrapy (twisted)
+    "ignore:invalid escape sequence:DeprecationWarning",  # extruct
 ]
 
 [tool.ruff]
