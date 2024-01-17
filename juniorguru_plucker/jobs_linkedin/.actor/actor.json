@@ -4,7 +4,7 @@
     "title": "jobs-linkedin",
     "version": "0.0",
     "input": {
-        "title": "No Input",
+        "title": "Input",
         "type": "object",
         "schemaVersion": 1,
         "properties": {
