@@ -11,7 +11,7 @@ from juniorguru_plucker.jobs_remoteok.spider import Spider
 FIXTURES_DIR = Path(__file__).parent
 
 
-def normalize_html(html_string):
+def normalize_html(html_string: str) -> list[tuple[str, str, str]]:
     return [(el.tag, el.text, el.tail) for el in html.fromstring(html_string.strip())]
 
 

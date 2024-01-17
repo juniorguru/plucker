@@ -3,8 +3,8 @@ from typing import Any, Generator, Iterable
 from urllib.parse import urljoin
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
-from scrapy import Item, Request, Spider as BaseSpider
-from scrapy.http import Response
+from scrapy import Request, Spider as BaseSpider
+from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
@@ -19,13 +19,12 @@ class Spider(BaseSpider):
         "https://beta.www.jobs.cz/prace/programator/",
         "https://beta.www.jobs.cz/prace/tester/",
     ]
-
     employment_types_labels = [
         "Typ pracovního poměru",
         "Employment form",
     ]
 
-    def parse(self, response: Response) -> Generator[Request, None, None]:
+    def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         for n, card in enumerate(response.xpath(card_xpath), start=1):
             url = card.css('a[data-link="jd-detail"]::attr(href)').get()
@@ -54,7 +53,9 @@ class Spider(BaseSpider):
         ]
         yield from response.follow_all(urls, callback=self.parse)
 
-    def parse_job(self, response: Response, item: Item):
+    def parse_job(
+        self, response: HtmlResponse, item: Job
+    ) -> Generator[Job, None, None]:
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
@@ -66,8 +67,8 @@ class Spider(BaseSpider):
             yield from self.parse_job_company(response, loader)
 
     def parse_job_standard(
-        self, response: Response, loader: ItemLoader
-    ) -> Generator[Item, None, None]:
+        self, response: HtmlResponse, loader: ItemLoader
+    ) -> Generator[Job, None, None]:
         for label in self.employment_types_labels:
             loader.add_xpath(
                 "employment_types",
@@ -84,8 +85,8 @@ class Spider(BaseSpider):
         yield loader.load_item()
 
     def parse_job_company(
-        self, response: Response, loader: ItemLoader
-    ) -> Generator[Item, None, None]:
+        self, response: HtmlResponse, loader: ItemLoader
+    ) -> Generator[Job, None, None]:
         for label in self.employment_types_labels:
             loader.add_xpath(
                 "employment_types",
@@ -101,8 +102,8 @@ class Spider(BaseSpider):
         yield loader.load_item()
 
     def parse_job_custom(
-        self, response: Response, loader: ItemLoader
-    ) -> Generator[Item, None, None]:
+        self, response: HtmlResponse, loader: ItemLoader
+    ) -> Generator[Job, None, None]:
         self.logger.warning("Not implemented yet: custom job portals")
         if False:
             yield

@@ -2,12 +2,14 @@ import html
 import json
 import time
 from datetime import date, datetime
+from typing import Any, Generator
 
 import extruct
 import feedparser
 from itemloaders.processors import Identity, MapCompose, TakeFirst
 from lxml import etree
-from scrapy import Spider as BaseSpider
+from scrapy import Request, Spider as BaseSpider
+from scrapy.http import HtmlResponse, XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
@@ -16,12 +18,13 @@ from juniorguru_plucker.processors import absolute_url
 
 class Spider(BaseSpider):
     name = "jobs-weworkremotely"
+
     start_urls = [
         "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
         "https://weworkremotely.com/categories/remote-programming-jobs.rss",
     ]
 
-    def parse(self, response):
+    def parse(self, response: XmlResponse) -> Generator[Request, None, None]:
         for entry in feedparser.parse(response.text).entries:
             feed_data = dict(
                 title=entry.title,
@@ -37,7 +40,9 @@ class Spider(BaseSpider):
                 entry.link, callback=self.parse_job, cb_kwargs=dict(feed_data=feed_data)
             )
 
-    def parse_job(self, response, feed_data):
+    def parse_job(
+        self, response: HtmlResponse, feed_data: dict[str, dict[str, Any]]
+    ) -> Generator[Job, None, None]:
         loader = Loader(item=Job(), response=response)
         loader.add_value("url", response.url)
 
@@ -62,7 +67,7 @@ class Spider(BaseSpider):
             yield loader.load_item()
 
 
-def parse_struct_time(struct_time):
+def parse_struct_time(struct_time: time.struct_time | None) -> date | None:
     if struct_time:
         return datetime.fromtimestamp(time.mktime(struct_time)).date()
 
@@ -72,7 +77,7 @@ def parse_date(value: str | None) -> date | None:
         return date.fromisoformat(value[:10])
 
 
-def extract_job_posting(html_string, base_url):
+def extract_job_posting(html_string: str, base_url: str) -> dict[str, Any]:
     data = extruct.extract(html_string, base_url, syntaxes=["json-ld"])
     try:
         return [

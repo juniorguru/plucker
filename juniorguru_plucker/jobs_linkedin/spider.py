@@ -1,12 +1,14 @@
 import re
-from datetime import date, timedelta
+from typing import Generator
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
+from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
+from juniorguru_plucker.processors import first, last, parse_relative_date, split
 from juniorguru_plucker.url_params import (
     get_param,
     increment_param,
@@ -30,7 +32,7 @@ class Spider(BaseSpider):
     ]
     results_per_request = 25
 
-    def start_requests(self):
+    def start_requests(self) -> Generator[Request, None, None]:
         base_url = (
             "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?"
         )
@@ -51,7 +53,7 @@ class Spider(BaseSpider):
                 headers=self.headers,
             )
 
-    def parse(self, response):
+    def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
         urls = [
             f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{get_job_id(url)}"
             for url in response.css(
@@ -72,7 +74,9 @@ class Spider(BaseSpider):
                 url, cookies=self.cookies, headers=self.headers, callback=self.parse
             )
 
-    def parse_job(self, response, search_url):
+    def parse_job(
+        self, response: HtmlResponse, search_url: str
+    ) -> Generator[Job | Request, None, None]:
         loader = Loader(item=Job(), response=response)
         loader.add_value("source", self.name)
         loader.add_value("source_urls", search_url)
@@ -114,7 +118,9 @@ class Spider(BaseSpider):
         else:
             yield item
 
-    def verify_job(self, response, item):
+    def verify_job(
+        self, response: HtmlResponse, item: Job
+    ) -> Generator[Job, None, None]:
         """
         Verify apply URL
 
@@ -126,11 +132,13 @@ class Spider(BaseSpider):
         yield loader.load_item()
 
 
-def get_job_id(url):
-    return re.search(r"-(\d+)$", urlparse(url).path).group(1)
+def get_job_id(url: str) -> str:
+    if match := re.search(r"-(\d+)$", urlparse(url).path):
+        return match.group(1)
+    raise ValueError(f"Could not parse job ID: {url}")
 
 
-def clean_proxied_url(url):
+def clean_proxied_url(url: str) -> str:
     proxied_url = get_param(url, "url")
     if proxied_url:
         proxied_url = strip_utm_params(proxied_url)
@@ -140,13 +148,15 @@ def clean_proxied_url(url):
     return url
 
 
-def clean_validated_url(url):
+def clean_validated_url(url: str) -> str:
     if url and "validate.perfdrive.com" in url:
-        return get_param(url, "ssc")
+        if ssc_url := get_param(url, "ssc"):
+            return ssc_url
+        raise ValueError(f"Could not parse SSC URL: {url}")
     return url
 
 
-def clean_url(url):
+def clean_url(url: str) -> str:
     if url and "linkedin.com" in url:
         return strip_params(url, ["refId", "trk", "trackingId"])
     if url and "talentify.io" in url:
@@ -160,45 +170,8 @@ def clean_url(url):
     return url
 
 
-def parse_remote(text):
+def parse_remote(text: str) -> bool:
     return bool(re.search(r"\bremote(ly)?\b", text, re.IGNORECASE))
-
-
-def first(iterable):
-    for item in iterable:
-        if item is not None:
-            return item
-    return None
-
-
-def last(iterable):
-    return first(reversed(list(iterable)))
-
-
-def parse_relative_date(text, today=None):
-    today = today or date.today()
-    if "week" in text or "týdn" in text:
-        weeks_ago = int(re.search(r"\d+", text).group(0))
-        return today - timedelta(weeks=weeks_ago)
-    if "minute" in text or "hour" in text or "minut" in text or "hod" in text:
-        return today
-    if "today" in text or "dnes" in text:
-        return today
-    if "yesterday" in text or "včera" in text:
-        return today - timedelta(days=1)
-    if "day" in text or "dny" in text or "dnem" in text:
-        days_ago = int(re.search(r"\d+", text).group(0))
-        return today - timedelta(days=days_ago)
-    if "month" in text or "měs" in text:
-        months_ago = int(re.search(r"\d+", text).group(0))
-        return today - timedelta(days=months_ago * 30)
-    raise ValueError(text)
-
-
-def split(string, by=","):
-    if string:
-        return list(filter(None, map(str.strip, string.split(by))))
-    return []
 
 
 class Loader(ItemLoader):
