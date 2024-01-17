@@ -1,0 +1,30 @@
+{
+    "actorSpecification": 1,
+    "name": "jobs-jobscz",
+    "title": "jobs-jobscz",
+    "version": "0.0",
+    "input": {
+        "title": "Input",
+        "type": "object",
+        "schemaVersion": 1,
+        "properties": {
+            "proxyConfig": {
+                "title": "Proxy config",
+                "type": "object",
+                "description": "Specifies proxy servers",
+                "editor": "proxy",
+                "prefill": {
+                    "useApifyProxy": true
+                },
+                "default": {
+                    "useApifyProxy": true
+                }
+            }
+        }
+    },
+    "dockerfile": "../../../Dockerfile",
+    "dockerContextDir": "../../../",
+    "storages": {
+        "dataset": "../../schemas/jobSchema.json"
+    }
+}
