@@ -40,10 +40,10 @@ def main(debug: bool = False):
 
 @main.command()
 @click.argument("spider_name", type=str, required=False)
-@click.argument(
+@click.option(
+    "--actor",
     "actor_path",
-    type=str,
-    required=False,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
     envvar="ACTOR_PATH_IN_DOCKER_CONTEXT",
 )
 @click.option("--apify/--no-apify", default=False)
@@ -53,6 +53,10 @@ def crawl(
     apify: bool = False,
 ):
     if spider_name:
+        if actor_path:
+            logger.warning(
+                "Both spider_name and actor_path specified, actor_path will be ignored!"
+            )
         spider_package_name = spider_name.replace("-", "_")
         actor_path = f"juniorguru_plucker/{spider_package_name}"
         spider_module_name = f"juniorguru_plucker.{spider_package_name}.spider"
@@ -64,7 +68,6 @@ def crawl(
 
     logger.info(f"Importing spider from {spider_module_name!r}")
     spider_class = importlib.import_module(spider_module_name).Spider
-    assert spider_class.name == spider_name
 
     configure_async()
     if apify:
