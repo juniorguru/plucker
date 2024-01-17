@@ -872,6 +872,20 @@ pluggy = ">=0.12,<2.0"
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
+name = "pytest-ruff"
+version = "0.2.1"
+description = "pytest plugin to check ruff requirements."
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "pytest_ruff-0.2.1-py3-none-any.whl", hash = "sha256:f586bbd7978cb5782b673c8e55fa069d83430139931b918bd72232ba3f71eb67"},
+    {file = "pytest_ruff-0.2.1.tar.gz", hash = "sha256:078ad696bfa347b466991ed4f9cc5ec807f5a171d7f06091660d8f16ba03a5dc"},
+]
+
+[package.dependencies]
+ruff = ">=0.0.242"
+
+[[package]]
 name = "queuelib"
 version = "1.6.2"
 description = "Collection of persistent (disk-based) and non-persistent (memory-based) queues"
@@ -1323,4 +1337,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "f898f0881190c916b3a962c4bac1b192e47b346e260567e14042127a457bce92"
+content-hash = "adb875388811a0d2fc53491b34d34951df4698206ffd88b8932ad743fc1ce971"
