@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 UTM_PARAM_NAMES = ["utm_source", "utm_medium", "utm_campaign"]
 
 
-def strip_params(url, param_names):
+def strip_params(url: str, param_names: list[str]) -> str:
     parts = urlparse(url)
     params = {
         name: value
@@ -16,11 +16,11 @@ def strip_params(url, param_names):
     return urlunparse(parts._replace(query=query))
 
 
-def strip_utm_params(url):
+def strip_utm_params(url: str) -> str:
     return strip_params(url, UTM_PARAM_NAMES)
 
 
-def set_params(url, params):
+def set_params(url: str, params: dict[str, str | None]) -> str:
     parts = urlparse(url)
     url_params = {name: value for name, value in parse_qs(parts.query).items()}
     for name, value in params.items():
@@ -29,7 +29,7 @@ def set_params(url, params):
     return urlunparse(parts._replace(query=query))
 
 
-def get_param(url, param_name):
+def get_param(url: str, param_name: str) -> str | None:
     parts = urlparse(url)
     values = parse_qs(parts.query).get(param_name, [])
     return values[0] if values else None
@@ -44,7 +44,9 @@ def increment_param(url: str, param_name: str, inc: int = 1) -> str:
     return urlunparse(parts._replace(query=query))
 
 
-def replace_in_params(url, s, repl, case_insensitive=False):
+def replace_in_params(
+    url: str, s: str, repl: str, case_insensitive: bool = False
+) -> str:
     parts = urlparse(url)
     params = parse_qs(parts.query)
 
