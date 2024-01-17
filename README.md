@@ -2,6 +2,41 @@
 
 ---
 
+Creating new scraper, e.g. `gravel-bikes`:
+
+1.  Create new package, i.e. new directory `juniorguru_plucker/gravel_bikes` with `__init__.py` inside.
+    If the name has multiple words, be use underscores, but only for the directory name.
+1.  Configure Apify actor, i.e. new `juniorguru_plucker/gravel_bikes/.actor` directory with `actor.json` file inside.
+    If the actor name has multiple words, be sure to use dashes and not underscores.
+    Look at existing actor configurations and follow conventions.
+1.  If the new scraper should produce items already known to this codebase, such as jobs, find corresponding schema in `juniorguru_plucker/schemas` and link it as a `dataset` schema.
+    Look at existing actor configurations how it's done.
+1.  If the new scraper should produce something new, such as bikes, go to `juniorguru_plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
+    Look at existing items and follow conventions.
+    Run `jgp schemas` to generate schema for Apify, then link it as a `dataset` schema in the actor configuration.
+    Look at existing actor configurations how it's done.
+1.  Create Scrapy spider, i.e. new `juniorguru_plucker/bikes/spider.py` file with `Spider` class inside.
+    If the spider name has multiple words, be sure to use dashes and not underscores.
+    Look at existing spiders and follow conventions.
+1.  Run the spider with `scrapy crawl gravel-bikes`.
+    Learn about Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
+    Develop and debug.
+1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
+    Look at existing tests and follow conventions.
+
+Deploying to Apify:
+
+1.  As an admin, go to [Apify Console](https://console.apify.com/) and add a new actor by linking a GitHub repository.
+    If setting the actor name and title, use the `name` value of `Spider` class, e.g. `honzajavorek/gravel-bikes`.
+1.  Go to the <kbd>Source</kbd> tab. Set branch to `main` and folder to `juniorguru_plucker/gravel_bikes`.
+1.  Go to the <kbd>Builds</kbd> tab and start a build.
+1.  Go to the <kbd>Runs</kbd> tab and try a first run.
+1.  Go to the <kbd>Monitoring</kbd> tab and set some alert rules at the bottom of the page.
+    Look at existing actors and follow conventions.
+1.  Go to the <kbd>Schedules</kbd> page and assign your new actor to an existing schedule or create a new one.
+
+---
+
 How to run:
 
 - `poetry run apify run`
