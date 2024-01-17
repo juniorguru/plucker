@@ -41,7 +41,7 @@ class Spider(BaseSpider):
             )
 
     def parse_job(
-        self, response: HtmlResponse, feed_data: dict[str, dict[str, Any]]
+        self, response: HtmlResponse, feed_data: dict[str, Any]
     ) -> Generator[Job, None, None]:
         loader = Loader(item=Job(), response=response)
         loader.add_value("url", response.url)

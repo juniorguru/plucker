@@ -1,9 +1,11 @@
 from datetime import date, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 from scrapy.http import HtmlResponse
 
+from juniorguru_plucker.items import Job
 from juniorguru_plucker.jobs_linkedin.spider import (
     Spider,
     clean_proxied_url,
@@ -58,7 +60,7 @@ def test_spider_parse_job():
 
     assert len(jobs) == 1
 
-    job = jobs[0]
+    job = cast(Job, jobs[0])
 
     assert sorted(job.keys()) == sorted(
         [
@@ -103,6 +105,7 @@ def test_spider_parse_job_description_doesnt_include_criteria_list():
         body=Path(FIXTURES_DIR / "job.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = cast(Job, job)
 
     assert "Employment type" not in job["description_html"]
     assert "Information Technology and Services" not in job["description_html"]
@@ -114,6 +117,7 @@ def test_spider_parse_job_no_company_url():
         body=Path(FIXTURES_DIR / "job_no_company_url.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = cast(Job, job)
 
     assert job["company_name"] == "NeoTreks, Inc."
     assert "company_url" not in job
@@ -126,6 +130,7 @@ def test_spider_parse_job_company_logo():
         body=Path(FIXTURES_DIR / "job_company_logo.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = cast(Job, job)
 
     assert job["company_logo_urls"] == [
         "https://media-exp1.licdn.com/dms/image/C4D0BAQE5dJwgWcSH0g/company-logo_100_100/0/1545137392551?e=1640217600&v=beta&t=iVYrn2ljyLGyu53ggzJr7fZ-aTJPfvzTczAfdgsJYTU"
@@ -152,7 +157,7 @@ def test_spider_parse_job_apply_on_company_website():
 
 def test_spider_verify_job_apply_on_company_website():
     response = HtmlResponse("https://example.com/example/", body=b"")
-    item = dict(
+    item = Job(
         url="https://cz.linkedin.com/jobs/view/junior-automation-test-engineer-for-siemens-at-siemens-2689458333",
         apply_url="https://example.com/example/?redirect=foo",
     )
@@ -182,7 +187,7 @@ def test_spider_verify_job_apply_on_company_website_with_proxies_and_validations
         "&ssw=iab3he0us130ggjsdu4vakm70a"
     )
     response = HtmlResponse(response_url, body=b"")
-    item = dict(
+    item = Job(
         url="https://cz.linkedin.com/jobs/view/junior-software-engineer-package-maintainer-part-time-brno-southeast-red-hat-2689458333",
         apply_url="http://red-hat-1.talentify.io/job/junior-software-engineer-package-maintainer-part-time-brno-southeast-red-hat-89305",
     )
