@@ -27,7 +27,7 @@ Creating new scraper, e.g. `gravel-bikes`:
 Deploying to Apify:
 
 1.  As an admin, go to [Apify Console](https://console.apify.com/) and add a new actor by linking a GitHub repository.
-    If setting the actor name and title, use the `name` value of `Spider` class, e.g. `honzajavorek/gravel-bikes`.
+1.  Change both actor's <kbd>Title</kbd> and <kbd>Unique name</kbd> to the `name` value of `Spider` class, e.g. `honzajavorek/gravel-bikes`.
 1.  Go to the <kbd>Source</kbd> tab. Set branch to `main` and folder to `juniorguru_plucker/gravel_bikes`.
 1.  Go to the <kbd>Builds</kbd> tab and start a build.
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.
