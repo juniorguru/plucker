@@ -17,7 +17,7 @@ from juniorguru_plucker.url_params import (
 
 
 class Spider(BaseSpider):
-    name = "linkedin"
+    name = "jobs-linkedin"
 
     headers = {"Accept-Language": "en-us"}
     cookies = {"lang": "v=2&lang=en-us"}
