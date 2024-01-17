@@ -19,7 +19,10 @@ item_classes = [
 assert len(item_classes) > 0, f"no item classes found in {items.__file__}"
 
 
-@pytest.mark.parametrize("item_class", item_classes)
+@pytest.mark.parametrize(
+    "item_class",
+    [pytest.param(item_class, id=item_class.__name__) for item_class in item_classes],
+)
 def test_schema_exists(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
@@ -28,7 +31,10 @@ def test_schema_exists(item_class: type[Item]):
     assert schema_path.exists()
 
 
-@pytest.mark.parametrize("item_class", item_classes)
+@pytest.mark.parametrize(
+    "item_class",
+    [pytest.param(item_class, id=item_class.__name__) for item_class in item_classes],
+)
 def test_schema_is_updated(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
