@@ -98,7 +98,7 @@ def generate_schema(item_class: Type[Item]) -> dict:
                 "label": name,
             }
         )
-        for name, kwargs in item_class.fields.items()
+        for name, kwargs in sorted(item_class.fields.items())
     }
     return {
         "title": item_class.__name__,
@@ -106,7 +106,7 @@ def generate_schema(item_class: Type[Item]) -> dict:
         "views": {
             "titles": {
                 "title": item_class.__name__,
-                "transformation": {"fields": list(properties.keys())},
+                "transformation": {"fields": sorted(properties.keys())},
                 "display": {
                     "component": "table",
                     "properties": properties,
