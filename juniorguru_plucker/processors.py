@@ -1,5 +1,5 @@
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Iterable, Mapping
 
 from markdown import markdown
@@ -55,3 +55,7 @@ def parse_relative_date(text, today=None) -> date:
             return today - timedelta(days=months_ago * 30)
         raise ValueError(text)
     raise ValueError(text)
+
+
+def parse_iso_date(text: str) -> date:
+    return datetime.fromisoformat(text).date()

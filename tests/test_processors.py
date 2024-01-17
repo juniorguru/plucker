@@ -5,6 +5,7 @@ import pytest
 from juniorguru_plucker.processors import (
     first,
     last,
+    parse_iso_date,
     parse_markdown,
     parse_relative_date,
     split,
@@ -89,3 +90,16 @@ def test_last(iterable: list, expected: int | None):
 )
 def test_parse_markdown(value: str | None, expected: str | None):
     assert parse_markdown(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("2020-05-07T16:06:08+02:00", date(2020, 5, 7)),
+        ("2020-05-07T16:06:08-02:00", date(2020, 5, 7)),
+        ("2020-05-07T16:06:08", date(2020, 5, 7)),
+        ("2020-05-07 16:06:08", date(2020, 5, 7)),
+    ],
+)
+def test_parse_iso_date(value: str, expected: date):
+    assert parse_iso_date(value) == expected
