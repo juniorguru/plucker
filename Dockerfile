@@ -19,9 +19,8 @@ RUN echo "Python version:" \
  && pip install --no-cache-dir poetry~=1.7.1 \
  && echo "Installing dependencies:" \
  && poetry config cache-dir /tmp/.poetry-cache \
- && poetry config virtualenvs.create false \
  && poetry config virtualenvs.in-project true \
- && poetry install --only main --no-interaction --no-ansi \
+ && poetry install --only=main --no-interaction --no-ansi \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
  && pip freeze
