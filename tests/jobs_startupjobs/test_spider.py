@@ -60,7 +60,7 @@ def test_spider_parse():
     assert job["company_logo_urls"] == [
         "https://www.startupjobs.cz/uploads/U56OHNIPVP54cloudinfrastack-fb-logo-180x180-1154411059762.png"
     ]
-    assert job["source"] == "startupjobs"
+    assert job["source"] == "jobs-startupjobs"
     assert job["source_urls"] == ["https://example.com/example/"]
     assert "<p>Ahoj, baví tě Linux?" in job["description_html"]
 
