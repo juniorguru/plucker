@@ -4,12 +4,7 @@ ARG ACTOR_PATH_IN_DOCKER_CONTEXT
 RUN rm -rf /usr/src/app/*
 WORKDIR /usr/src/app
 
-COPY pyproject.toml ./
-COPY poetry.lock ./
-
-# Poetry respects the "readme" key in pyproject.toml, so when installing
-# the local package it complains about missing README.md if not present
-COPY README.md ./
+COPY . ./
 
 RUN echo "Python version:" \
  && python --version \
@@ -24,8 +19,6 @@ RUN echo "Python version:" \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
  && pip freeze
-
-COPY . ./
 
 RUN python3 -m compileall -q .
 
