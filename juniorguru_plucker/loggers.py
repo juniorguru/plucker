@@ -78,4 +78,4 @@ def configure_logger(
 def get_logging_level(settings: Settings, argv: list[str]) -> str:
     if "--debug" in argv or "-d" in argv:
         return "DEBUG"
-    return settings.get("LOG_LEVEL", "INFO")
+    return settings.get("LOG_LEVEL")
