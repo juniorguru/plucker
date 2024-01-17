@@ -1,6 +1,10 @@
 from scrapy import Field, Item
 
 
+# See supported Apify formats at
+# https://docs.apify.com/platform/actors/development/actor-definition/output-schema
+
+
 class Job(Item):
     title = Field()
     first_seen_on = Field(apify_format="date")
