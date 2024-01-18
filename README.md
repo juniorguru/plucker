@@ -1,6 +1,26 @@
-## Plucker
+# Plucker 🪶
 
----
+Junior Guru scrapers
+
+## How does it work
+
+This repository contains a source code of all scrapers Junior Guru needs for its functioning.
+The scrapers are implemented using the [Scrapy framework](https://scrapy.org/) and albeit there are some customizations, most Scrapy conventions should work out of the box.
+Contributing new scraper shouldn't be hard if you have some knowledge of how Scrapy works.
+
+The scrapers are then deployed to the [Apify](https://apify.com) platform as so called _actors_.
+The code here works as a monorepo for Apify actors and diverges quite significantly from the [Scrapy template](https://github.com/apify/actor-templates/tree/master/templates/python-scrapy) Apify provides.
+Deploying new scraper to Apify is a manual process and it is documented below.
+
+Code in this repository is executed by Apify, on their infrastructure.
+The [main Junior Guru codebase](https://github.com/juniorguru/junior.guru) then gets the scraped data in form of [datasets](https://docs.apify.com/platform/storage/dataset) available through the Apify API.
+
+## Running scrapers
+
+Just use Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
+Plucker has a `crawl` CLI command, which you can also use, but it's more useful for integrating with Apify than for the actual development of the scraper.
+
+## How to add new scraper
 
 Creating new scraper, e.g. `gravel-bikes`:
 
@@ -35,85 +55,17 @@ Deploying to Apify:
     Look at existing actors and follow conventions.
 1.  Go to the <kbd>Schedules</kbd> page and assign your new actor to an existing schedule or create a new one.
 
----
+## Notes on development
 
-How to run:
+-   Use [Poetry](https://python-poetry.org/) for dependency management.
+-   It is preferred to pin exact versions of dependencies, without `^`, and let GitHub's Dependabot to upgrade dependencies in Pull Requests.
+    Unfortunately there is no setting in pyproject.toml, which would force this behavior, so once new dependencies are added, one needs to go and manually remove the `^` characters.
+-   Run `pytest` to see if your code has any issues.
+-   Run `ruff check --fix` and `ruff format` to fix your code.
 
-- `poetry run apify run`
-- `poetry run python -m juniorguru_plucker`
+## Dictionary
 
----
-
-A template example built with Scrapy to scrape page titles from URLs defined in the input parameter. It shows how to use Apify SDK for Python and Scrapy pipelines to save results.
-
-## Included features
-
-- **[Apify SDK](https://docs.apify.com/sdk/python/)** for Python - a toolkit for building Apify [Actors](https://apify.com/actors) and scrapers in Python
-- **[Input schema](https://docs.apify.com/platform/actors/development/input-schema)** - define and easily validate a schema for your Actor's input
-- **[Request queue](https://docs.apify.com/sdk/python/docs/concepts/storages#working-with-request-queues)** - queues into which you can put the URLs you want to scrape
-- **[Dataset](https://docs.apify.com/sdk/python/docs/concepts/storages#working-with-datasets)** - store structured data where each object stored has the same attributes
-- **[Scrapy](https://scrapy.org/)** - a fast high-level web scraping framework
-
-## How it works
-
-This code is a Python script that uses Scrapy to scrape web pages and extract data from them. Here's a brief overview of how it works:
-
-- The script reads the input data from the Actor instance, which is expected to contain a `start_urls` key with a list of URLs to scrape.
-- The script then creates a Scrapy spider that will scrape the URLs. This Spider (class `TitleSpider`) is storing URLs and titles.
-- Scrapy pipeline is used to save the results to the default dataset associated with the Actor run using the `push_data` method of the Actor instance.
-- The script catches any exceptions that occur during the [web scraping](https://apify.com/web-scraping) process and logs an error message using the `Actor.log.exception` method.
-
-## Resources
-
-- [Web scraping with Scrapy](https://blog.apify.com/web-scraping-with-scrapy/)
-- [Python tutorials in Academy](https://docs.apify.com/academy/python)
-- [Alternatives to Scrapy for web scraping in 2023](https://blog.apify.com/alternatives-scrapy-web-scraping/)
-- [Beautiful Soup vs. Scrapy for web scraping](https://blog.apify.com/beautiful-soup-vs-scrapy-web-scraping/)
-- [Integration with Zapier](https://apify.com/integrations), Make, Google Drive, and others
-- [Video guide on getting scraped data using Apify API](https://www.youtube.com/watch?v=ViYYDHSBAKM)
-- A short guide on how to build web scrapers using code templates:
-
-[web scraper template](https://www.youtube.com/watch?v=u-i-Korzf8w)
-
-
-## Getting started
-
-For complete information [see this article](https://docs.apify.com/platform/actors/development#build-actor-locally). To run the actor use the following command:
-
-```
-apify run
-```
-
-## Deploy to Apify
-
-### Connect Git repository to Apify
-
-If you've created a Git repository for the project, you can easily connect to Apify:
-
-1. Go to [Actor creation page](https://console.apify.com/actors/new)
-2. Click on **Link Git Repository** button
-
-### Push project on your local machine to Apify
-
-You can also deploy the project on your local machine to Apify without the need for the Git repository.
-
-1. Log in to Apify. You will need to provide your [Apify API Token](https://console.apify.com/account/integrations) to complete this action.
-
-    ```
-    apify login
-    ```
-
-2. Deploy your Actor. This command will deploy and build the Actor on the Apify Platform. You can find your newly created Actor under [Actors -> My Actors](https://console.apify.com/actors?tab=my).
-
-    ```
-    apify push
-    ```
-
-## Documentation reference
-
-To learn more about Apify and Actors, take a look at the following resources:
-
-- [Apify SDK for JavaScript documentation](https://docs.apify.com/sdk/js)
-- [Apify SDK for Python documentation](https://docs.apify.com/sdk/python)
-- [Apify Platform documentation](https://docs.apify.com/platform)
-- [Join our developer community on Discord](https://discord.com/invite/jyEM2PRvMU)
+-   _scraper_ - Generic name for a program which downloads data from web pages (or APIs). This repository uses the word scraper to refer to a spider & actor combo.
+-   _spider_ - This is how [Scrapy](https://scrapy.org/) framework calls implementation of a scraper.
+-   _actor_ - This is how the [Apify](https://apify.com) platform calls implementation of a scraper.
+-   _plucker_ - Repository of Junior Guru scrapers. In English, a plucker is one who or that which plucks. Naming in Junior Guru is usually chicken-themed, and Honza felt that plucking is a nice poultry-related analogy to web scraping.

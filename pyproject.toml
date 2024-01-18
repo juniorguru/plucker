@@ -5,6 +5,8 @@ description = "Junior Guru scrapers"
 authors = ["Honza Javorek <mail@honzajavorek.cz>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://junior.guru/"
+repository = "https://github.com/juniorguru/plucker/"
 
 [tool.poetry.scripts]
 jgp = "juniorguru_plucker.cli:main"
