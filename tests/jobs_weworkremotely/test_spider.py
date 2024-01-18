@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 from scrapy.http import HtmlResponse, XmlResponse
@@ -95,9 +96,12 @@ def test_spider_parse_job_json_decode_error_gets_skipped():
         next(jobs)
 
 
-def test_parse_date():
-    assert parse_date("2024-01-02 13:53:45 UTC") == date(2024, 1, 2)
-
-
-def test_parse_date_none():
-    assert parse_date(None) is None
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (("2024-01-02 13:53:45 UTC"), date(2024, 1, 2)),
+        (None, None),
+    ],
+)
+def test_parse_date(value: Any, expected: date | None):
+    assert parse_date(value) == expected
