@@ -52,7 +52,7 @@ class Spider(BaseSpider):
         try:
             data = extract_job_posting(response.text, response.url)
         except (ValueError, json.JSONDecodeError, etree.ParserError):
-            pass
+            self.logger.warning("Failed to extract job posting", exc_info=True)
         else:
             loader.add_value("source", self.name)
             loader.add_value("source_urls", response.url)
@@ -73,6 +73,8 @@ def parse_struct_time(struct_time: time.struct_time | None) -> date | None:
 
 
 def parse_date(value: str | None) -> date | None:
+    if isinstance(value, date):
+        return value
     if value:
         return date.fromisoformat(value[:10])
 

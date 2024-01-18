@@ -100,6 +100,7 @@ def test_spider_parse_job_json_decode_error_gets_skipped():
     "value, expected",
     [
         (("2024-01-02 13:53:45 UTC"), date(2024, 1, 2)),
+        (date(2024, 1, 2), date(2024, 1, 2)),
         (None, None),
     ],
 )
