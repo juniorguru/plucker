@@ -35,8 +35,7 @@ def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
 class JobSpider(Spider):
     extra_item_pipelines = {
         "juniorguru_plucker.pipelines.required_fields_filter.Pipeline": 50,
-        "juniorguru_plucker.pipelines.short_description_filter.Pipeline": 100,
-        "juniorguru_plucker.pipelines.broken_encoding_filter.Pipeline": 150,
+        "juniorguru_plucker.pipelines.broken_encoding_filter.Pipeline": 100,
         "juniorguru_plucker.pipelines.language_parser.Pipeline": 200,
         "juniorguru_plucker.pipelines.language_filter.Pipeline": 250,
     }
