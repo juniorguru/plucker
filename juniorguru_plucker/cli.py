@@ -25,8 +25,8 @@ from juniorguru_plucker.actors import (
     get_spider_module_name,
     iter_actor_paths,
     run_actor,
-    run_spider,
 )
+from juniorguru_plucker.spiders import run_spider
 
 
 logger = logging.getLogger("juniorguru_plucker")
