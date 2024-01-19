@@ -6,7 +6,7 @@ import pytest
 from scrapy import Spider
 from scrapy.settings import Settings
 
-from juniorguru_plucker.spiders import JobSpider
+from juniorguru_plucker.spiders import JobSpider as BaseJobSpider
 
 
 spider_packages = [
@@ -51,19 +51,29 @@ def test_spider_names(
     assert spider_class.name == actor_config["name"] == actor_config["title"]
 
 
-def test_job_spider_item_pipelines():
-    settings = Settings({"ITEM_PIPELINES": {"AbcPipeline": 50}})
-    JobSpider.update_settings(settings)
+def test_job_spider_extra_item_pipelines():
+    settings = Settings({"ITEM_PIPELINES": {"APipeline": 50, "ApifyPipeline": 1000}})
 
-    assert len(settings.getdict("ITEM_PIPELINES")) > 1
+    class JobsSpider(BaseJobSpider):
+        extra_item_pipelines = {"BPipeline": 500}
+
+    JobsSpider.update_settings(settings)
+
+    assert settings.getdict("ITEM_PIPELINES") == {
+        "APipeline": 50,
+        "ApifyPipeline": 1000,
+        "BPipeline": 500,
+    }
 
 
-def test_job_spider_item_pipelines_override():
-    settings = Settings({"ITEM_PIPELINES": {"AbcPipeline": 50}})
+def test_job_spider_item_custom_settings_item_pipelines():
+    settings = Settings({"ITEM_PIPELINES": {"APipeline": 50}})
 
-    class SpecificJobSpider(JobSpider):
-        custom_settings = {"ITEM_PIPELINES": {"XyzPipeline": 50}}
+    class JobsSpider(BaseJobSpider):
+        item_pipelines = {"BPipeline": 500}
 
-    SpecificJobSpider.update_settings(settings)
+    class SpecificJobSpider(JobsSpider):
+        custom_settings = {"ITEM_PIPELINES": {"CPipeline": 50}}
 
-    assert settings.getdict("ITEM_PIPELINES") == {"XyzPipeline": 50}
+    with pytest.raises(NotImplementedError):
+        SpecificJobSpider.update_settings(settings)
