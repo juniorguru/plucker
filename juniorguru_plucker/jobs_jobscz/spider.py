@@ -3,16 +3,17 @@ from typing import Any, Generator, Iterable
 from urllib.parse import urljoin
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
-from scrapy import Request, Spider as BaseSpider
+from scrapy import Request
 from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import first, split
+from juniorguru_plucker.spiders import JobSpider
 from juniorguru_plucker.url_params import strip_params
 
 
-class Spider(BaseSpider):
+class Spider(JobSpider):
     name = "jobs-jobscz"
 
     start_urls = [

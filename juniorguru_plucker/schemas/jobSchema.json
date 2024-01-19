@@ -13,6 +13,7 @@
                     "description_html",
                     "employment_types",
                     "first_seen_on",
+                    "lang",
                     "locations_raw",
                     "remote",
                     "source",
@@ -49,6 +50,9 @@
                     "first_seen_on": {
                         "label": "first_seen_on",
                         "format": "date"
+                    },
+                    "lang": {
+                        "label": "lang"
                     },
                     "locations_raw": {
                         "label": "locations_raw",

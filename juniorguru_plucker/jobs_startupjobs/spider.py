@@ -2,16 +2,16 @@ import html
 from typing import Generator
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
-from scrapy import Spider as BaseSpider
 from scrapy.http import XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import parse_iso_date
+from juniorguru_plucker.spiders import JobSpider
 from juniorguru_plucker.url_params import strip_utm_params
 
 
-class Spider(BaseSpider):
+class Spider(JobSpider):
     name = "jobs-startupjobs"
     start_urls = ["https://feedback.startupjobs.cz/feed/juniorguru.php"]
 

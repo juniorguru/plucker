@@ -6,15 +6,20 @@ LOG_LEVEL = "INFO"
 
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 
-USER_AGENT = "JuniorGuruBot (+https://junior.guru)"
+DEFAULT_REQUEST_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "cs;q=0.8,en;q=0.6",
+}
 
-ROBOTSTXT_OBEY = False  # requesting APIs etc., so irrelevant, saving a few requests
+USER_AGENT = f"{BOT_NAME} (+https://junior.guru)"
+
+ROBOTSTXT_OBEY = False
 
 SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
 
-# ITEM_PIPELINES = {
-#     # 'juniorguru_plucker.pipelines.TitleItemPipeline': 123,
-# }
+ITEM_PIPELINES = {
+    "juniorguru_plucker.pipelines.required_fields_filter.Pipeline": 50,
+}
 
 CLOSESPIDER_ERRORCOUNT = 1
 

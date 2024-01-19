@@ -6,13 +6,14 @@ from scrapy import Field, Item
 
 
 class Job(Item):
-    title = Field()
-    first_seen_on = Field(apify_format="date")
+    title = Field(required=True)
+    first_seen_on = Field(required=True, apify_format="date")
+    lang = Field()
 
-    url = Field(apify_format="link")
+    url = Field(required=True, apify_format="link")
     apply_url = Field(apify_format="link")
 
-    company_name = Field()
+    company_name = Field(required=True)
     company_url = Field(apify_format="link")
     company_logo_urls = Field(apify_format="array")
 
@@ -20,12 +21,12 @@ class Job(Item):
     remote = Field(apify_format="boolean")
     employment_types = Field(apify_format="array")
 
-    description_html = Field()
+    description_html = Field(required=True)
 
-    source = Field()
-    source_urls = Field(apify_format="array")
+    source = Field(required=True)
+    source_urls = Field(apify_format="array", required=True)
 
 
 class ExchangeRate(Item):
-    code = Field()
-    rate = Field(apify_format="number")
+    code = Field(required=True)
+    rate = Field(required=True, apify_format="number")
