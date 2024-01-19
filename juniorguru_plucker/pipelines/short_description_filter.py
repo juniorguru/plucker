@@ -10,7 +10,7 @@ class ShortDescription(DropItem):
 
 
 class Pipeline:
-    min_chars_count = 600
+    min_chars_count = 500
 
     def process_item(self, job: Job, spider: Spider) -> Job:
         chars_count = len(remove_tags(job["description_html"]))
