@@ -44,20 +44,20 @@ trio = ["trio (>=0.23)"]
 
 [[package]]
 name = "apify"
-version = "1.5.0"
+version = "1.5.2"
 description = "Apify SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify-1.5.0-py3-none-any.whl", hash = "sha256:05559d94348e220f753630b13d20ff195249888ca35856292eb10e5841bfd4d9"},
-    {file = "apify-1.5.0.tar.gz", hash = "sha256:eced7f113abc4a7a7f61302c53f57d2903ded63d2787b352a4b038a5316417a2"},
+    {file = "apify-1.5.2-py3-none-any.whl", hash = "sha256:872831bc8c35927d104d40e3847444d5bfdcd0e7b1bcba9880699127186411bb"},
+    {file = "apify-1.5.2.tar.gz", hash = "sha256:7b92f6402818f9f3b74104ead29306e01ccfefd134855ebc50fbbcf6a3612ca2"},
 ]
 
 [package.dependencies]
 aiofiles = ">=22.1.0"
 aioshutil = ">=1.0"
-apify-client = ">=1.6.0,<1.7.0"
-apify-shared = ">=1.1.0,<1.2.0"
+apify-client = ">=1.6.2,<1.7.0"
+apify-shared = ">=1.1.1,<1.2.0"
 colorama = ">=0.4.6"
 cryptography = ">=39.0.0"
 httpx = ">=0.24.1"
@@ -69,7 +69,7 @@ typing-extensions = ">=4.1.0"
 websockets = ">=10.1"
 
 [package.extras]
-dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-cov (>=4.1.0,<4.2.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.6,<0.2.0)", "twine (>=4.0.2,<4.1.0)", "types-aiofiles (>=23.2.0.0,<23.3.0.0)", "types-colorama (>=0.4.15.12,<0.5.0.0)", "types-psutil (>=5.9.5.17,<5.10.0.0)"]
+dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-cov (>=4.1.0,<4.2.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.13,<0.2.0)", "twine (>=4.0.2,<4.1.0)", "types-aiofiles (>=23.2.0.0,<23.3.0.0)", "types-colorama (>=0.4.15.12,<0.5.0.0)", "types-psutil (>=5.9.5.17,<5.10.0.0)"]
 scrapy = ["scrapy (>=2.11.0)"]
 
 [[package]]
@@ -1568,4 +1568,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "88611ec132ecb19d0f9332b973b2ca245d48d913aa611898b43e9cf15ea10cb8"
+content-hash = "2f9a4a317edc3a37af75acecc2884656fc1e9e8b097ce3300944c2d731ae8e75"
