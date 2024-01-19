@@ -17,7 +17,6 @@ apify = {version = "1.5.0", extras = ["scrapy"]}
 nest-asyncio = "1.5.9"
 scrapy = "2.11.0"
 click = "8.1.7"
-markdown = "3.5.2"
 feedparser = "6.0.11"
 extruct = "0.16.0"
 

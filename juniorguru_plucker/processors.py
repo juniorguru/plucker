@@ -2,16 +2,9 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Iterable, Mapping
 
-from markdown import markdown
-
 
 def absolute_url(url: str, loader_context: Mapping):
     return loader_context["response"].urljoin(url)
-
-
-def parse_markdown(value: str | None) -> str | None:
-    if value:
-        return markdown(value.strip())
 
 
 def split(string: str, by: str = ",") -> list[str]:

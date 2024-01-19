@@ -6,7 +6,6 @@ from juniorguru_plucker.processors import (
     first,
     last,
     parse_iso_date,
-    parse_markdown,
     parse_relative_date,
     split,
 )
@@ -79,17 +78,6 @@ def test_first(iterable: list, expected: int | None):
 )
 def test_last(iterable: list, expected: int | None):
     assert last(iterable) == expected
-
-
-@pytest.mark.parametrize(
-    "value, expected",
-    [
-        (None, None),
-        (" **Foo Ltd.**   ", "<p><strong>Foo Ltd.</strong></p>"),
-    ],
-)
-def test_parse_markdown(value: str | None, expected: str | None):
-    assert parse_markdown(value) == expected
 
 
 @pytest.mark.parametrize(
