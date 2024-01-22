@@ -62,7 +62,7 @@ class Spider(JobSpider):
         loader.add_value("source_urls", response.url)
         if "www.jobs.cz" not in response.url:
             yield from self.parse_job_custom(response, loader)
-        elif response.css(".LayoutGrid--cassiopeia").get():
+        elif response.css('[class*="--cassiopeia"]').get():
             yield from self.parse_job_standard(response, loader)
         else:
             yield from self.parse_job_company(response, loader)
@@ -75,14 +75,7 @@ class Spider(JobSpider):
                 "employment_types",
                 f"//span[contains(text(), {label!r})]/following-sibling::p/text()",
             )
-        loader.add_xpath(
-            "description_html",
-            "//p[contains(@class, 'typography-body-medium-text-regular')][contains(text(), 'Úvodní představení')]/following-sibling::p",
-        )
-        loader.add_xpath(
-            "description_html",
-            "//p[contains(@class, 'typography-body-medium-text-regular')][contains(text(), 'Pracovní nabídka')]/following-sibling::*",
-        )
+        loader.add_css("description_html", '[data-jobad="body"]')
         yield loader.load_item()
 
     def parse_job_company(
@@ -122,20 +115,16 @@ def remove_empty(values: Iterable[Any]) -> Iterable[Any]:
     return filter(None, values)
 
 
-def remove_width_param(url: str) -> str:
-    return strip_params(url, ["width"])
-
-
 class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
     url_in = Compose(first, clean_url)
     company_url_in = Compose(first, clean_url)
-    company_logo_urls_in = MapCompose(remove_width_param)
+    company_logo_urls_in = Identity()
     company_logo_urls_out = Compose(set, list)
     description_html_out = Compose(join)
     employment_types_in = MapCompose(str.lower, split)
     employment_types_out = Identity()
     locations_raw_out = Compose(remove_empty, set, list)
-    source_urls_out = Identity()
+    source_urls_out = Compose(set, list)
     first_seen_on_in = Identity()
