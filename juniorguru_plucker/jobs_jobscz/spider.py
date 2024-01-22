@@ -62,38 +62,29 @@ class Spider(JobSpider):
         loader.add_value("source_urls", response.url)
         if "www.jobs.cz" not in response.url:
             yield from self.parse_job_custom(response, loader)
-        elif response.css('[class*="--cassiopeia"]').get():
-            yield from self.parse_job_standard(response, loader)
         else:
-            yield from self.parse_job_company(response, loader)
+            # standard
+            for label in self.employment_types_labels:
+                loader.add_xpath(
+                    "employment_types",
+                    f"//span[contains(text(), {label!r})]/following-sibling::p/text()",
+                )
+            loader.add_css("description_html", '[data-jobad="body"]')
 
-    def parse_job_standard(
-        self, response: HtmlResponse, loader: ItemLoader
-    ) -> Generator[Job, None, None]:
-        for label in self.employment_types_labels:
-            loader.add_xpath(
-                "employment_types",
-                f"//span[contains(text(), {label!r})]/following-sibling::p/text()",
-            )
-        loader.add_css("description_html", '[data-jobad="body"]')
-        yield loader.load_item()
+            # company
+            if response.css('[class*="CompanyProfileNavigation"]').get():
+                loader.add_css(
+                    "company_logo_urls",
+                    ".CompanyProfileNavigation__logo img::attr(src)",
+                )
+                company_url_relative = response.css(
+                    ".CompanyProfileNavigation__menu .Tabs__item:nth-child(2) a::attr(href)"
+                ).get()
+                loader.add_value(
+                    "company_url", urljoin(response.url, company_url_relative)
+                )
 
-    def parse_job_company(
-        self, response: HtmlResponse, loader: ItemLoader
-    ) -> Generator[Job, None, None]:
-        for label in self.employment_types_labels:
-            loader.add_xpath(
-                "employment_types",
-                f"//span[contains(text(), {label!r})]/parent::dd/text()",
-            )
-        loader.add_css("description_html", ".grid__item.e-16 .clearfix")
-        loader.add_css("description_html", ".jobad__body")
-        loader.add_css("company_logo_urls", ".company-profile__logo__image::attr(src)")
-        company_url_relative = response.css(
-            ".company-profile__navigation__link::attr(href)"
-        ).get()
-        loader.add_value("company_url", urljoin(response.url, company_url_relative))
-        yield loader.load_item()
+            yield loader.load_item()
 
     def parse_job_custom(
         self, response: HtmlResponse, loader: ItemLoader

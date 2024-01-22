@@ -126,10 +126,9 @@ def test_spider_parse_job_standard_en():
     assert "<strong>Areas of Our Projects</strong>" in job["description_html"]
 
 
-@pytest.mark.skip(reason="TODO rewrite after HTML changes")
 def test_spider_parse_job_company():
     response = HtmlResponse(
-        "https://beta.www.jobs.cz/fp/onsemi-61382/1597818748/?positionOfAdInAgentEmail=0&searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=233",
+        "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_company.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, Job()))
@@ -144,31 +143,24 @@ def test_spider_parse_job_company():
             "company_logo_urls",
         ]
     )
-    assert job["url"] == "https://beta.www.jobs.cz/fp/onsemi-61382/1597818748/"
+    assert job["url"] == "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/"
     assert job["employment_types"] == ["práce na plný úvazek"]
     assert job["source_urls"] == [
-        "https://beta.www.jobs.cz/fp/onsemi-61382/1597818748/?positionOfAdInAgentEmail=0&searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=233"
+        "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233"
     ]
-    assert job["company_url"] == "https://beta.www.jobs.cz/fp/onsemi-61382/"
+    assert job["company_url"] == "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/"
     assert job["company_logo_urls"] == [
-        "https://aeqqktywno.cloudimg.io/crop_px/57,161,1762,510-200/n/_cpimg_prod_/61382/87d218f8-30df-11ec-a11c-0242ac11000a.png"
+        "https://aeqqktywno.cloudimg.io/v7/_cpimg_prod_/7910630/db7f211a-59cc-11ec-87b6-0242ac11000c.png?width=200&tl_px=0,9&br_px=350,110"
     ]
-
     assert (
-        "Světoví producenti elektroniky či aut s námi spolupracují a čekají na naše inovativní čipy"
+        "stovky tisíc zákazníků měsíčně.<br>Jsi iOS vývojář/ka"
         in job["description_html"]
     )
-    assert (
-        "<h2>Vývojář polovodičových součástek a automatizace v TCAD</h2>"
-        not in job["description_html"]
-    )
-    assert "Zkušenost s deskami z karbidu křemíku" in job["description_html"]
 
 
-@pytest.mark.skip(reason="TODO rewrite after HTML changes")
 def test_spider_parse_job_company_en():
     response = HtmlResponse(
-        "https://beta.www.jobs.cz/fp/onsemi-61382/1597818748/",
+        "https://www.jobs.cz/fp/infosys-361226/2000119063/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_company_en.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, Job()))
@@ -184,10 +176,7 @@ def test_spider_parse_job_company_en():
         ]
     )
     assert job["employment_types"] == ["full-time work"]
-
     assert (
-        "Our new home is the remarkable Churchill II building"
+        '<strong>Employee perks, benefits</strong></p><ul class="typography-body-large-text-regular"><li>Hybrid work model;'
         in job["description_html"]
     )
-    assert "<h2>Group Release &amp; Defect Manager</h2>" not in job["description_html"]
-    assert "<strong>RESPONSIBILITIES:</strong>" in job["description_html"]
