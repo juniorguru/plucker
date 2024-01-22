@@ -51,8 +51,6 @@ Deploying to Apify:
 1.  Go to the <kbd>Source</kbd> tab. Set branch to `main` and folder to `juniorguru_plucker/gravel_bikes`.
 1.  Go to the <kbd>Builds</kbd> tab and start a build.
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.
-1.  Go to the <kbd>Monitoring</kbd> tab and set some alert rules at the bottom of the page.
-    Look at existing actors and follow conventions.
 1.  Go to the <kbd>Schedules</kbd> page and assign your new actor to an existing schedule or create a new one.
 
 ## Notes on development

@@ -1,3 +1,5 @@
+from typing import Any
+
 from scrapy import Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.settings import Settings
@@ -9,27 +11,28 @@ def run_spider(settings: Settings, spider_class: type[Spider]):
     crawler_process.crawl(spider_class)
     stats_collector = get_stats_collector(crawler_process)
     crawler_process.start()
-
-    if reason := stats_collector.get_value("finish_reason"):
-        if reason != "finished":
-            raise RuntimeError(f"Scraping didn't finish properly, reason: {reason}")
-    if item_count := stats_collector.get_value(
-        "item_dropped_reasons_count/MissingRequiredFields"
-    ):
-        raise RuntimeError(
-            f"Scraping failed with {item_count} items dropped because of missing required fields"
-        )
-    if exc_count := stats_collector.get_value("spider_exceptions"):
-        raise RuntimeError(f"Scraping failed with {exc_count} exceptions raised")
-    if error_count := stats_collector.get_value("log_count/ERROR"):
-        raise RuntimeError(f"Scraping failed with {error_count} errors logged")
+    raise_for_stats(stats_collector.get_stats())
 
 
 def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
-    if len(crawler_process.crawlers) != 1:
-        raise RuntimeError("Exactly one crawler expected")
+    assert len(crawler_process.crawlers) == 1, "Exactly one crawler expected"
     crawler = crawler_process.crawlers.pop()
     return crawler.stats
+
+
+def raise_for_stats(stats: dict[str, Any]):
+    item_count = stats.get("item_scraped_count", 0)
+    if item_count < 10:
+        raise RuntimeError(f"Few items scraped: {item_count}")
+    if reason := stats.get("finish_reason"):
+        if reason != "finished":
+            raise RuntimeError(f"Scraping finished with reason {reason!r}")
+    if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
+        raise RuntimeError(f"Items missing required fields: {item_count}")
+    if exc_count := stats.get("spider_exceptions"):
+        raise RuntimeError(f"Exceptions raised: {exc_count}")
+    if error_count := stats.get("log_count/ERROR"):
+        raise RuntimeError(f"Errors logged: {error_count}")
 
 
 class JobSpider(Spider):

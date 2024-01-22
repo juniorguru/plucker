@@ -6,7 +6,7 @@ import pytest
 from scrapy import Spider
 from scrapy.settings import Settings
 
-from juniorguru_plucker.spiders import JobSpider as BaseJobSpider
+from juniorguru_plucker.spiders import JobSpider as BaseJobSpider, raise_for_stats
 
 
 spider_packages = [
@@ -77,3 +77,40 @@ def test_job_spider_item_custom_settings_item_pipelines():
 
     with pytest.raises(NotImplementedError):
         SpecificJobSpider.update_settings(settings)
+
+
+def test_raise_for_stats_passing():
+    raise_for_stats(
+        {
+            "item_scraped_count": 10,
+            "finish_reason": "finished",
+            "item_dropped_reasons_count/MissingRequiredFields": 0,
+            "spider_exceptions": 0,
+            "log_count/ERROR": 0,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "stats_override",
+    [
+        {"item_scraped_count": 0},
+        {"item_scraped_count": 5},
+        {"finish_reason": "cancelled"},
+        {"item_dropped_reasons_count/MissingRequiredFields": 1},
+        {"spider_exceptions": 1},
+        {"log_count/ERROR": 1},
+    ],
+)
+def test_raise_for_stats_failing(stats_override: dict):
+    with pytest.raises(RuntimeError):
+        raise_for_stats(
+            {
+                "item_scraped_count": 10,
+                "finish_reason": "finished",
+                "item_dropped_reasons_count/MissingRequiredFields": 0,
+                "spider_exceptions": 0,
+                "log_count/ERROR": 0,
+            }
+            | stats_override
+        )
