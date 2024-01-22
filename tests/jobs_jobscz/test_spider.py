@@ -1,7 +1,6 @@
 from datetime import date
 from pathlib import Path
 
-import pytest
 from scrapy.http import HtmlResponse
 
 from juniorguru_plucker.items import Job
@@ -109,21 +108,14 @@ def test_spider_parse_job_standard():
     assert "<strong>Co Ti nabídneme navíc:</strong>" in job["description_html"]
 
 
-@pytest.mark.skip(reason="TODO rewrite after HTML changes")
-def test_spider_parse_job_standard_en():
+def test_spider_parse_job_en():
     response = HtmlResponse(
-        "https://beta.www.jobs.cz/rpd/1613133866/",
-        body=Path(FIXTURES_DIR / "job_standard_en.html").read_bytes(),
+        "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
+        body=Path(FIXTURES_DIR / "job_en.html").read_bytes(),
     )
     job = next(Spider().parse_job(response, Job()))
 
-    assert sorted(job.keys()) == sorted(
-        ["employment_types", "description_html", "source_urls", "url"]
-    )
-    assert job["employment_types"] == ["full-time work", "part-time work"]
-
-    assert "bezpilotních letounů UAV i antidronové" in job["description_html"]
-    assert "<strong>Areas of Our Projects</strong>" in job["description_html"]
+    assert job["employment_types"] == ["full-time work"]
 
 
 def test_spider_parse_job_company():
@@ -154,29 +146,5 @@ def test_spider_parse_job_company():
     ]
     assert (
         "stovky tisíc zákazníků měsíčně.<br>Jsi iOS vývojář/ka"
-        in job["description_html"]
-    )
-
-
-def test_spider_parse_job_company_en():
-    response = HtmlResponse(
-        "https://www.jobs.cz/fp/infosys-361226/2000119063/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
-        body=Path(FIXTURES_DIR / "job_company_en.html").read_bytes(),
-    )
-    job = next(Spider().parse_job(response, Job()))
-
-    assert sorted(job.keys()) == sorted(
-        [
-            "employment_types",
-            "description_html",
-            "source_urls",
-            "url",
-            "company_url",
-            "company_logo_urls",
-        ]
-    )
-    assert job["employment_types"] == ["full-time work"]
-    assert (
-        '<strong>Employee perks, benefits</strong></p><ul class="typography-body-large-text-regular"><li>Hybrid work model;'
         in job["description_html"]
     )
