@@ -114,7 +114,6 @@ class Spider(JobSpider):
                 item["apply_url"],
                 callback=self.verify_job,
                 cb_kwargs=dict(item=item),
-                meta=dict(proxies=False),
             )
         else:
             yield item
