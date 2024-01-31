@@ -51,6 +51,8 @@ def parse_relative_date(text, today=None) -> date:
         if match := re.search(r"\d+", text):
             years_ago = int(match.group(0))
             return today - timedelta(days=years_ago * 365)
+    if "now" in text or "teď" in text or "nyní" in text:
+        return today
     raise ValueError(text)
 
 

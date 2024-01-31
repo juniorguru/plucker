@@ -37,6 +37,9 @@ def test_split_by():
         (" Posted < 1 hour ago", date(2020, 4, 20)),
         (" Posted yesterday", date(2020, 4, 19)),
         # LinkedIn
+        ("Just now", date(2020, 4, 20)),
+        ("Právě teď", date(2020, 4, 20)),
+        ("Právě nyní", date(2020, 4, 20)),
         ("3 weeks ago", date(2020, 3, 30)),
         ("28 minutes ago", date(2020, 4, 20)),
         ("1 month ago", date(2020, 3, 21)),
