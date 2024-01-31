@@ -47,6 +47,10 @@ def parse_relative_date(text, today=None) -> date:
             months_ago = int(match.group(0))
             return today - timedelta(days=months_ago * 30)
         raise ValueError(text)
+    if "year" in text or "rok" in text or "let" in text:
+        if match := re.search(r"\d+", text):
+            years_ago = int(match.group(0))
+            return today - timedelta(days=years_ago * 365)
     raise ValueError(text)
 
 

@@ -43,6 +43,11 @@ def test_split_by():
         ("2 months ago", date(2020, 2, 20)),
         ("Před 1 dnem", date(2020, 4, 19)),
         ("Před 2 dny", date(2020, 4, 18)),
+        ("1 year ago", date(2019, 4, 21)),
+        ("2 years ago", date(2018, 4, 21)),
+        ("Před 1 rokem", date(2019, 4, 21)),
+        ("Před 2 roky", date(2018, 4, 21)),
+        ("Před 2 lety", date(2018, 4, 21)),
     ],
 )
 def test_parse_relative_date(time: str, expected: date):
