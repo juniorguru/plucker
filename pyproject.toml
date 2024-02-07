@@ -26,6 +26,7 @@ w3lib = "2.1.2"
 pytest = "8.0.0"
 ruff = "0.1.14"
 pytest-ruff = "0.2.1"
+apify-client = "1.6.2"
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"

@@ -1,3 +1,4 @@
+from email.policy import default
 import logging
 import sys
 
@@ -108,3 +109,46 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
         schema_name = member_name[0].lower() + member_name[1:]
         schema_path = output_path / f"{schema_name}Schema.json"
         schema_path.write_text(json.dumps(schema, indent=4, ensure_ascii=False) + "\n")
+
+
+@main.command()
+@click.option(
+    "--token",
+    envvar="APIFY_TOKEN",
+    required=True,
+)
+@click.option(
+    "--git-repo-url",
+    "git_repo_url_match",
+    default="https://github.com/juniorguru/plucker#main",
+)
+def build(token: str, git_repo_url_match: str):
+    try:
+        from apify_client import ApifyClient
+    except ImportError:
+        logger.error("ApifyClient not found, skipping build")
+        raise click.Abort()
+
+    client = ApifyClient(token=token)
+    for actor_info in client.actors().list(my=True).items:
+        logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
+        actor_client = client.actor(actor_info["id"])
+        if actor := actor_client.get():
+            try:
+                latest_version = actor["versions"][0]
+            except IndexError:
+                logger.warning("No versions found")
+                raise click.Abort()
+
+            git_repo_url = latest_version.get("gitRepoUrl") or ""
+            if git_repo_url.startswith(git_repo_url_match):
+                logger.info("Building actor…")
+                actor_client.build(
+                    version_number=latest_version["versionNumber"],
+                    wait_for_finish=60,
+                )
+            else:
+                logger.warning("Not a plucker actor")
+        else:
+            logger.error(f"Actor {actor_info['id']} not found")
+            raise click.Abort()
