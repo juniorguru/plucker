@@ -53,6 +53,9 @@ Deploying to Apify:
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.
 1.  Go to the <kbd>Schedules</kbd> page and assign your new actor to an existing schedule or create a new one.
 
+There is a nightly GitHub Action which re-builds all actors based on current code in the `main` branch.
+This is because the automatic builds didn't work properly, but also because it would be undesirable to waste resources when committing code often.
+
 ## Notes on development
 
 -   Use [Poetry](https://python-poetry.org/) for dependency management.
