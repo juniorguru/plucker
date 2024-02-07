@@ -56,12 +56,13 @@ Deploying to Apify:
 ## Automatic builds
 
 There is a nightly GitHub Action which re-builds all actors based on current code in the `main` branch.
-This is because the automatic builds didn't work properly, but also because it would be undesirable to waste resources when committing code often.
+This is because Apify's built-in automatic builds didn't work properly, but also because it would be undesirable to waste resources when committing code often.
 
 ## Monitoring
 
 There is a nightly GitHub Action which checks whether each actor's last run finished with success.
 In case they didn't, the GitHub Action fails, which causes an e-mail notification.
+Apify used to send summary e-mail about actor runs, but they removed that feature and there is no equivalent alternative as of now.
 
 ## Notes on development
 
