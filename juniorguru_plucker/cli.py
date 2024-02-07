@@ -2,6 +2,8 @@ import logging
 import sys
 
 from scrapy.utils.project import get_project_settings
+from apify_client import ApifyClient
+from apify_shared.consts import ActorJobStatus
 
 from juniorguru_plucker.loggers import configure_logging
 
@@ -111,23 +113,13 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
 
 
 @main.command()
-@click.option(
-    "--token",
-    envvar="APIFY_TOKEN",
-    required=True,
-)
+@click.option("--token", envvar="APIFY_TOKEN", required=True)
 @click.option(
     "--git-repo-url",
     "git_repo_url_match",
     default="https://github.com/juniorguru/plucker#main",
 )
 def build(token: str, git_repo_url_match: str):
-    try:
-        from apify_client import ApifyClient
-    except ImportError:
-        logger.error("ApifyClient not found, skipping build")
-        raise click.Abort()
-
     client = ApifyClient(token=token)
     for actor_info in client.actors().list(my=True).items:
         logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
@@ -150,4 +142,23 @@ def build(token: str, git_repo_url_match: str):
                 logger.warning("Not a plucker actor")
         else:
             logger.error(f"Actor {actor_info['id']} not found")
+            raise click.Abort()
+
+
+@main.command()
+@click.option("--token", envvar="APIFY_TOKEN", required=True)
+def check(token: str):
+    client = ApifyClient(token=token)
+    for actor_info in client.actors().list().items:
+        logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
+        actor_client = client.actor(actor_info["id"])
+
+        last_run = actor_client.last_run()
+        run_info = last_run.get()
+        if run_info is None:
+            logger.warning("No runs found")
+        elif run_info["status"] == ActorJobStatus.SUCCEEDED:
+            logger.info(f"Status: {run_info['status']}, {run_info['startedAt']}")
+        else:
+            logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
             raise click.Abort()
