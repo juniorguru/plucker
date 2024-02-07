@@ -162,3 +162,13 @@ def check(token: str):
         else:
             logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
             raise click.Abort()
+
+
+@main.command()
+def new():
+    try:
+        from cookiecutter.main import cookiecutter
+    except ImportError:
+        logger.error("Cookiecutter not installed")
+        raise click.Abort()
+    cookiecutter(".", directory="actor_template", output_dir="juniorguru_plucker")

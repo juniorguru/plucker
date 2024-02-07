@@ -1,0 +1,32 @@
+{
+  "actorSpecification": 1,
+  "name": "{{ cookiecutter.actor_name }}",
+  "title": "{{ cookiecutter.actor_name }}",
+  "version": "0.0",
+  {% if cookiecutter.use_proxy -%}
+  "input": {
+    "title": "Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "proxyConfig": {
+        "title": "Proxy config",
+        "type": "object",
+        "description": "Specifies proxy servers",
+        "editor": "proxy",
+        "prefill": {
+          "useApifyProxy": true
+        },
+        "default": {
+          "useApifyProxy": true
+        }
+      }
+    }
+  },
+  {% endif -%}
+  "dockerfile": "../../../Dockerfile",
+  "dockerContextDir": "../../../",
+  "storages": {
+    "dataset": "../../schemas/{{ cookiecutter.schema_name }}"
+  }
+}
