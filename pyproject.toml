@@ -42,6 +42,7 @@ filterwarnings = [
 [tool.ruff]
 target-version = "py311"
 extend-select = ["I"]
+extend-exclude = ["scraper_template"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

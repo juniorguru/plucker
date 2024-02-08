@@ -1,4 +1,5 @@
 import logging
+import subprocess
 import sys
 
 from apify_client import ApifyClient
@@ -171,4 +172,6 @@ def new():
     except ImportError:
         logger.error("Cookiecutter not installed")
         raise click.Abort()
-    cookiecutter(".", directory="actor_template", output_dir="juniorguru_plucker")
+    cookiecutter(".", directory="scraper_template", output_dir="juniorguru_plucker")
+    subprocess.run(["ruff", "check", "--fix", "--quiet"], check=True)
+    subprocess.run(["ruff", "format", "--quiet"], check=True)

@@ -22,27 +22,22 @@ Plucker has a `crawl` CLI command, which you can also use, but it's more useful 
 
 ## How to add new scraper
 
+Look at existing code and follow conventions.
 Creating new scraper, e.g. `gravel-bikes`:
 
-1.  Create new package, i.e. new directory `juniorguru_plucker/gravel_bikes` with `__init__.py` inside.
-    If the name has multiple words, be use underscores, but only for the directory name.
-1.  Configure Apify actor, i.e. new `juniorguru_plucker/gravel_bikes/.actor` directory with `actor.json` file inside.
-    If the actor name has multiple words, be sure to use dashes and not underscores.
-    Look at existing actor configurations and follow conventions.
-1.  If the new scraper should produce items already known to this codebase, such as jobs, find corresponding schema in `juniorguru_plucker/schemas` and link it as a `dataset` schema.
-    Look at existing actor configurations how it's done.
-1.  If the new scraper should produce something new, such as bikes, go to `juniorguru_plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
-    Look at existing items and follow conventions.
-    Run `jgp schemas` to generate schema for Apify, then link it as a `dataset` schema in the actor configuration.
-    Look at existing actor configurations how it's done.
-1.  Create Scrapy spider, i.e. new `juniorguru_plucker/bikes/spider.py` file with `Spider` class inside.
-    If the spider name has multiple words, be sure to use dashes and not underscores.
-    Look at existing spiders and follow conventions.
+1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `juniorguru_plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
+    Run `jgp schemas` to generate schema for Apify.
+    Should the new scraper produce items already known to this codebase, such as jobs, you can skip this step.
+1.  Run `jgp new`, answer questions.
+    It is a [cookiecutter](https://github.com/cookiecutter/cookiecutter).
+    It takes the `scraper_template` directory and creates a scaffolding of a new scraper for you.
+1.  Fill the newly created `juniorguru_plucker/gravel_bikes/spider.py` file with implementation of your scraper.
+    See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html)
+1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
 1.  Run the spider with `scrapy crawl gravel-bikes`.
     Learn about Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
     Develop and debug.
 1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
-    Look at existing tests and follow conventions.
 
 Deploying to Apify:
 
@@ -62,7 +57,7 @@ This is because Apify's built-in automatic builds didn't work properly, but also
 
 There is a nightly GitHub Action which checks whether each actor's last run finished with success.
 In case they didn't, the GitHub Action fails, which causes an e-mail notification.
-Apify used to send summary e-mail about actor runs, but they removed that feature and there is no equivalent alternative as of now.
+Apify used to send summary e-mail about actor runs, but they removed that feature and there is no equivalent as of now.
 
 ## Notes on development
 
