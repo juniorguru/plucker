@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 from scrapy import Spider
-from scrapy.settings import Settings
 
-from juniorguru_plucker.spiders import JobSpider as BaseJobSpider, raise_for_stats
+from juniorguru_plucker.spiders import raise_for_stats
 
 
 spider_packages = [
@@ -49,34 +48,6 @@ def test_spider_names(
 
     assert "_" not in spider_class.name
     assert spider_class.name == actor_config["name"] == actor_config["title"]
-
-
-def test_job_spider_extra_item_pipelines():
-    settings = Settings({"ITEM_PIPELINES": {"APipeline": 50, "ApifyPipeline": 1000}})
-
-    class JobsSpider(BaseJobSpider):
-        extra_item_pipelines = {"BPipeline": 500}
-
-    JobsSpider.update_settings(settings)
-
-    assert settings.getdict("ITEM_PIPELINES") == {
-        "APipeline": 50,
-        "ApifyPipeline": 1000,
-        "BPipeline": 500,
-    }
-
-
-def test_job_spider_item_custom_settings_item_pipelines():
-    settings = Settings({"ITEM_PIPELINES": {"APipeline": 50}})
-
-    class JobsSpider(BaseJobSpider):
-        item_pipelines = {"BPipeline": 500}
-
-    class SpecificJobSpider(JobsSpider):
-        custom_settings = {"ITEM_PIPELINES": {"CPipeline": 50}}
-
-    with pytest.raises(NotImplementedError):
-        SpecificJobSpider.update_settings(settings)
 
 
 def test_raise_for_stats_passing():

@@ -8,7 +8,7 @@ class MissingRequiredFields(DropItem):
     pass
 
 
-class Pipeline:
+class RequiredFieldsFilterPipeline:
     def process_item(self, item: Item, spider: Spider):
         required_fields = get_required_fields(item.__class__)
         missing_fields = required_fields - frozenset(item.keys())

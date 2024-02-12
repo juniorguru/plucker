@@ -3,13 +3,12 @@ from typing import Generator
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
-from scrapy import Request
+from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import first, last, parse_relative_date, split
-from juniorguru_plucker.spiders import JobSpider
 from juniorguru_plucker.url_params import (
     get_param,
     increment_param,
@@ -19,7 +18,7 @@ from juniorguru_plucker.url_params import (
 )
 
 
-class Spider(JobSpider):
+class Spider(BaseSpider):
     name = "jobs-linkedin"
 
     headers = {"Accept-Language": "en-us"}

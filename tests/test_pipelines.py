@@ -1,9 +1,9 @@
 import pytest
 from scrapy import Field, Item, Spider
 
-from juniorguru_plucker.pipelines.required_fields_filter import (
+from juniorguru_plucker.pipelines import (
     MissingRequiredFields,
-    Pipeline,
+    RequiredFieldsFilterPipeline,
 )
 
 
@@ -14,13 +14,13 @@ class Something(Item):
     prop4 = Field(required=True)
 
 
-def test_required_fields_filter(spider: Spider):
+def test_required_fields_filter_pipeline():
     item = Something(prop1="foo", prop2="moo", prop4="boo")
-    Pipeline().process_item(item, spider)
+    RequiredFieldsFilterPipeline().process_item(item, Spider(name="sample"))
 
 
-def test_required_fields_drops(spider: Spider):
+def test_required_fields_filter_pipeline_drops():
     item = Something()
 
     with pytest.raises(MissingRequiredFields, match="prop2, prop4"):
-        Pipeline().process_item(item, spider)
+        RequiredFieldsFilterPipeline().process_item(item, Spider(name="sample"))

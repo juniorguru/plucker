@@ -8,16 +8,15 @@ import extruct
 import feedparser
 from itemloaders.processors import Identity, MapCompose, TakeFirst
 from lxml import etree
-from scrapy import Request
+from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse, XmlResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import absolute_url
-from juniorguru_plucker.spiders import JobSpider
 
 
-class Spider(JobSpider):
+class Spider(BaseSpider):
     name = "jobs-weworkremotely"
 
     start_urls = [
