@@ -17,6 +17,8 @@ ROBOTSTXT_OBEY = False
 
 SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
 
+SPIDER_LOADER_SPIDERS_PATH = "./juniorguru_plucker"
+
 ITEM_PIPELINES = {
     "juniorguru_plucker.pipelines.required_fields_filter.Pipeline": 50,
 }

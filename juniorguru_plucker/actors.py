@@ -64,7 +64,7 @@ def configure_async():
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
     for actor_spec in Path(path).rglob(".actor/actor.json"):
-        yield actor_spec.parent.parent.relative_to(path)
+        yield actor_spec.parent.parent.relative_to(".")
 
 
 def get_spider_module_name(actor_path: Path | str) -> str:
@@ -75,8 +75,9 @@ class SpiderLoader(BaseSpiderLoader):
     def __init__(self, settings: BaseSettings):
         super().__init__(settings)
         if not self.spider_modules:
+            spider_path = settings.get("SPIDER_LOADER_SPIDERS_PATH", ".")
             self.spider_modules = list(
-                map(get_spider_module_name, iter_actor_paths("."))
+                map(get_spider_module_name, iter_actor_paths(spider_path))
             )
         self._load_all_spiders()
 
