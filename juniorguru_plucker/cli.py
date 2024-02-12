@@ -135,10 +135,13 @@ def build(token: str, git_repo_url_match: str):
             git_repo_url = latest_version.get("gitRepoUrl") or ""
             if git_repo_url.startswith(git_repo_url_match):
                 logger.info("Building actor…")
-                actor_client.build(
+                build_info = actor_client.build(
                     version_number=latest_version["versionNumber"],
                     wait_for_finish=60,
                 )
+                if build_info["status"] != ActorJobStatus.SUCCEEDED:
+                    logger.error(f"Status: {build_info['status']}")
+                    raise click.Abort()
             else:
                 logger.warning("Not a plucker actor")
         else:
