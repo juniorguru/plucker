@@ -26,10 +26,11 @@ class Spider(BaseSpider):
     search_terms = [
         "junior software engineer",
         "junior developer",
-        "junior vývojář",
-        "junior programátor",
+        "junior vyvojar",
+        "junior programator",
         "junior tester",
     ]
+    locations = ["Czechia", "Slovakia"]
     results_per_request = 25
 
     def start_requests(self) -> Generator[Request, None, None]:
@@ -37,7 +38,6 @@ class Spider(BaseSpider):
             "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?"
         )
         search_params = {
-            "location": "Czechia",
             "f_E": "1,2",  # entry level, internship
             "f_TP": "1,2,3,4",  # past month
             "redirect": "false",  # ?
@@ -45,13 +45,15 @@ class Spider(BaseSpider):
             "pageNum": "0",  # pagination - page number
             "start": "0",  # pagination - offset
         }
-        for search_term in self.search_terms:
-            yield Request(
-                f"{base_url}{urlencode({'keywords': search_term, **search_params})}",
-                dont_filter=True,
-                cookies=self.cookies,
-                headers=self.headers,
-            )
+        for location in self.locations:
+            for search_term in self.search_terms:
+                params = dict(keywords=search_term, location=location, **search_params)
+                yield Request(
+                    f"{base_url}{urlencode(params)}",
+                    dont_filter=True,
+                    cookies=self.cookies,
+                    headers=self.headers,
+                )
 
     def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
         urls = [
