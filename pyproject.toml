@@ -27,7 +27,7 @@ w3lib = "2.1.2"
 [tool.poetry.group.dev.dependencies]
 pytest = "8.0.0"
 pytest-ruff = "0.2.1"
-ruff = "0.1.14"
+ruff = "0.2.1"
 cookiecutter = "2.5.0"
 
 [tool.pytest.ini_options]
