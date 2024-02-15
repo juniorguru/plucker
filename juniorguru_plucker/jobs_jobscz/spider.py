@@ -151,8 +151,6 @@ class Spider(BaseSpider):
         job_ad = payload["data"]["widget"]["jobAd"]
 
         loader = Loader(item=item, response=response)
-        # loader.add_value("title", job_ad["title"])
-        # loader.add_value("company_name", job_ad["employer"]["companyName"])
         loader.add_value("description_html", job_ad["content"]["htmlContent"])
 
         first_seen_on = datetime.fromisoformat(job_ad["validFrom"]).date()
