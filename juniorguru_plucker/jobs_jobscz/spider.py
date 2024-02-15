@@ -20,19 +20,17 @@ from juniorguru_plucker.url_params import get_params, strip_params
 WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
 WIDGET_DATA_SCRIPT_RE = re.compile(
-    r"exports=JSON.parse\('(((?!function).)+)'\)},function"
-)
-
-WIDGET_DATA_SCRIPT_RE = re.compile(
     r"""
         exports=JSON.parse\('
         (                     # group we're matching
+            {"id":
             (                 # one or more characters that are not the start of the word "function"
                 (?!function)
                 .
             )+
         )
-        '\)},function
+        '\)}
+        (,function|]\);)      # either next function or the end of the JSON
     """,
     re.VERBOSE,
 )
@@ -122,7 +120,9 @@ class Spider(BaseSpider):
             widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
         except IndexError:
             self.logger.debug("Looking for widget data in attached JavaScript")
-            script_url = response.css('script[src*="script.min.js"]::attr(src)').get()
+            script_url = response.css(
+                'script[src*="assets/js/script.min.js"]::attr(src)'
+            ).get()
             yield response.follow(
                 script_url,
                 callback=self.parse_job_widget_script,
@@ -141,13 +141,18 @@ class Spider(BaseSpider):
         self, script_response: TextResponse, html_response: HtmlResponse, item: Job
     ) -> Generator[Request, None, None]:
         if match := re.search(WIDGET_DATA_SCRIPT_RE, script_response.text):
-            data = json.loads(match.group(1))
+            data_text = re.sub(r"\'", r"\\'", match.group(1))
+            data = json.loads(data_text)
+
+            widget_name = select_widget(list(data["widgets"].keys()))
+            widget_data = data["widgets"][widget_name]
+
             yield from self.parse_job_widget(
                 html_response,
                 item,
                 widget_host=data["host"],
-                widget_api_key=data["widgets"]["main"]["apiKey"],
-                widget_id=data["widgets"]["main"]["id"],
+                widget_api_key=widget_data["apiKey"],
+                widget_id=widget_data["id"],
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -226,6 +231,13 @@ class Spider(BaseSpider):
 @lru_cache
 def load_gql(path: str | Path) -> str:
     return Path(path).read_text()
+
+
+def select_widget(names: list[str]) -> str:
+    for name in names:
+        if name.startswith("main"):
+            return name
+    return names[0]
 
 
 def clean_url(url: str) -> str:

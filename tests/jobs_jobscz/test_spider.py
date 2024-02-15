@@ -3,10 +3,11 @@ from datetime import date
 from pathlib import Path
 from typing import cast
 
+import pytest
 from scrapy.http import HtmlResponse, TextResponse
 
 from juniorguru_plucker.items import Job
-from juniorguru_plucker.jobs_jobscz.spider import Spider
+from juniorguru_plucker.jobs_jobscz.spider import Spider, select_widget
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -190,6 +191,20 @@ def test_spider_parse_job_widget_script_request():
     )
 
 
+def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur():
+    response = HtmlResponse(
+        "https://vyrabimeletadla.jobs.cz/detail-pozice?r=detail&id=1632704350&rps=233&impressionId=1e70f565-4237-4616-95c9-4d09cbcd638a",
+        body=Path(FIXTURES_DIR / "job_widget_script_multiple.html").read_bytes(),
+    )
+    request = next(Spider().parse_job(response, Job()))
+
+    assert request.method == "GET"
+    assert (
+        request.url
+        == "https://vyrabimeletadla.jobs.cz/assets/js/script.min.js?av=631f88dbfae16e74"
+    )
+
+
 def test_spider_parse_job_widget_script_response():
     html_response = HtmlResponse(
         "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
@@ -230,6 +245,26 @@ def test_spider_parse_job_widget_script_response():
     )
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param(path, id=path.name)
+        for path in FIXTURES_DIR.rglob("job_widget_script*.js")
+    ],
+)
+def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path):
+    html_response = HtmlResponse(
+        "https://foo.jobs.cz/detail-pozice?r=detail&id=123&rps=456&impressionId=789",
+        body=b"",
+    )
+    script_response = TextResponse(
+        "https://foo.jobs.cz/assets/js/script.min.js",
+        body=path.read_bytes(),
+    )
+
+    assert next(Spider().parse_job_widget_script(script_response, html_response, Job()))
+
+
 def test_spider_parse_job_widget_api():
     response = TextResponse(
         "https://api.capybara.lmc.cz/api/graphql/widget",
@@ -244,3 +279,15 @@ def test_spider_parse_job_widget_api():
         "Plzeň, Plzeňský, Česká republika",
     }
     assert job["employment_types"] == ["práce na plný úvazek"]
+
+
+@pytest.mark.parametrize(
+    "names, expected",
+    [
+        (["main", "recommend"], "main"),
+        (["main-cs", "main-en"], "main-cs"),
+        (["foo", "bar"], "foo"),
+    ],
+)
+def test_select_widget(names: list[str], expected: str):
+    assert select_widget(names) == expected
