@@ -8,7 +8,6 @@ from scrapy import Field, Item
 class Job(Item):
     title = Field(required=True)
     first_seen_on = Field(required=True, apify_format="date")
-    lang = Field()
 
     url = Field(required=True, apify_format="link")
     apply_url = Field(apify_format="link")

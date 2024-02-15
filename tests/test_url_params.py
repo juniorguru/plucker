@@ -2,6 +2,7 @@ import pytest
 
 from juniorguru_plucker.url_params import (
     get_param,
+    get_params,
     increment_param,
     replace_in_params,
     set_params,
@@ -10,7 +11,7 @@ from juniorguru_plucker.url_params import (
 
 
 @pytest.mark.parametrize(
-    "url,param_names,expected",
+    "url, param_names, expected",
     [
         ("https://example.com", ["a", "b"], "https://example.com"),
         ("https://example.com?a=1&b=2", ["a", "b"], "https://example.com"),
@@ -24,7 +25,7 @@ def test_strip_params(url, param_names, expected):
 
 
 @pytest.mark.parametrize(
-    "url,params,expected",
+    "url, params, expected",
     [
         ("https://example.com", {"a": 1, "b": 2}, "https://example.com?a=1&b=2"),
         ("https://example.com", {"a": 1, "b": ""}, "https://example.com?a=1&b="),
@@ -53,7 +54,7 @@ def test_set_params(url, params, expected):
 
 
 @pytest.mark.parametrize(
-    "url,param_name,expected",
+    "url, param_name, expected",
     [
         ("https://example.com", "b", "https://example.com?b=1"),
         ("https://example.com?a=1&b=2&c=3", "b", "https://example.com?a=1&b=3&c=3"),
@@ -64,7 +65,7 @@ def test_increment_param(url, param_name, expected):
 
 
 @pytest.mark.parametrize(
-    "url,param_name,inc,expected",
+    "url, param_name, inc, expected",
     [
         ("https://example.com", "b", 25, "https://example.com?b=25"),
         (
@@ -85,8 +86,19 @@ def test_get_param():
     assert get_param(url, "redirect") == "https://jobs.example.com"
 
 
+def test_get_params():
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=a653a2a6-05c9-49fb-b391-96b185355f2d"
+
+    assert get_params(url) == dict(
+        r="detail",
+        id="2000142365",
+        rps="228",
+        impressionId="a653a2a6-05c9-49fb-b391-96b185355f2d",
+    )
+
+
 @pytest.mark.parametrize(
-    "url,s,repl,expected",
+    "url, s, repl, expected",
     [
         ("https://example.com", "alice", "bob", "https://example.com"),
         ("https://alice.example.com", "alice", "bob", "https://alice.example.com"),
@@ -115,7 +127,7 @@ def test_replace_in_params(url, s, repl, expected):
 
 
 @pytest.mark.parametrize(
-    "url,case_insensitive,expected",
+    "url, case_insensitive, expected",
     [
         (
             "https://alice.example.com?foo=bar&moo=Alice",

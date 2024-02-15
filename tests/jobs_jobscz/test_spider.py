@@ -1,7 +1,9 @@
+import json
 from datetime import date
 from pathlib import Path
+from typing import cast
 
-from scrapy.http import HtmlResponse
+from scrapy.http import HtmlResponse, TextResponse
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.jobs_jobscz.spider import Spider
@@ -63,23 +65,13 @@ def test_spider_parse_without_logo():
         "https://beta.www.jobs.cz/prace/...",
         body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
     )
-    requests = list(Spider().parse(response))
+    request = next(Spider().parse(response))
 
     assert (
-        requests[0].url
+        request.url
         == "https://beta.www.jobs.cz/rpd/2000133941/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=228"
     )
-    assert "company_logo_urls" not in requests[0].cb_kwargs["item"]
-
-
-def test_spider_parse_job_custom():
-    response = HtmlResponse(
-        "https://fio.jobs.cz/detail-pozice?r=detail&id=1615173381&rps=228&impressionId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23",
-        body=Path(FIXTURES_DIR / "job_custom.html").read_bytes(),
-    )
-    jobs = list(Spider().parse_job(response, Job()))
-
-    assert len(jobs) == 0
+    assert "company_logo_urls" not in request.cb_kwargs["item"]
 
 
 def test_spider_parse_job_standard():
@@ -87,7 +79,7 @@ def test_spider_parse_job_standard():
         "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228",
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
-    job = next(Spider().parse_job(response, Job()))
+    job = cast(Job, next(Spider().parse_job(response, Job())))
 
     assert sorted(job.keys()) == sorted(
         ["employment_types", "description_html", "source_urls", "url"]
@@ -113,7 +105,7 @@ def test_spider_parse_job_en():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_en.html").read_bytes(),
     )
-    job = next(Spider().parse_job(response, Job()))
+    job = cast(Job, next(Spider().parse_job(response, Job())))
 
     assert job["employment_types"] == ["full-time work"]
 
@@ -123,7 +115,7 @@ def test_spider_parse_job_company():
         "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_company.html").read_bytes(),
     )
-    job = next(Spider().parse_job(response, Job()))
+    job = cast(Job, next(Spider().parse_job(response, Job())))
 
     assert sorted(job.keys()) == sorted(
         [
@@ -148,3 +140,48 @@ def test_spider_parse_job_company():
         "stovky tisíc zákazníků měsíčně.<br>Jsi iOS vývojář/ka"
         in job["description_html"]
     )
+
+
+def test_spider_parse_job_widget():
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
+    )
+    request = next(Spider().parse_job(response, Job()))
+
+    assert request.method == "POST"
+    assert request.headers["Content-Type"] == b"application/json"
+    assert (
+        request.headers["X-Api-Key"]
+        == b"77dd9cff31711f94a97698fda3ecec7d9a561a15db53cfec868bafd31c9befbb"
+    )
+    assert (
+        request.cb_kwargs["item"]["url"]
+        == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365"
+    )
+    assert request.cb_kwargs["item"]["source_urls"] == [url]
+
+    body = json.loads(request.body)
+
+    assert body["variables"]["jobAdId"] == "2000142365"
+    assert body["variables"]["rps"] == 228
+    assert body["variables"]["impressionId"] == "2c2d92cc-aebc-4949-9758-81b1b299224d"
+    assert body["variables"]["widgetId"] == "e4a614ae-b321-47bb-8a7a-9d771a086880"
+    assert body["variables"]["host"] == "4value-group.jobs.cz"
+    assert body["variables"]["referer"] == url
+
+
+def test_spider_parse_job_widget_api():
+    response = TextResponse(
+        "https://api.capybara.lmc.cz/api/graphql/widget",
+        body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
+    )
+    job = next(Spider().parse_job_widget_api(response, Job()))
+
+    assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
+    assert job["first_seen_on"] == date(2024, 2, 6)
+    assert job["locations_raw"] == [
+        "Praha, Hlavní město Praha, Česká republika",
+        "Plzeň, Plzeňský, Česká republika",
+    ]
+    assert job["employment_types"] == ["práce na plný úvazek"]

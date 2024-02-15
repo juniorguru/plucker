@@ -35,6 +35,11 @@ def get_param(url: str, param_name: str) -> str | None:
     return values[0] if values else None
 
 
+def get_params(url: str) -> dict[str, str]:
+    qs = urlparse(url).query
+    return {name: values[0] for name, values in parse_qs(qs).items()}
+
+
 def increment_param(url: str, param_name: str, inc: int = 1) -> str:
     parts = urlparse(url)
     params = parse_qs(parts.query)

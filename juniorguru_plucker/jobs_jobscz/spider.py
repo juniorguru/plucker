@@ -1,15 +1,25 @@
-from datetime import date
-from typing import Any, Generator, Iterable
+import json
+import re
+import uuid
+from datetime import date, datetime
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Generator, Iterable, cast
 from urllib.parse import urljoin
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import HtmlResponse
+from scrapy.http import HtmlResponse, TextResponse
 from scrapy.loader import ItemLoader
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import first, split
-from juniorguru_plucker.url_params import strip_params
+from juniorguru_plucker.url_params import get_params, strip_params
+
+
+WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
+
+WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 
 class Spider(BaseSpider):
@@ -55,12 +65,13 @@ class Spider(BaseSpider):
 
     def parse_job(
         self, response: HtmlResponse, item: Job
-    ) -> Generator[Job, None, None]:
+    ) -> Generator[Job | Request, None, None]:
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
+
         if "www.jobs.cz" not in response.url:
-            yield from self.parse_job_custom(response, loader)
+            yield from self.parse_job_widget(response, item)
         else:
             # standard
             for label in self.employment_types_labels:
@@ -85,16 +96,88 @@ class Spider(BaseSpider):
 
             yield loader.load_item()
 
-    def parse_job_custom(
-        self, response: HtmlResponse, loader: ItemLoader
+    def parse_job_widget(
+        self, response: HtmlResponse, item: Job
+    ) -> Generator[Request, None, None]:
+        try:
+            widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
+        except IndexError:
+            self.logger.warning(f"Widget data not found on {response.url}")
+            return
+        params = get_params(response.url)
+
+        loader = Loader(item=item, response=response)
+        loader.add_value("url", response.url)
+        loader.add_value("company_url", f"https://{widget_data['host']}")
+        loader.add_value("source_urls", response.url)
+
+        yield Request(
+            "https://api.capybara.lmc.cz/api/graphql/widget",
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "X-Api-Key": widget_data["apiKey"],
+            },
+            body=json.dumps(
+                dict(
+                    operationName="DETAIL_QUERY",
+                    variables=dict(
+                        jobAdId=params["id"],
+                        gaId=None,
+                        lmcVisitorId=None,
+                        rps=int(params["rps"]),
+                        impressionId=params["impressionId"],
+                        cookieConsent=[],
+                        matejId="",
+                        jobsUserId="",
+                        timeId=str(uuid.uuid4()),
+                        widgetId=widget_data["widgetId"],
+                        host=widget_data["host"],
+                        referer=response.url,
+                        version="v3.49.1",
+                        pageReferer="https://beta.www.jobs.cz/",
+                    ),
+                    query=load_gql(WIDGET_QUERY_PATH),
+                )
+            ),
+            callback=self.parse_job_widget_api,
+            cb_kwargs=dict(item=loader.load_item()),
+        )
+
+    def parse_job_widget_api(
+        self, response: TextResponse, item: Job
     ) -> Generator[Job, None, None]:
-        self.logger.warning("Not implemented yet: custom job portals")
-        if False:
-            yield
+        payload = cast(dict, response.json())
+        job_ad = payload["data"]["widget"]["jobAd"]
+
+        loader = Loader(item=item, response=response)
+        # loader.add_value("title", job_ad["title"])
+        # loader.add_value("company_name", job_ad["employer"]["companyName"])
+        loader.add_value("description_html", job_ad["content"]["htmlContent"])
+
+        first_seen_on = datetime.fromisoformat(job_ad["validFrom"]).date()
+        loader.add_value("first_seen_on", first_seen_on)
+
+        for location in job_ad["locations"]:
+            location_parts = [location["city"], location["region"], location["country"]]
+            location_parts = filter(None, location_parts)
+            loader.add_value("locations_raw", ", ".join(location_parts))
+
+        for employment_type in job_ad["parameters"]["employmentTypes"]:
+            loader.add_value("employment_types", employment_type)
+
+        yield loader.load_item()
+
+
+@lru_cache
+def load_gql(path: str | Path) -> str:
+    return Path(path).read_text()
 
 
 def clean_url(url: str) -> str:
-    return strip_params(url, ["positionOfAdInAgentEmail", "searchId", "rps"])
+    return strip_params(
+        url, ["positionOfAdInAgentEmail", "searchId", "rps", "impressionId"]
+    )
 
 
 def join(values: Iterable[str]) -> str:
@@ -118,3 +201,4 @@ class Loader(ItemLoader):
     locations_raw_out = Compose(remove_empty, set, list)
     source_urls_out = Compose(set, list)
     first_seen_on_in = Identity()
+    first_seen_on_out = min

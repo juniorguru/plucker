@@ -7,13 +7,18 @@ LOG_LEVEL = "INFO"
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 
 DEFAULT_REQUEST_HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept": "*/*",
     "Accept-Language": "cs;q=0.8,en;q=0.6",
+    "DNT": "1",
 }
 
 USER_AGENT = f"{BOT_NAME} (+https://junior.guru)"
 
 ROBOTSTXT_OBEY = False
+
+# If these occur, let's fail fast!
+# For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
+HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501]
 
 SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
 

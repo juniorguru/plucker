@@ -1,0 +1,186 @@
+query DETAIL_QUERY(
+  $widgetId: ID!
+  $referer: String
+  $pageReferer: String
+  $version: String
+  $jobAdId: ID!
+  $gaId: String
+  $lmcVisitorId: String
+  $rps: Int
+  $impressionId: String
+  $host: String
+  $cookieConsent: [String]
+  $matejId: String
+  $jobsUserId: String
+  $timeId: String
+  $seconds: Int
+) {
+  widget(
+    id: $widgetId
+    referer: $referer
+    pageReferer: $pageReferer
+    version: $version
+    lmcVisitorId: $lmcVisitorId
+    gaId: $gaId
+    rps: $rps
+    impressionId: $impressionId
+    host: $host
+    cookieConsent: $cookieConsent
+    matejId: $matejId
+    jobsUserId: $jobsUserId
+    timeId: $timeId
+    seconds: $seconds
+  ) {
+    config {
+      widgetType
+      detail {
+        shareButtons {
+          facebook
+          twitter
+          linkedIn
+          email
+          __typename
+        }
+        showInfoBlock
+        showCustomFields {
+          name
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    jobAd(id: $jobAdId, rps: $rps) {
+      id
+      headerText
+      title
+      content {
+        htmlContent
+        sections {
+          title
+          text
+          __typename
+        }
+        __typename
+      }
+      companyId
+      validFrom
+      suitableForGraduate
+      suitableForDisabled
+      suitableForPensioner
+      suitableForMaternityLeave
+      suitableDisabilities
+      healthState
+      fields
+      professions
+      locations {
+        territory
+        country
+        region
+        district
+        city
+        cityPart
+        street
+        zip
+        number
+        orientationNumber
+        latitude
+        longitude
+        __typename
+      }
+      parameters {
+        employmentTypes
+        employmentDurations
+        contractTypes
+        hoursPerWeek
+        start
+        end
+        requiredEducation
+        requiredLanguages {
+          language
+          skill
+          __typename
+        }
+        allLanguagesRequired
+        benefits
+        __typename
+      }
+      salary {
+        min
+        max
+        period
+        currency
+        __typename
+      }
+      teaser
+      employer {
+        companyName
+        contactCompanyName
+        contact {
+          titleBefore
+          firstName
+          middleName
+          surname
+          titleAfter
+          __typename
+        }
+        phone
+        email
+        address {
+          street
+          number
+          city
+          cityPart
+          zip
+          country
+          __typename
+        }
+        __typename
+      }
+      footer {
+        contact {
+          firstName
+          surname
+          __typename
+        }
+        address {
+          street
+          number
+          city
+          cityPart
+          zip
+          country
+          __typename
+        }
+        companyName
+        phone
+        __typename
+      }
+      customFields {
+        name
+        label
+        values {
+          name
+          label
+          __typename
+        }
+        __typename
+      }
+      medallion {
+        id
+        title
+        type
+        language
+        isUnlimited
+        blocks {
+          type
+          options
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
