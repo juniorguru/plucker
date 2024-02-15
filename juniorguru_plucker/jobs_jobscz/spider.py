@@ -19,6 +19,24 @@ from juniorguru_plucker.url_params import get_params, strip_params
 
 WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
+WIDGET_DATA_SCRIPT_RE = re.compile(
+    r"exports=JSON.parse\('(((?!function).)+)'\)},function"
+)
+
+WIDGET_DATA_SCRIPT_RE = re.compile(
+    r"""
+        exports=JSON.parse\('
+        (                     # group we're matching
+            (                 # one or more characters that are not the start of the word "function"
+                (?!function)
+                .
+            )+
+        )
+        '\)},function
+    """,
+    re.VERBOSE,
+)
+
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 
@@ -71,7 +89,7 @@ class Spider(BaseSpider):
         loader.add_value("source_urls", response.url)
 
         if "www.jobs.cz" not in response.url:
-            yield from self.parse_job_widget(response, item)
+            yield from self.parse_job_widget_data(response, item)
         else:
             # standard
             for label in self.employment_types_labels:
@@ -96,19 +114,57 @@ class Spider(BaseSpider):
 
             yield loader.load_item()
 
-    def parse_job_widget(
+    def parse_job_widget_data(
         self, response: HtmlResponse, item: Job
     ) -> Generator[Request, None, None]:
         try:
+            self.logger.debug("Looking for widget data in the HTML")
             widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
         except IndexError:
-            self.logger.warning(f"Widget data not found on {response.url}")
-            return
+            self.logger.debug("Looking for widget data in attached JavaScript")
+            script_url = response.css('script[src*="script.min.js"]::attr(src)').get()
+            yield response.follow(
+                script_url,
+                callback=self.parse_job_widget_script,
+                cb_kwargs=dict(item=item, html_response=response),
+            )
+        else:
+            yield from self.parse_job_widget(
+                response,
+                item,
+                widget_host=widget_data["host"],
+                widget_api_key=widget_data["apiKey"],
+                widget_id=widget_data["widgetId"],
+            )
+
+    def parse_job_widget_script(
+        self, script_response: TextResponse, html_response: HtmlResponse, item: Job
+    ) -> Generator[Request, None, None]:
+        if match := re.search(WIDGET_DATA_SCRIPT_RE, script_response.text):
+            data = json.loads(match.group(1))
+            yield from self.parse_job_widget(
+                html_response,
+                item,
+                widget_host=data["host"],
+                widget_api_key=data["widgets"]["main"]["apiKey"],
+                widget_id=data["widgets"]["main"]["id"],
+            )
+        else:
+            raise NotImplementedError("Widget data not found")
+
+    def parse_job_widget(
+        self,
+        response: HtmlResponse,
+        item: Job,
+        widget_host: str,
+        widget_api_key: str,
+        widget_id: str,
+    ) -> Generator[Request, None, None]:
         params = get_params(response.url)
 
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
-        loader.add_value("company_url", f"https://{widget_data['host']}")
+        loader.add_value("company_url", f"https://{widget_host}")
         loader.add_value("source_urls", response.url)
 
         yield Request(
@@ -116,7 +172,7 @@ class Spider(BaseSpider):
             method="POST",
             headers={
                 "Content-Type": "application/json",
-                "X-Api-Key": widget_data["apiKey"],
+                "X-Api-Key": widget_api_key,
             },
             body=json.dumps(
                 dict(
@@ -131,8 +187,8 @@ class Spider(BaseSpider):
                         matejId="",
                         jobsUserId="",
                         timeId=str(uuid.uuid4()),
-                        widgetId=widget_data["widgetId"],
-                        host=widget_data["host"],
+                        widgetId=widget_id,
+                        host=widget_host,
                         referer=response.url,
                         version="v3.49.1",
                         pageReferer="https://beta.www.jobs.cz/",

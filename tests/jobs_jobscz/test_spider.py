@@ -143,9 +143,9 @@ def test_spider_parse_job_company():
 
 
 def test_spider_parse_job_widget():
-    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
     response = HtmlResponse(
-        url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
+        "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d",
+        body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
     )
     request = next(Spider().parse_job(response, Job()))
 
@@ -159,7 +159,9 @@ def test_spider_parse_job_widget():
         request.cb_kwargs["item"]["url"]
         == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365"
     )
-    assert request.cb_kwargs["item"]["source_urls"] == [url]
+    assert request.cb_kwargs["item"]["source_urls"] == [
+        "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
+    ]
 
     body = json.loads(request.body)
 
@@ -168,7 +170,64 @@ def test_spider_parse_job_widget():
     assert body["variables"]["impressionId"] == "2c2d92cc-aebc-4949-9758-81b1b299224d"
     assert body["variables"]["widgetId"] == "e4a614ae-b321-47bb-8a7a-9d771a086880"
     assert body["variables"]["host"] == "4value-group.jobs.cz"
-    assert body["variables"]["referer"] == url
+    assert (
+        body["variables"]["referer"]
+        == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
+    )
+
+
+def test_spider_parse_job_widget_script_request():
+    response = HtmlResponse(
+        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
+        body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes(),
+    )
+    request = next(Spider().parse_job(response, Job()))
+
+    assert request.method == "GET"
+    assert (
+        request.url
+        == "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c"
+    )
+
+
+def test_spider_parse_job_widget_script_response():
+    html_response = HtmlResponse(
+        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
+        body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes(),
+    )
+    script_response = TextResponse(
+        "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c",
+        body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
+    )
+    request = next(
+        Spider().parse_job_widget_script(script_response, html_response, Job())
+    )
+
+    assert request.method == "POST"
+    assert request.headers["Content-Type"] == b"application/json"
+    assert (
+        request.headers["X-Api-Key"]
+        == b"79b29ad58130f75778f8b9d041b789fdd7fc6b428d01ba27f3c1ca569ec39757"
+    )
+    assert (
+        request.cb_kwargs["item"]["url"]
+        == "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478"
+    )
+    assert request.cb_kwargs["item"]["source_urls"] == [
+        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
+    ]
+
+    body = json.loads(request.body)
+
+    assert body["variables"]["jobAdId"] == "1632413478"
+    assert body["variables"]["rps"] == 233
+    assert body["variables"]["impressionId"] == "24d42f33-4e37-4a12-98a8-892a30257708"
+    assert body["variables"]["widgetId"] == "e06a5b79-9c00-495c-9f0d-a0cf77001ef6"
+    assert body["variables"]["host"] == "skoda-auto.jobs.cz"
+    assert (
+        body["variables"]["referer"]
+        == "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
+    )
 
 
 def test_spider_parse_job_widget_api():
