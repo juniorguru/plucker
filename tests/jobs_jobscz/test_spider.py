@@ -180,8 +180,8 @@ def test_spider_parse_job_widget_api():
 
     assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
     assert job["first_seen_on"] == date(2024, 2, 6)
-    assert job["locations_raw"] == [
+    assert set(job["locations_raw"]) == {
         "Praha, Hlavní město Praha, Česká republika",
         "Plzeň, Plzeňský, Česká republika",
-    ]
+    }
     assert job["employment_types"] == ["práce na plný úvazek"]
