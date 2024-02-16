@@ -80,7 +80,7 @@ def test_spider_parse_job_standard():
         "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228",
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job())))
+    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
     assert sorted(job.keys()) == sorted(
         ["employment_types", "description_html", "source_urls", "url"]
@@ -106,7 +106,7 @@ def test_spider_parse_job_en():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_en.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job())))
+    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
     assert job["employment_types"] == ["full-time work"]
 
@@ -116,7 +116,7 @@ def test_spider_parse_job_company():
         "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_company.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job())))
+    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
     assert sorted(job.keys()) == sorted(
         [
@@ -148,7 +148,7 @@ def test_spider_parse_job_widget():
         "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d",
         body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job()))
+    request = next(Spider().parse_job(response, Job(), "123"))
 
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
@@ -182,7 +182,7 @@ def test_spider_parse_job_widget_script_request():
         "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
         body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job()))
+    request = next(Spider().parse_job(response, Job(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -196,7 +196,7 @@ def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur(
         "https://vyrabimeletadla.jobs.cz/detail-pozice?r=detail&id=1632704350&rps=233&impressionId=1e70f565-4237-4616-95c9-4d09cbcd638a",
         body=Path(FIXTURES_DIR / "job_widget_script_multiple.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job()))
+    request = next(Spider().parse_job(response, Job(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -215,7 +215,7 @@ def test_spider_parse_job_widget_script_response():
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
     request = next(
-        Spider().parse_job_widget_script(script_response, html_response, Job())
+        Spider().parse_job_widget_script(script_response, html_response, Job(), "123")
     )
 
     assert request.method == "POST"
@@ -261,8 +261,11 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
         "https://foo.jobs.cz/assets/js/script.min.js",
         body=path.read_bytes(),
     )
+    requests = Spider().parse_job_widget_script(
+        script_response, html_response, Job(), "123"
+    )
 
-    assert next(Spider().parse_job_widget_script(script_response, html_response, Job()))
+    assert next(requests)
 
 
 def test_spider_parse_job_widget_api():
@@ -270,7 +273,7 @@ def test_spider_parse_job_widget_api():
         "https://api.capybara.lmc.cz/api/graphql/widget",
         body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
     )
-    job = next(Spider().parse_job_widget_api(response, Job()))
+    job = next(Spider().parse_job_widget_api(response, Job(), "123"))
 
     assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
     assert job["first_seen_on"] == date(2024, 2, 6)
