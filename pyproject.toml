@@ -13,16 +13,14 @@ jgp = "juniorguru_plucker.cli:main"
 
 [tool.poetry.dependencies]
 python = "3.11.*"
-apify = {version = "1.5.2", extras = ["scrapy"]}
+apify = {version = "1.5.5", extras = ["scrapy"]}
 apify-client = "1.6.2"
 apify-shared = "1.1.1"
 click = "8.1.7"
 extruct = "0.16.0"
 feedparser = "6.0.11"
-langdetect = "1.0.9"
 nest-asyncio = "1.6.0"
 scrapy = "2.11.0"
-w3lib = "2.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.0.0"
