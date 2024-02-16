@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Generator, Type
 
 import nest_asyncio
-from apify import Actor
+from apify import Actor, Configuration
 from apify.scrapy.utils import apply_apify_settings
 from scrapy import Item, Spider
 from scrapy.settings import BaseSettings, Settings
@@ -13,6 +13,8 @@ from juniorguru_plucker.spiders import run_spider
 
 
 async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
+    config = Configuration.get_global_configuration()
+    config.purge_on_start = True
     async with Actor:
         Actor.log.info(f"Spider {spider_class.name}")
         actor_input = await Actor.get_input() or {}
