@@ -4,7 +4,6 @@ import sys
 
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
-from httpx import delete
 from scrapy.utils.project import get_project_settings
 
 from juniorguru_plucker.loggers import configure_logging
