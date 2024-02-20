@@ -98,7 +98,7 @@ class Spider(BaseSpider):
             "employment_types",
             "//h3[contains(., 'Employment type')]/following-sibling::span/text()",
         )
-        loader.add_css("first_seen_on", ".posted-time-ago__text::text")
+        loader.add_css("posted_on", ".posted-time-ago__text::text")
         loader.add_css("description_html", ".description__text")
         loader.add_css(
             "company_logo_urls",
@@ -183,7 +183,7 @@ class Loader(ItemLoader):
     company_url_in = Compose(first, clean_url)
     employment_types_in = MapCompose(str.lower, split)
     employment_types_out = Identity()
-    first_seen_on_in = Compose(first, parse_relative_date)
+    posted_on_in = Compose(first, parse_relative_date)
     company_logo_urls_out = Compose(set, list)
     remote_in = MapCompose(parse_remote)
     locations_raw_out = Identity()

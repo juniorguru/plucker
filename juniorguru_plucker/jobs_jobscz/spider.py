@@ -61,7 +61,7 @@ class Spider(BaseSpider):
             loader = Loader(item=Job(), response=response)
             card_loader = loader.nested_xpath(f"{card_xpath}[{n}]")
             card_loader.add_value("source", self.name)
-            card_loader.add_value("first_seen_on", date.today())
+            card_loader.add_value("posted_on", date.today())
             card_loader.add_css("title", "h2 a::text")
             card_loader.add_css(
                 "company_name", ".SearchResultCard__footerItem:nth-child(1) span::text"
@@ -233,8 +233,8 @@ class Spider(BaseSpider):
         loader = Loader(item=item, response=response)
         loader.add_value("description_html", job_ad["content"]["htmlContent"])
 
-        first_seen_on = datetime.fromisoformat(job_ad["validFrom"]).date()
-        loader.add_value("first_seen_on", first_seen_on)
+        posted_on = datetime.fromisoformat(job_ad["validFrom"]).date()
+        loader.add_value("posted_on", posted_on)
 
         for location in job_ad["locations"]:
             location_parts = [location["city"], location["region"], location["country"]]
@@ -294,5 +294,5 @@ class Loader(ItemLoader):
     employment_types_out = Identity()
     locations_raw_out = Compose(remove_empty, set, list)
     source_urls_out = Compose(set, list)
-    first_seen_on_in = Identity()
-    first_seen_on_out = min
+    posted_on_in = Identity()
+    posted_on_out = min

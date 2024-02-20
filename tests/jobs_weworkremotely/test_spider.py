@@ -23,7 +23,7 @@ def test_spider_parse():
     data = requests[0].cb_kwargs["feed_data"]
     assert data["title"] == "10up: Senior UI Engineer"
     assert data["remote"] is True
-    assert data["first_seen_on"] == date(2020, 10, 28)
+    assert data["posted_on"] == date(2020, 10, 28)
     assert data["company_logo_urls"] == []
     assert "<li>Moderate PHP experience.</li>" in data["description_html"]
 
@@ -52,7 +52,7 @@ def test_spider_parse_job():
             "company_name",
             "company_url",
             "employment_types",
-            "first_seen_on",
+            "posted_on",
             "description_html",
             "company_logo_urls",
             "remote",
@@ -66,7 +66,7 @@ def test_spider_parse_job():
     assert job["company_name"] == "Bluelight Consulting"
     assert job["company_url"] == "https://bluelight.co"
     assert job["remote"] is True
-    assert job["first_seen_on"] == date(2020, 10, 20)
+    assert job["posted_on"] == date(2020, 10, 20)
     assert job["company_logo_urls"] == [
         "https://we-work-remotely.imgix.net/logos/0017/2301/logo.gif?ixlib=rails-4.0.0&w=50&h=50&dpr=2&fit=fill&auto=compress"
     ]

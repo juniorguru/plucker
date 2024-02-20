@@ -28,7 +28,7 @@ class Spider(BaseSpider):
         for entry in feedparser.parse(response.text).entries:
             feed_data = dict(
                 title=entry.title,
-                first_seen_on=parse_struct_time(entry.published_parsed),
+                posted_on=parse_struct_time(entry.published_parsed),
                 company_logo_urls=[
                     c["url"] for c in getattr(entry, "media_content", [])
                 ],
@@ -57,7 +57,7 @@ class Spider(BaseSpider):
             loader.add_value("source", self.name)
             loader.add_value("source_urls", response.url)
             loader.add_value("title", data["title"])
-            loader.add_value("first_seen_on", data["datePosted"])
+            loader.add_value("posted_on", data["datePosted"])
             loader.add_value("description_html", html.unescape(data["description"]))
             loader.add_value("company_logo_urls", data.get("image"))
             loader.add_value("employment_types", [data["employmentType"]])
@@ -95,7 +95,7 @@ class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
     company_url_in = MapCompose(absolute_url)
-    first_seen_on_in = MapCompose(parse_date)
+    posted_on_in = MapCompose(parse_date)
     company_logo_urls_out = Identity()
     remote_in = MapCompose(bool)
     locations_raw_out = Identity()

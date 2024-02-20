@@ -32,7 +32,7 @@ def test_spider_parse():
             "company_name",
             "locations_raw",
             "employment_types",
-            "first_seen_on",
+            "posted_on",
             "description_html",
             "company_logo_urls",
             "remote",
@@ -56,7 +56,7 @@ def test_spider_parse():
     assert job["locations_raw"] == ["Praha, Česko"]
     assert job["remote"] is False
     assert job["employment_types"] == ["Part-time", "Full-time"]
-    assert job["first_seen_on"] == date(2020, 5, 5)
+    assert job["posted_on"] == date(2020, 5, 5)
     assert job["company_logo_urls"] == [
         "https://www.startupjobs.cz/uploads/U56OHNIPVP54cloudinfrastack-fb-logo-180x180-1154411059762.png"
     ]

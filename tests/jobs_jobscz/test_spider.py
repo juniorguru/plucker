@@ -32,14 +32,14 @@ def test_spider_parse():
             "title",
             "company_name",
             "locations_raw",
-            "first_seen_on",
+            "posted_on",
             "company_logo_urls",
             "source",
             "source_urls",
         ]
     )
     assert job["source"] == "jobs-jobscz"
-    assert job["first_seen_on"] == date.today()
+    assert job["posted_on"] == date.today()
     assert job["title"] == "Python vývojář(ka)"
     assert job["company_name"] == "Alma Career Czechia"
     assert job["locations_raw"] == ["Praha – Libeň"]
@@ -276,7 +276,7 @@ def test_spider_parse_job_widget_api():
     job = next(Spider().parse_job_widget_api(response, Job(), "123"))
 
     assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
-    assert job["first_seen_on"] == date(2024, 2, 6)
+    assert job["posted_on"] == date(2024, 2, 6)
     assert set(job["locations_raw"]) == {
         "Praha, Hlavní město Praha, Česká republika",
         "Plzeň, Plzeňský, Česká republika",

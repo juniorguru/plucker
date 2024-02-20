@@ -7,7 +7,7 @@ from scrapy import Field, Item
 
 class Job(Item):
     title = Field(required=True)
-    first_seen_on = Field(required=True, apify_format="date")
+    posted_on = Field(required=True, apify_format="date")
 
     url = Field(required=True, apify_format="link")
     apply_url = Field(apify_format="link")

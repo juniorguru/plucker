@@ -12,8 +12,8 @@
                     "company_url",
                     "description_html",
                     "employment_types",
-                    "first_seen_on",
                     "locations_raw",
+                    "posted_on",
                     "remote",
                     "source",
                     "source_urls",
@@ -46,13 +46,13 @@
                         "label": "employment_types",
                         "format": "array"
                     },
-                    "first_seen_on": {
-                        "label": "first_seen_on",
-                        "format": "date"
-                    },
                     "locations_raw": {
                         "label": "locations_raw",
                         "format": "array"
+                    },
+                    "posted_on": {
+                        "label": "posted_on",
+                        "format": "date"
                     },
                     "remote": {
                         "label": "remote",
