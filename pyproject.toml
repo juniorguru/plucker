@@ -14,7 +14,7 @@ jgp = "juniorguru_plucker.cli:main"
 [tool.poetry.dependencies]
 python = "3.11.*"
 apify = {version = "1.5.5", extras = ["scrapy"]}
-apify-client = "1.6.2"
+apify-client = "1.6.3"
 apify-shared = "1.1.1"
 click = "8.1.7"
 extruct = "0.16.0"
