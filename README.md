@@ -39,11 +39,11 @@ Creating new scraper, e.g. `gravel-bikes`:
     Develop and debug.
 1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
 
-Deploying to Apify:
+Deploying to Apify (you need to be admin):
 
-1.  As an admin, go to [Apify Console](https://console.apify.com/) and add a new actor by linking a GitHub repository.
-1.  Change both actor's <kbd>Title</kbd> and <kbd>Unique name</kbd> to the `name` value of `Spider` class, e.g. `honzajavorek/gravel-bikes`.
-1.  Go to the <kbd>Source</kbd> tab. Set branch to `main` and folder to `juniorguru_plucker/gravel_bikes`.
+1.  Push all your code to GitHub.
+1.  Run `jgp deploy gravel-bikes`.
+1.  Go to [Apify Console](https://console.apify.com/actors) and verify everything went well.
 1.  Go to the <kbd>Builds</kbd> tab and start a build.
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.
 1.  Go to the <kbd>Schedules</kbd> page and assign your new actor to an existing schedule or create a new one.
