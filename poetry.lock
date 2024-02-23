@@ -74,13 +74,13 @@ scrapy = ["scrapy (>=2.11.0)"]
 
 [[package]]
 name = "apify-client"
-version = "1.6.3"
+version = "1.6.4b2"
 description = "Apify API client for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify_client-1.6.3-py3-none-any.whl", hash = "sha256:06df0480bbed89bcb4e3d3e7ddb5a75d6a6fab4dd1b0c55891c8e22191fb2003"},
-    {file = "apify_client-1.6.3.tar.gz", hash = "sha256:802851f0ae666589d7638accfa4a924fbc6d147984326996cacff7bddc182b1c"},
+    {file = "apify_client-1.6.4b2-py3-none-any.whl", hash = "sha256:1f4cdee9d6fd4fa12ea8440eb2377fb851054c6f0d19836ca7c50e2449ae2fd6"},
+    {file = "apify_client-1.6.4b2.tar.gz", hash = "sha256:4231bcca550d412213bd05f7e14fdd26f940e82f25053da078c5bcca011bf8dd"},
 ]
 
 [package.dependencies]
@@ -92,17 +92,17 @@ dev = ["build (>=1.0.3,<1.1.0)", "mypy (>=1.7.0,<1.8.0)", "pre-commit (>=3.4.0,<
 
 [[package]]
 name = "apify-shared"
-version = "1.1.1"
+version = "1.1.2b2"
 description = "Tools and constants shared across Apify projects."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify_shared-1.1.1-py3-none-any.whl", hash = "sha256:955c966a5b7b32a19c93c14e53d96d1af89ee00f0197f31923d88332fbfb15ec"},
-    {file = "apify_shared-1.1.1.tar.gz", hash = "sha256:3298c8260cab9f277c1c1d8c020270e5fe829425eb96767f0cfecd9dd85954e5"},
+    {file = "apify_shared-1.1.2b2-py3-none-any.whl", hash = "sha256:459e2b186b830e4949c1f4530fe6ab2f8990db334a46c65c7d98f3a8937cc39f"},
+    {file = "apify_shared-1.1.2b2.tar.gz", hash = "sha256:662169715ea29001811002b1f25cc0abe1c8c081d8eb34a98b1c09853a2e516f"},
 ]
 
 [package.extras]
-dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-cov (>=4.1.0,<4.2.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.6,<0.2.0)", "twine (>=4.0.2,<4.1.0)"]
+dev = ["build (>=1.0.3,<1.1.0)", "filelock (>=3.12.4,<3.13.0)", "mypy (>=1.7.1,<1.8.0)", "pre-commit (>=3.4.0,<3.5.0)", "pydoc-markdown (>=4.8.2,<4.9.0)", "pytest (>=7.4.2,<7.5.0)", "pytest-asyncio (>=0.21.0,<0.22.0)", "pytest-cov (>=4.1.0,<4.2.0)", "pytest-only (>=2.0.0,<2.1.0)", "pytest-timeout (>=2.2.0,<2.3.0)", "pytest-xdist (>=3.3.1,<3.4.0)", "respx (>=0.20.1,<0.21.0)", "ruff (>=0.1.13,<0.2.0)", "twine (>=4.0.2,<4.1.0)"]
 
 [[package]]
 name = "arrow"
@@ -1884,4 +1884,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "3673d8bfad61e55a04646dd3a9cd4f578e610a23dca7ed2fcbd8d4a7ef4732fa"
+content-hash = "40be5c8aaa1044f1790eb22f85198bf7137594f47527100da4d27d78098cf60c"
