@@ -20,7 +20,7 @@ click = "8.1.7"
 extruct = "0.16.0"
 feedparser = "6.0.11"
 nest-asyncio = "1.6.0"
-scrapy = "2.11.0"
+scrapy = "2.11.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.0.0"
