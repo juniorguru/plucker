@@ -7,6 +7,8 @@ from scrapy.http import HtmlResponse
 
 from juniorguru_plucker.items import Job
 from juniorguru_plucker.jobs_linkedin.spider import (
+    JOB_BASE_URL,
+    SEARCH_BASE_URL,
     Spider,
     clean_proxied_url,
     clean_url,
@@ -19,12 +21,19 @@ from juniorguru_plucker.jobs_linkedin.spider import (
 FIXTURES_DIR = Path(__file__).parent
 
 
+def test_spider_parse_retry():
+    response = HtmlResponse("https://www.linkedin.com/", body=b"")
+    requests = list(Spider().parse(response, SEARCH_BASE_URL))
+
+    assert len(requests) == 1
+    assert requests[0].url == SEARCH_BASE_URL
+
+
 def test_spider_parse():
     response = HtmlResponse(
-        "https://example.com/seeMoreJobPostings/",
-        body=Path(FIXTURES_DIR / "more.html").read_bytes(),
+        SEARCH_BASE_URL, body=Path(FIXTURES_DIR / "more.html").read_bytes()
     )
-    requests = list(Spider().parse(response))
+    requests = list(Spider().parse(response, SEARCH_BASE_URL))
     job_requests = list(filter(lambda r: "/jobPosting/" in r.url, requests))
     more_requests = list(filter(lambda r: "/seeMoreJobPostings/" in r.url, requests))
 
@@ -40,10 +49,9 @@ def test_spider_parse():
 
 def test_spider_parse_end():
     response = HtmlResponse(
-        "https://example.com/seeMoreJobPostings/",
-        body=Path(FIXTURES_DIR / "more_end.html").read_bytes(),
+        SEARCH_BASE_URL, body=Path(FIXTURES_DIR / "more_end.html").read_bytes()
     )
-    requests = list(Spider().parse(response))
+    requests = list(Spider().parse(response, SEARCH_BASE_URL))
     job_requests = list(filter(lambda r: "/jobPosting/" in r.url, requests))
     more_requests = list(filter(lambda r: "/seeMoreJobPostings/" in r.url, requests))
 
@@ -51,12 +59,19 @@ def test_spider_parse_end():
     assert len(more_requests) == 0
 
 
+def test_spider_parse_job_retry():
+    response = HtmlResponse("https://www.linkedin.com/", body=b"")
+    requests = list(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+
+    assert len(requests) == 1
+    assert requests[0].url == JOB_BASE_URL
+
+
 def test_spider_parse_job():
     response = HtmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "job.html").read_bytes(),
+        JOB_BASE_URL, body=Path(FIXTURES_DIR / "job.html").read_bytes()
     )
-    jobs = list(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    jobs = list(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
 
     assert len(jobs) == 1
 
@@ -91,20 +106,16 @@ def test_spider_parse_job():
         "https://media-exp1.licdn.com/dms/image/C560BAQHxuVQO-Rz9rw/company-logo_100_100/0/1546508771908?e=1640217600&v=beta&t=hUZKjJ2dnPP92AcBOKAEFzFqEdD-OB9WwS0X18LoyP4"
     ]
     assert job["source"] == "jobs-linkedin"
-    assert job["source_urls"] == [
-        "https://example.com/search?foo=1",
-        "https://example.com/example/",
-    ]
+    assert job["source_urls"] == [SEARCH_BASE_URL, JOB_BASE_URL]
     assert "<li>French language</li>" in job["description_html"]
 
 
 @pytest.mark.skip("missing a test fixture")
 def test_spider_parse_job_description_doesnt_include_criteria_list():
     response = HtmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "job.html").read_bytes(),
+        JOB_BASE_URL, body=Path(FIXTURES_DIR / "job.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert "Employment type" not in job["description_html"]
@@ -113,10 +124,9 @@ def test_spider_parse_job_description_doesnt_include_criteria_list():
 
 def test_spider_parse_job_no_company_url():
     response = HtmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "job_no_company_url.html").read_bytes(),
+        JOB_BASE_URL, body=Path(FIXTURES_DIR / "job_no_company_url.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert job["company_name"] == "NeoTreks, Inc."
@@ -126,10 +136,9 @@ def test_spider_parse_job_no_company_url():
 
 def test_spider_parse_job_company_logo():
     response = HtmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "job_company_logo.html").read_bytes(),
+        JOB_BASE_URL, body=Path(FIXTURES_DIR / "job_company_logo.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert job["company_logo_urls"] == [
@@ -139,10 +148,10 @@ def test_spider_parse_job_company_logo():
 
 def test_spider_parse_job_apply_on_company_website():
     response = HtmlResponse(
-        "https://example.com/example/",
+        JOB_BASE_URL,
         body=Path(FIXTURES_DIR / "job_apply_on_company_website.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, "https://example.com/search?foo=1"))
+    request = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
     job = request.cb_kwargs["item"]
 
     assert (
@@ -156,7 +165,7 @@ def test_spider_parse_job_apply_on_company_website():
 
 
 def test_spider_verify_job_apply_on_company_website():
-    response = HtmlResponse("https://example.com/example/", body=b"")
+    response = HtmlResponse(JOB_BASE_URL, body=b"")
     item = Job(
         url="https://cz.linkedin.com/jobs/view/junior-automation-test-engineer-for-siemens-at-siemens-2689458333",
         apply_url="https://example.com/example/?redirect=foo",
@@ -167,8 +176,8 @@ def test_spider_verify_job_apply_on_company_website():
         job["url"]
         == "https://cz.linkedin.com/jobs/view/junior-automation-test-engineer-for-siemens-at-siemens-2689458333"
     )
-    assert job["apply_url"] == "https://example.com/example/"
-    assert job["source_urls"] == ["https://example.com/example/"]
+    assert job["apply_url"] == JOB_BASE_URL
+    assert job["source_urls"] == [JOB_BASE_URL]
 
 
 def test_spider_verify_job_apply_on_company_website_with_proxies_and_validations():

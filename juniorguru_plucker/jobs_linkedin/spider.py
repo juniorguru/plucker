@@ -1,5 +1,5 @@
 import re
-from typing import Generator
+from typing import Callable, Generator
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -11,6 +11,7 @@ from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import first, last, parse_relative_date, split
 from juniorguru_plucker.url_params import (
     get_param,
+    get_params,
     increment_param,
     replace_in_params,
     strip_params,
@@ -18,70 +19,86 @@ from juniorguru_plucker.url_params import (
 )
 
 
+SEARCH_BASE_URL = (
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+)
+
+JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
+
+
 class Spider(BaseSpider):
     name = "jobs-linkedin"
 
-    headers = {"Accept-Language": "en-us"}
-    cookies = {"lang": "v=2&lang=en-us"}
+    search_params = {
+        "f_E": "1,2",  # entry level, internship
+        "f_TPR": "r2592000",  # past month
+    }
     search_terms = [
-        "junior software engineer",
+        # "junior software engineer",
         "junior developer",
-        "junior vyvojar",
-        "junior programator",
-        "junior tester",
+        # "junior vyvojar",
+        # "junior programator",
+        # "junior tester",
     ]
-    locations = ["Czechia", "Slovakia"]
+    locations = ["Czechia"]  # , "Slovakia"]
+    lang_headers = {"Accept-Language": "en-us"}
+    lang_cookies = {"lang": "v=2&lang=en-us"}
     results_per_request = 25
 
     def start_requests(self) -> Generator[Request, None, None]:
-        base_url = (
-            "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?"
-        )
-        search_params = {
-            "f_E": "1,2",  # entry level, internship
-            "f_TP": "1,2,3,4",  # past month
-            "redirect": "false",  # ?
-            "position": "1",  # the job ad position to display as open
-            "pageNum": "0",  # pagination - page number
-            "start": "0",  # pagination - offset
-        }
         for location in self.locations:
             for search_term in self.search_terms:
-                params = dict(keywords=search_term, location=location, **search_params)
-                yield Request(
-                    f"{base_url}{urlencode(params)}",
-                    dont_filter=True,
-                    cookies=self.cookies,
-                    headers=self.headers,
+                self.logger.info(f"Starting with {search_term!r} ({location})")
+                params = dict(
+                    keywords=search_term,
+                    location=location,
+                    **self.search_params,
                 )
+                url = f"{SEARCH_BASE_URL}?{urlencode(params)}"
+                yield self._request(url, self.parse, pagination_url=url)
 
-    def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
+    def parse(
+        self, response: HtmlResponse, pagination_url: str
+    ) -> Generator[Request, None, None]:
+        if not response.url.startswith(SEARCH_BASE_URL):
+            self.logger.warning(
+                f"Unexpected URL: {response.url} (retrying {pagination_url})"
+            )
+            yield self._request(
+                pagination_url, self.parse, pagination_url=pagination_url
+            )
+            return
+
         urls = [
-            f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{get_job_id(url)}"
+            f"{JOB_BASE_URL}/{get_job_id(url)}"
             for url in response.css(
                 'a[href*="linkedin.com/jobs/view/"]::attr(href)'
             ).getall()
         ]
-        yield from response.follow_all(
-            urls,
-            cookies=self.cookies,
-            headers=self.headers,
-            callback=self.parse_job,
-            cb_kwargs=dict(search_url=response.url),
-        )
+        self.logger.info(f"Found {len(urls)} job URLs")
+        for url in urls:
+            yield self._request(
+                url, self.parse_job, job_url=url, source_url=response.url
+            )
 
         if len(urls) >= self.results_per_request:
             url = increment_param(response.url, "start", self.results_per_request)
-            yield Request(
-                url, cookies=self.cookies, headers=self.headers, callback=self.parse
-            )
+            self.logger.info(f"Paginating with {get_params(url)!r}")
+            yield self._request(url, self.parse, pagination_url=pagination_url)
 
     def parse_job(
-        self, response: HtmlResponse, search_url: str
+        self, response: HtmlResponse, job_url: str, source_url: str
     ) -> Generator[Job | Request, None, None]:
+        if not response.url.startswith(JOB_BASE_URL):
+            self.logger.warning(f"Unexpected URL: {response.url} (retrying {job_url})")
+            yield self._request(
+                job_url, self.parse_job, job_url=job_url, source_url=source_url
+            )
+            return
+
         loader = Loader(item=Job(), response=response)
         loader.add_value("source", self.name)
-        loader.add_value("source_urls", search_url)
+        loader.add_value("source_urls", source_url)
         loader.add_value("source_urls", response.url)
         loader.add_css("title", "h2::text")
         loader.add_css("remote", "h2::text")
@@ -131,6 +148,16 @@ class Spider(BaseSpider):
         loader.add_value("source_urls", response.url)
         loader.replace_value("apply_url", response.url)
         yield loader.load_item()
+
+    def _request(self, url: str, callback: Callable, **cb_kwargs) -> Request:
+        return Request(
+            url,
+            headers=self.lang_headers,
+            cookies=self.lang_cookies,
+            callback=callback,
+            cb_kwargs=dict(cb_kwargs),
+            dont_filter=True,
+        )
 
 
 def get_job_id(url: str) -> str:

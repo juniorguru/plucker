@@ -12,13 +12,13 @@ DEFAULT_REQUEST_HEADERS = {
     "DNT": "1",
 }
 
-USER_AGENT = f"{BOT_NAME} (+https://junior.guru)"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0"
 
 ROBOTSTXT_OBEY = False
 
 # If these occur, let's fail fast!
 # For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
-HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501]
+HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501, 999]
 
 SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
 

@@ -13,12 +13,11 @@ class Spider(BaseSpider):
 
     def start_requests(self) -> Generator[Request, None, None]:
         monday = get_last_monday(date.today())
-        url = (
+        yield Request(
             "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/"
             "denni_kurz.txt"
             f"?date={monday:%d.%m.%Y}"
         )
-        yield Request(url, dont_filter=True)
 
     def parse(self, response: TextResponse) -> Generator[ExchangeRate, None, None]:
         for line in parse_lines(response.text):

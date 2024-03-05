@@ -20,18 +20,22 @@ def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
     return crawler.stats
 
 
+class StatsError(RuntimeError):
+    pass
+
+
 def raise_for_stats(stats: dict[str, Any]):
     item_count = stats.get("item_scraped_count", 0)
+    if exc_count := stats.get("spider_exceptions"):
+        raise StatsError(f"Exceptions raised: {exc_count}")
+    if critical_count := stats.get("log_count/CRITICAL"):
+        raise StatsError(f"Critical errors logged: {critical_count}")
+    if error_count := stats.get("log_count/ERROR"):
+        raise StatsError(f"Errors logged: {error_count}")
     if item_count < 10:
-        raise RuntimeError(f"Few items scraped: {item_count}")
+        raise StatsError(f"Few items scraped: {item_count}")
     if reason := stats.get("finish_reason"):
         if reason != "finished":
-            raise RuntimeError(f"Scraping finished with reason {reason!r}")
+            raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
-        raise RuntimeError(f"Items missing required fields: {item_count}")
-    if exc_count := stats.get("spider_exceptions"):
-        raise RuntimeError(f"Exceptions raised: {exc_count}")
-    if critical_count := stats.get("log_count/CRITICAL"):
-        raise RuntimeError(f"Critical errors logged: {critical_count}")
-    if error_count := stats.get("log_count/ERROR"):
-        raise RuntimeError(f"Errors logged: {error_count}")
+        raise StatsError(f"Items missing required fields: {item_count}")

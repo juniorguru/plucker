@@ -29,7 +29,7 @@ from juniorguru_plucker.actors import (
     iter_actor_paths,
     run_actor,
 )
-from juniorguru_plucker.spiders import run_spider
+from juniorguru_plucker.spiders import StatsError, run_spider
 
 
 logger = logging.getLogger("juniorguru_plucker")
@@ -60,17 +60,21 @@ def crawl(
     spider_class = importlib.import_module(spider_module_name).Spider
 
     configure_async()
-    if apify:
-        logger.info(f"Crawling as Apify actor {actor_path!r}")
-        if not (actor_path / ".actor/actor.json").is_file():
-            actors = ", ".join([str(path) for path in iter_actor_paths(".")])
-            raise click.BadParameter(
-                f"Actor {actor_path} not found! Valid actors: {actors}"
-            )
-        asyncio.run(run_actor(settings, spider_class))
-    else:
-        logger.info(f"Crawling as Scrapy spider {spider_name!r}")
-        run_spider(settings, spider_class)
+    try:
+        if apify:
+            logger.info(f"Crawling as Apify actor {actor_path!r}")
+            if not (actor_path / ".actor/actor.json").is_file():
+                actors = ", ".join([str(path) for path in iter_actor_paths(".")])
+                raise click.BadParameter(
+                    f"Actor {actor_path} not found! Valid actors: {actors}"
+                )
+            asyncio.run(run_actor(settings, spider_class))
+        else:
+            logger.info(f"Crawling as Scrapy spider {spider_name!r}")
+            run_spider(settings, spider_class)
+    except StatsError as e:
+        logger.error(e)
+        raise click.Abort()
 
 
 @main.command()

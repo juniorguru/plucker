@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from scrapy import Spider
 
-from juniorguru_plucker.spiders import raise_for_stats
+from juniorguru_plucker.spiders import StatsError, raise_for_stats
 
 
 spider_packages = [
@@ -74,7 +74,7 @@ def test_raise_for_stats_passing():
     ],
 )
 def test_raise_for_stats_failing(stats_override: dict):
-    with pytest.raises(RuntimeError):
+    with pytest.raises(StatsError):
         raise_for_stats(
             {
                 "item_scraped_count": 10,
