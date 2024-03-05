@@ -206,17 +206,12 @@ def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur(
 
 
 def test_spider_parse_job_widget_script_response():
-    html_response = HtmlResponse(
-        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
-        body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes(),
-    )
-    script_response = TextResponse(
+    html_url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
+    response = TextResponse(
         "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c",
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
-    request = next(
-        Spider().parse_job_widget_script(script_response, html_response, Job(), "123")
-    )
+    request = next(Spider().parse_job_widget_script(response, html_url, Job(), "123"))
 
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
@@ -253,17 +248,13 @@ def test_spider_parse_job_widget_script_response():
     ],
 )
 def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path):
-    html_response = HtmlResponse(
-        "https://foo.jobs.cz/detail-pozice?r=detail&id=123&rps=456&impressionId=789",
-        body=b"",
+    html_url = (
+        "https://foo.jobs.cz/detail-pozice?r=detail&id=123&rps=456&impressionId=789"
     )
-    script_response = TextResponse(
-        "https://foo.jobs.cz/assets/js/script.min.js",
-        body=path.read_bytes(),
+    response = TextResponse(
+        "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
-    requests = Spider().parse_job_widget_script(
-        script_response, html_response, Job(), "123"
-    )
+    requests = Spider().parse_job_widget_script(response, html_url, Job(), "123")
 
     assert next(requests)
 
