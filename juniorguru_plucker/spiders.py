@@ -31,5 +31,7 @@ def raise_for_stats(stats: dict[str, Any]):
         raise RuntimeError(f"Items missing required fields: {item_count}")
     if exc_count := stats.get("spider_exceptions"):
         raise RuntimeError(f"Exceptions raised: {exc_count}")
+    if critical_count := stats.get("log_count/CRITICAL"):
+        raise RuntimeError(f"Critical errors logged: {critical_count}")
     if error_count := stats.get("log_count/ERROR"):
         raise RuntimeError(f"Errors logged: {error_count}")
