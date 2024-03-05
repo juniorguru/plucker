@@ -34,13 +34,13 @@ class Spider(BaseSpider):
         "f_TPR": "r2592000",  # past month
     }
     search_terms = [
-        # "junior software engineer",
+        "junior software engineer",
         "junior developer",
-        # "junior vyvojar",
-        # "junior programator",
-        # "junior tester",
+        "junior vyvojar",
+        "junior programator",
+        "junior tester",
     ]
-    locations = ["Czechia"]  # , "Slovakia"]
+    locations = ["Czechia", "Slovakia"]
     lang_headers = {"Accept-Language": "en-us"}
     lang_cookies = {"lang": "v=2&lang=en-us"}
     results_per_request = 25
