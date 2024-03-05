@@ -137,11 +137,11 @@ class Spider(BaseSpider):
             yield response.follow(
                 script_url,
                 callback=self.parse_job_widget_script,
-                cb_kwargs=dict(item=item, html_response=response, track_id=track_id),
+                cb_kwargs=dict(item=item, url=response.url, track_id=track_id),
             )
         else:
             yield from self.parse_job_widget(
-                response,
+                response.url,
                 item,
                 widget_host=widget_data["host"],
                 widget_api_key=widget_data["apiKey"],
@@ -152,7 +152,7 @@ class Spider(BaseSpider):
     def parse_job_widget_script(
         self,
         script_response: TextResponse,
-        html_response: HtmlResponse,
+        url: str,
         item: Job,
         track_id: str,
     ) -> Generator[Request, None, None]:
@@ -164,7 +164,7 @@ class Spider(BaseSpider):
             widget_data = data["widgets"][widget_name]
 
             yield from self.parse_job_widget(
-                html_response,
+                url,
                 item,
                 widget_host=data["host"],
                 widget_api_key=widget_data["apiKey"],
@@ -176,20 +176,20 @@ class Spider(BaseSpider):
 
     def parse_job_widget(
         self,
-        response: HtmlResponse,
+        url: str,
         item: Job,
         widget_host: str,
         widget_api_key: str,
         widget_id: str,
         track_id: str,
     ) -> Generator[Request, None, None]:
-        loader = Loader(item=item, response=response)
-        loader.add_value("url", response.url)
+        loader = Loader(item=item)
+        loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
-        loader.add_value("source_urls", response.url)
+        loader.add_value("source_urls", url)
 
         self.track_logger(track_id).debug("Requesting data from job widget API")
-        params = get_params(response.url)
+        params = get_params(url)
         yield Request(
             "https://api.capybara.lmc.cz/api/graphql/widget",
             method="POST",
@@ -212,7 +212,7 @@ class Spider(BaseSpider):
                         timeId=str(uuid.uuid4()),
                         widgetId=widget_id,
                         host=widget_host,
-                        referer=response.url,
+                        referer=url,
                         version="v3.49.1",
                         pageReferer="https://beta.www.jobs.cz/",
                     ),
