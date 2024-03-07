@@ -92,13 +92,13 @@ dev = ["build (>=1.0.3,<1.1.0)", "mypy (>=1.7.0,<1.8.0)", "pre-commit (>=3.4.0,<
 
 [[package]]
 name = "apify-shared"
-version = "1.1.2b2"
+version = "1.1.2b3"
 description = "Tools and constants shared across Apify projects."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify_shared-1.1.2b2-py3-none-any.whl", hash = "sha256:459e2b186b830e4949c1f4530fe6ab2f8990db334a46c65c7d98f3a8937cc39f"},
-    {file = "apify_shared-1.1.2b2.tar.gz", hash = "sha256:662169715ea29001811002b1f25cc0abe1c8c081d8eb34a98b1c09853a2e516f"},
+    {file = "apify_shared-1.1.2b3-py3-none-any.whl", hash = "sha256:a4cb15bb28de87ff36428be6e0b8b67896fb218df9732ffaa578d44aa59f46f5"},
+    {file = "apify_shared-1.1.2b3.tar.gz", hash = "sha256:3a0ae43650cf068c742d4c04805f264c6f45fca61341faf375a1b8c30dc61a43"},
 ]
 
 [package.extras]
@@ -1896,4 +1896,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "35cea0057042e03e618afdfe09a46836736fda2f1743090649cfed4a0296cfc9"
+content-hash = "f5f931c55912a1da52cf3648218d51e40a607892862db7cfcc735b13efb917ef"
