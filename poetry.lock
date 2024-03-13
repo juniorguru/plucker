@@ -44,13 +44,13 @@ trio = ["trio (>=0.23)"]
 
 [[package]]
 name = "apify"
-version = "1.6.1b1"
+version = "1.7.1b1"
 description = "Apify SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify-1.6.1b1-py3-none-any.whl", hash = "sha256:2ad4ed7ce02ffd012f6cab9dda64d7d182e05dec00f5fb5a2d9fad2ef3efb399"},
-    {file = "apify-1.6.1b1.tar.gz", hash = "sha256:e303b6d9279b8c363f0ef501a19068bac0af571f7fbec71a34c4fdc03345bbfd"},
+    {file = "apify-1.7.1b1-py3-none-any.whl", hash = "sha256:f54867fc796cd64389a9272910a36c909e44c139fec410ef056caed6ec635f80"},
+    {file = "apify-1.7.1b1.tar.gz", hash = "sha256:088abed75a1e763e9ec5ac7a584fd650701d9a4e715b10b3f0a2b875e2fbfa08"},
 ]
 
 [package.dependencies]
@@ -1896,4 +1896,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "8525108d944d5da50c96d9873cd2dfaf80f6e8c29fa91ea38a6a2072ed0244ed"
+content-hash = "f530eaba766b8f08fe97244131e98723260b6fa48a820d495df4d74f6106a90e"
