@@ -23,12 +23,12 @@ jobs:
       - name: Install Python dependencies
         run: poetry install
 
-      - name: Check
-        env:
-          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: poetry run jgp check
-
       - name: Build
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: poetry run jgp build
+
+      - name: Check
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: poetry run jgp check
