@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Generator, cast
+from typing import Callable, Generator
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -63,7 +63,7 @@ class Spider(BaseSpider):
             self.logger.warning(
                 f"Unexpected listing URL: {response.url} (retrying {pagination_url})"
             )
-            yield self._retry(pagination_url, cast(Request, response.request))
+            yield self._retry(pagination_url, response.request)
             return
 
         urls = [
@@ -94,7 +94,7 @@ class Spider(BaseSpider):
             self.logger.warning(
                 f"Unexpected job URL: {response.url} (retrying {job_url})"
             )
-            yield self._retry(job_url, cast(Request, response.request))
+            yield self._retry(job_url, response.request)
             return
 
         loader = Loader(item=Job(), response=response)
@@ -150,7 +150,9 @@ class Spider(BaseSpider):
         loader.replace_value("apply_url", response.url)
         yield loader.load_item()
 
-    def _retry(self, url: str, request: Request) -> Request:
+    def _retry(self, url: str, request: Request | None = None) -> Request:
+        if not request:
+            raise ValueError("Request is required for retry")
         return request.replace(url=url, dont_filter=True)
 
     def _request(

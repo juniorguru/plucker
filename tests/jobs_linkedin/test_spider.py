@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from scrapy import Request
 from scrapy.http import HtmlResponse
 
 from juniorguru_plucker.items import Job
@@ -22,7 +23,8 @@ FIXTURES_DIR = Path(__file__).parent
 
 
 def test_spider_parse_retry():
-    response = HtmlResponse("https://www.linkedin.com/", body=b"")
+    request = Request(SEARCH_BASE_URL, callback=Spider().parse)
+    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
     requests = list(Spider().parse(response, SEARCH_BASE_URL))
 
     assert len(requests) == 1
@@ -60,7 +62,8 @@ def test_spider_parse_end():
 
 
 def test_spider_parse_job_retry():
-    response = HtmlResponse("https://www.linkedin.com/", body=b"")
+    request = Request(JOB_BASE_URL, callback=Spider().parse_job)
+    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
     requests = list(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
 
     assert len(requests) == 1
