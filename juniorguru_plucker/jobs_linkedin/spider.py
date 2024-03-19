@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Generator
+from typing import Callable, Generator, cast
 from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -11,7 +11,6 @@ from juniorguru_plucker.items import Job
 from juniorguru_plucker.processors import first, last, parse_relative_date, split
 from juniorguru_plucker.url_params import (
     get_param,
-    get_params,
     increment_param,
     replace_in_params,
     strip_params,
@@ -31,7 +30,6 @@ class Spider(BaseSpider):
     download_delay = 4
 
     search_params = {
-        "f_E": "1,2",  # entry level, internship
         "f_TPR": "r2592000",  # past month
     }
     search_terms = [
@@ -56,18 +54,16 @@ class Spider(BaseSpider):
                     **self.search_params,
                 )
                 url = f"{SEARCH_BASE_URL}?{urlencode(params)}"
-                yield self._request(url, self.parse, pagination_url=url)
+                yield self._request(url, self.parse, cb_kwargs=dict(pagination_url=url))
 
     def parse(
         self, response: HtmlResponse, pagination_url: str
     ) -> Generator[Request, None, None]:
         if not response.url.startswith(SEARCH_BASE_URL):
             self.logger.warning(
-                f"Unexpected URL: {response.url} (retrying {pagination_url})"
+                f"Unexpected listing URL: {response.url} (retrying {pagination_url})"
             )
-            yield self._request(
-                pagination_url, self.parse, pagination_url=pagination_url
-            )
+            yield self._retry(pagination_url, cast(Request, response.request))
             return
 
         urls = [
@@ -76,25 +72,29 @@ class Spider(BaseSpider):
                 'a[href*="linkedin.com/jobs/view/"]::attr(href)'
             ).getall()
         ]
-        self.logger.info(f"Found {len(urls)} job URLs")
+        self.logger.info(f"Found {len(urls)} job URLs: {response.url}")
         for url in urls:
             yield self._request(
-                url, self.parse_job, job_url=url, source_url=response.url
+                url,
+                self.parse_job,
+                cb_kwargs=dict(job_url=url, source_url=response.url),
             )
 
         if len(urls) >= self.results_per_request:
             url = increment_param(response.url, "start", self.results_per_request)
-            self.logger.info(f"Paginating with {get_params(url)!r}")
-            yield self._request(url, self.parse, pagination_url=pagination_url)
+            self.logger.info(f"Paginating: {url}")
+            yield self._request(
+                url, self.parse, cb_kwargs=dict(pagination_url=pagination_url)
+            )
 
     def parse_job(
         self, response: HtmlResponse, job_url: str, source_url: str
     ) -> Generator[Job | Request, None, None]:
         if not response.url.startswith(JOB_BASE_URL):
-            self.logger.warning(f"Unexpected URL: {response.url} (retrying {job_url})")
-            yield self._request(
-                job_url, self.parse_job, job_url=job_url, source_url=source_url
+            self.logger.warning(
+                f"Unexpected job URL: {response.url} (retrying {job_url})"
             )
+            yield self._retry(job_url, cast(Request, response.request))
             return
 
         loader = Loader(item=Job(), response=response)
@@ -150,14 +150,32 @@ class Spider(BaseSpider):
         loader.replace_value("apply_url", response.url)
         yield loader.load_item()
 
-    def _request(self, url: str, callback: Callable, **cb_kwargs) -> Request:
+    def _retry(self, url: str, request: Request) -> Request:
+        return request.replace(url=url, dont_filter=True)
+
+    def _request(
+        self,
+        url: str,
+        callback: Callable,
+        cb_kwargs: dict | None = None,
+    ) -> Request:
         return Request(
             url,
-            headers=self.lang_headers,
+            headers={
+                "Host": "www.linkedin.com",
+                "Referer": (
+                    "https://www.linkedin.com/jobs/search"
+                    "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
+                    "&currentJobId=3864058898"
+                    "&position=2"
+                    "&pageNum=0"
+                ),
+                **self.lang_headers,
+            },
             cookies=self.lang_cookies,
             callback=callback,
-            cb_kwargs=dict(cb_kwargs),
-            dont_filter=True,
+            cb_kwargs=cb_kwargs or {},
+            meta=dict(max_retry_times=5),
         )
 
 
