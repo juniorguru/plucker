@@ -28,6 +28,7 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 
 class Spider(BaseSpider):
     name = "jobs-linkedin"
+    download_delay = 4
 
     search_params = {
         "f_E": "1,2",  # entry level, internship
