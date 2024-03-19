@@ -205,6 +205,20 @@ def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur(
     )
 
 
+def test_spider_parse_job_widget_script_request_when_there_is_vendor_slug_in_its_url():
+    response = HtmlResponse(
+        "https://kdejinde.jobs.cz/detail-pozice?r=detail&id=1638374443&rps=233&impressionId=c0551249-e0e1-4690-9789-d638f4b824e7#fms",
+        body=Path(FIXTURES_DIR / "job_widget_script_vendor.html").read_bytes(),
+    )
+    request = next(Spider().parse_job(response, Job(), "123"))
+
+    assert request.method == "GET"
+    assert (
+        request.url
+        == "https://kdejinde.jobs.cz/assets/js/kdejinde/script.min.js?av=b43d21177d40b0f3"
+    )
+
+
 def test_spider_parse_job_widget_script_response():
     html_url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
     response = TextResponse(

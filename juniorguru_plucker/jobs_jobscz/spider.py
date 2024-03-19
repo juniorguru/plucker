@@ -37,6 +37,8 @@ WIDGET_DATA_SCRIPT_RE = re.compile(
     re.VERBOSE,
 )
 
+SCRIPT_URL_RE = re.compile(r"/assets/js/([^/]+/)?script\.min\.js")
+
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 
@@ -131,9 +133,9 @@ class Spider(BaseSpider):
             self.track_logger(track_id).debug(
                 "Looking for widget data in attached JavaScript"
             )
-            script_url = response.css(
-                'script[src*="assets/js/script.min.js"]::attr(src)'
-            ).get()
+            script_url = select_script_url(
+                response.css('script[src*="script.min.js"]::attr(src)').getall()
+            )
             yield response.follow(
                 script_url,
                 callback=self.parse_job_widget_script,
@@ -266,6 +268,19 @@ def select_widget(names: list[str]) -> str:
         if name.startswith("main"):
             return name
     return names[0]
+
+
+def select_script_url(urls: list[str]) -> str:
+    matching_urls = (url for url in urls if SCRIPT_URL_RE.match(url))
+    relevant_urls = (
+        url
+        for url in matching_urls
+        if not url.startswith("/assets/js/common/script.min.js")
+    )
+    try:
+        return next(relevant_urls)
+    except StopIteration:
+        raise ValueError(f"URLs: {urls!r}")
 
 
 def clean_url(url: str) -> str:
