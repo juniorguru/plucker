@@ -27,7 +27,7 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 
 class Spider(BaseSpider):
     name = "jobs-linkedin"
-    download_delay = 4
+    download_delay = 5
 
     search_params = {
         "f_TPR": "r2592000",  # past month
