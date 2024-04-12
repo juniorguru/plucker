@@ -1,15 +1,16 @@
 [tool.poetry]
-name = "juniorguru-plucker"
+name = "jg.plucker"
 version = "0.0"
 description = "Junior Guru scrapers"
-authors = ["Honza Javorek <mail@honzajavorek.cz>"]
+authors = ["Honza Javorek <honza@junior.guru>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://junior.guru/"
 repository = "https://github.com/juniorguru/plucker/"
+packages = [{ include = "jg" }]
 
 [tool.poetry.scripts]
-jgp = "juniorguru_plucker.cli:main"
+plucker = "jg.plucker.cli:main"
 
 [tool.poetry.dependencies]
 python = "3.11.*"

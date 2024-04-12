@@ -7,9 +7,9 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
-from juniorguru_plucker.items import Job
-from juniorguru_plucker.processors import first, last, parse_relative_date, split
-from juniorguru_plucker.url_params import (
+from jg.plucker.items import Job
+from jg.plucker.processors import first, last, parse_relative_date, split
+from jg.plucker.url_params import (
     get_param,
     increment_param,
     replace_in_params,

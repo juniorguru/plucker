@@ -6,8 +6,8 @@ from typing import cast
 import pytest
 from scrapy.http import HtmlResponse, TextResponse
 
-from juniorguru_plucker.items import Job
-from juniorguru_plucker.jobs_jobscz.spider import Spider, select_widget
+from jg.plucker.items import Job
+from jg.plucker.jobs_jobscz.spider import Spider, select_widget
 
 
 FIXTURES_DIR = Path(__file__).parent

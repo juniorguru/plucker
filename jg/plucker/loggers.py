@@ -7,7 +7,7 @@ from scrapy.settings import Settings
 from scrapy.utils import log as scrapy_logging
 
 
-CUSTOM_LOGGER_NAMES = ["juniorguru_plucker", "apify", "apify_client"]
+CUSTOM_LOGGER_NAMES = ["jg.plucker", "apify", "apify_client"]
 
 SCRAPY_LOGGER_NAMES = ["filelock", "hpack", "httpx", "scrapy", "twisted"]
 

@@ -20,7 +20,7 @@ RUN echo "Python version:" \
  && echo "All installed Python packages:" \
  && pip freeze
 
-RUN python3 -m compileall -q ./juniorguru_plucker
+RUN python3 -m compileall -q ./jg/plucker
 
 ENV ACTOR_PATH_IN_DOCKER_CONTEXT="${ACTOR_PATH_IN_DOCKER_CONTEXT}"
-CMD ["poetry", "run", "jgp", "crawl", "--apify"]
+CMD ["poetry", "run", "plucker", "crawl", "--apify"]

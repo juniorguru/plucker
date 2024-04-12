@@ -6,8 +6,8 @@ import pytest
 from scrapy import Request
 from scrapy.http import HtmlResponse
 
-from juniorguru_plucker.items import Job
-from juniorguru_plucker.jobs_linkedin.spider import (
+from jg.plucker.items import Job
+from jg.plucker.jobs_linkedin.spider import (
     JOB_BASE_URL,
     SEARCH_BASE_URL,
     Spider,

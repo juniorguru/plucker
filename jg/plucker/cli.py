@@ -6,7 +6,7 @@ from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from scrapy.utils.project import get_project_settings
 
-from juniorguru_plucker.loggers import configure_logging
+from jg.plucker.loggers import configure_logging
 
 
 settings = get_project_settings()
@@ -22,17 +22,17 @@ from pathlib import Path
 import click
 from scrapy import Item
 
-from juniorguru_plucker.actors import (
+from jg.plucker.actors import (
     configure_async,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
     run_actor,
 )
-from juniorguru_plucker.spiders import StatsError, run_spider
+from jg.plucker.spiders import StatsError, run_spider
 
 
-logger = logging.getLogger("juniorguru_plucker")
+logger = logging.getLogger("jg.plucker")
 
 
 @click.group()
@@ -78,10 +78,10 @@ def crawl(
 
 
 @main.command()
-@click.argument("items_module_name", default="juniorguru_plucker.items", type=str)
+@click.argument("items_module_name", default="jg.plucker.items", type=str)
 @click.argument(
     "output_path",
-    default="juniorguru_plucker/schemas",
+    default="jg/plucker/schemas",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
 def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
@@ -165,7 +165,7 @@ def new():
     except ImportError:
         logger.error("Cookiecutter not installed")
         raise click.Abort()
-    cookiecutter(".", directory="scraper_template", output_dir="juniorguru_plucker")
+    cookiecutter(".", directory="scraper_template", output_dir="jg/plucker")
     subprocess.run(["ruff", "check", "--fix", "--quiet"], check=True)
     subprocess.run(["ruff", "format", "--quiet"], check=True)
 
@@ -249,9 +249,9 @@ def get_scraper(
                 "Both spider_name and actor_path specified, actor_path will be ignored!"
             )
         spider_package_name = spider_name.replace("-", "_")
-        actor_path = Path(f"juniorguru_plucker/{spider_package_name}")
-        return (f"juniorguru_plucker.{spider_package_name}.spider", actor_path)
+        actor_path = Path(f"jg/plucker/{spider_package_name}")
+        return (f"jg.plucker.{spider_package_name}.spider", actor_path)
     if actor_path:
-        # e.g. juniorguru_plucker/exchange_rates
+        # e.g. jg/plucker/exchange_rates
         return (get_spider_module_name(actor_path), Path(actor_path))
     raise click.BadParameter("Either spider_name or actor_path must be specified")

@@ -9,7 +9,7 @@ from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.utils.reactor import install_reactor
 
-from juniorguru_plucker.spiders import run_spider
+from jg.plucker.spiders import run_spider
 
 
 async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:

@@ -4,7 +4,7 @@ from textwrap import dedent
 
 import pytest
 
-from juniorguru_plucker.exchange_rates.spider import (
+from jg.plucker.exchange_rates.spider import (
     get_last_monday,
     parse_exchange_rate,
     parse_lines,

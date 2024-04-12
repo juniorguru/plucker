@@ -1,7 +1,7 @@
 import pytest
 from scrapy import Field, Item, Spider
 
-from juniorguru_plucker.pipelines import (
+from jg.plucker.pipelines import (
     MissingRequiredFields,
     RequiredFieldsFilterPipeline,
 )

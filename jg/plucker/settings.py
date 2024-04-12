@@ -1,6 +1,6 @@
 # Documentation: http://doc.scrapy.org/en/latest/topics/settings.html
 
-BOT_NAME = "juniorguru_plucker"
+BOT_NAME = "Plucker"
 
 LOG_LEVEL = "INFO"
 
@@ -20,12 +20,12 @@ ROBOTSTXT_OBEY = False
 # For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
 HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501, 999]
 
-SPIDER_LOADER_CLASS = "juniorguru_plucker.actors.SpiderLoader"
+SPIDER_LOADER_CLASS = "jg.plucker.actors.SpiderLoader"
 
-SPIDER_LOADER_SPIDERS_PATH = "./juniorguru_plucker"
+SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"
 
 ITEM_PIPELINES = {
-    "juniorguru_plucker.pipelines.RequiredFieldsFilterPipeline": 50,
+    "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
 }
 
 CLOSESPIDER_ERRORCOUNT = 1

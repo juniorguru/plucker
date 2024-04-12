@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from scrapy import Spider
 
-from juniorguru_plucker.spiders import StatsError, raise_for_stats
+from jg.plucker.spiders import StatsError, raise_for_stats
 
 
 spider_packages = [
-    spider_path.parent for spider_path in Path("juniorguru_plucker").rglob("spider.py")
+    spider_path.parent for spider_path in Path("jg/plucker").rglob("spider.py")
 ]
 
 assert len(spider_packages) > 0, "no spider packages found"
@@ -33,7 +33,7 @@ def test_actor_config_exists(spider_package: Path):
     [
         pytest.param(
             spider_package,
-            import_module(f"juniorguru_plucker.{spider_package.name}.spider").Spider,
+            import_module(f"jg.plucker.{spider_package.name}.spider").Spider,
             json.loads((spider_package / ".actor/actor.json").read_text()),
             id=spider_package.name,
         )

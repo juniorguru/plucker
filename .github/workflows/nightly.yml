@@ -26,9 +26,9 @@ jobs:
       - name: Build
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: poetry run jgp build
+        run: poetry run plucker build
 
       - name: Check
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: poetry run jgp check
+        run: poetry run plucker check

@@ -25,13 +25,13 @@ Plucker has a `crawl` CLI command, which you can also use, but it's more useful 
 Look at existing code and follow conventions.
 Creating new scraper, e.g. `gravel-bikes`:
 
-1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `juniorguru_plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
-    Run `jgp schemas` to generate schema for Apify.
+1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `jg/plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
+    Run `plucker schemas` to generate schema for Apify.
     Should the new scraper produce items already known to this codebase, such as jobs, you can skip this step.
-1.  Run `jgp new`, answer questions.
+1.  Run `plucker new`, answer questions.
     It is a [cookiecutter](https://github.com/cookiecutter/cookiecutter).
     It takes the `scraper_template` directory and creates a scaffolding of a new scraper for you.
-1.  Fill the newly created `juniorguru_plucker/gravel_bikes/spider.py` file with implementation of your scraper.
+1.  Fill the newly created `jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
     See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html)
 1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
 1.  Run the spider with `scrapy crawl gravel-bikes`.
@@ -42,7 +42,7 @@ Creating new scraper, e.g. `gravel-bikes`:
 Deploying to Apify (you need to be admin):
 
 1.  Push all your code to GitHub.
-1.  Run `jgp deploy gravel-bikes`.
+1.  Run `plucker deploy gravel-bikes`.
 1.  Go to [Apify Console](https://console.apify.com/actors) and verify everything went well.
 1.  Go to the <kbd>Builds</kbd> tab and start a build.
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.

@@ -1,6 +1,6 @@
 import pytest
 
-from juniorguru_plucker.url_params import (
+from jg.plucker.url_params import (
     get_param,
     get_params,
     increment_param,

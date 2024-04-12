@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from scrapy.http import XmlResponse
 
-from juniorguru_plucker.jobs_startupjobs.spider import (
+from jg.plucker.jobs_startupjobs.spider import (
     Spider,
     drop_remote,
 )

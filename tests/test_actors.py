@@ -2,20 +2,20 @@ from pathlib import Path
 
 from scrapy import Field, Item
 
-from juniorguru_plucker.actors import generate_schema, get_spider_module_name
+from jg.plucker.actors import generate_schema, get_spider_module_name
 
 
 def test_get_spider_module():
     assert (
-        get_spider_module_name("juniorguru_plucker/exchange_rates")
-        == "juniorguru_plucker.exchange_rates.spider"
+        get_spider_module_name("jg/plucker/exchange_rates")
+        == "jg.plucker.exchange_rates.spider"
     )
 
 
 def test_get_spider_module_path():
     assert (
-        get_spider_module_name(Path("juniorguru_plucker/exchange_rates"))
-        == "juniorguru_plucker.exchange_rates.spider"
+        get_spider_module_name(Path("jg/plucker/exchange_rates"))
+        == "jg.plucker.exchange_rates.spider"
     )
 
 

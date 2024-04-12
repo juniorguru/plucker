@@ -3,7 +3,7 @@ from typing import Generator
 from scrapy import Request
 from scrapy.http import Response, Spider as BaseSpider
 
-from juniorguru_plucker.items import {{ cookiecutter.item_name }}
+from jg.plucker.items import {{ cookiecutter.item_name }}
 
 
 class Spider(BaseSpider):

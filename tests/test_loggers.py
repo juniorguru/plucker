@@ -1,7 +1,7 @@
 import pytest
 from scrapy.settings import Settings
 
-from juniorguru_plucker.loggers import get_logging_level
+from jg.plucker.loggers import get_logging_level
 
 
 @pytest.mark.parametrize(

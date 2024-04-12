@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from juniorguru_plucker.processors import (
+from jg.plucker.processors import (
     first,
     last,
     parse_iso_date,

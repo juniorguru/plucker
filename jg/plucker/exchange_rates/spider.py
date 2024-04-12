@@ -5,7 +5,7 @@ from typing import Generator
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
 
-from juniorguru_plucker.items import ExchangeRate
+from jg.plucker.items import ExchangeRate
 
 
 class Spider(BaseSpider):

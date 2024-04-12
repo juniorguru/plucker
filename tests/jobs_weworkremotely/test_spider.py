@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from scrapy.http import HtmlResponse, XmlResponse
 
-from juniorguru_plucker.jobs_weworkremotely.spider import Spider, parse_date
+from jg.plucker.jobs_weworkremotely.spider import Spider, parse_date
 
 
 FIXTURES_DIR = Path(__file__).parent

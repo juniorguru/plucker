@@ -14,9 +14,9 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse, TextResponse
 from scrapy.loader import ItemLoader
 
-from juniorguru_plucker.items import Job
-from juniorguru_plucker.processors import first, split
-from juniorguru_plucker.url_params import get_params, strip_params
+from jg.plucker.items import Job
+from jg.plucker.processors import first, split
+from jg.plucker.url_params import get_params, strip_params
 
 
 WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")

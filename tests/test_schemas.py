@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from scrapy import Item
 
-from juniorguru_plucker import items
-from juniorguru_plucker.actors import generate_schema
+from jg.plucker import items
+from jg.plucker.actors import generate_schema
 
 
 items_module_members = [getattr(items, name) for name in dir(items)]
@@ -26,7 +26,7 @@ assert len(item_classes) > 0, f"no item classes found in {items.__file__}"
 def test_schema_exists(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
-    schema_path = Path(f"juniorguru_plucker/schemas/{schema_name}Schema.json")
+    schema_path = Path(f"jg/plucker/schemas/{schema_name}Schema.json")
 
     assert schema_path.exists()
 
@@ -38,6 +38,6 @@ def test_schema_exists(item_class: type[Item]):
 def test_schema_is_updated(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
-    schema_path = Path(f"juniorguru_plucker/schemas/{schema_name}Schema.json")
+    schema_path = Path(f"jg/plucker/schemas/{schema_name}Schema.json")
 
     assert json.loads(schema_path.read_text()) == generate_schema(item_class)

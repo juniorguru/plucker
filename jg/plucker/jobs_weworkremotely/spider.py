@@ -12,8 +12,8 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse, XmlResponse
 from scrapy.loader import ItemLoader
 
-from juniorguru_plucker.items import Job
-from juniorguru_plucker.processors import absolute_url
+from jg.plucker.items import Job
+from jg.plucker.processors import absolute_url
 
 
 class Spider(BaseSpider):
