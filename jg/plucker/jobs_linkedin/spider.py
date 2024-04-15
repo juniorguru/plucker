@@ -176,10 +176,11 @@ class Spider(BaseSpider):
         if not request:
             raise ValueError("Request is required for retry")
         headers = {
-            "Host": request.headers["Host"],
-            "Referer": request.headers["Referer"],
+            "Host": request.headers.get("Host"),
+            "Referer": request.headers.get("Referer"),
             **self.lang_headers,
         }
+        headers = {name: value for name, value in headers.items() if value}
         meta = request.meta | dict(playwright=True)
         print("Retrying with:\n", headers, "\n", meta)
         return request.replace(url=url, dont_filter=True, headers=headers, meta=meta)
