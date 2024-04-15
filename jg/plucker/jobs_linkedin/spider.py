@@ -183,7 +183,7 @@ class Spider(BaseSpider):
             f"Retrying {url} using browser, attempt {custom_retry_times}/{max_retry_times}"
         )
         # TODO proxy support
-        # see https://discord.com/channels/801163717915574323/1229374033049423893/1229374033049423893
+        # see https://docs.apify.com/sdk/python/docs/concepts/proxy-management#configuring-proxy-based-on-actor-input
         # see https://github.com/scrapy-plugins/scrapy-playwright?tab=readme-ov-file#proxy-support
         # see https://docs.scrapy.org/en/latest/topics/spiders.html#scrapy.Spider.update_settings
         return request.replace(
