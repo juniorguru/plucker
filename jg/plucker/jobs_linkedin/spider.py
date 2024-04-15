@@ -29,7 +29,6 @@ class Spider(BaseSpider):
     name = "jobs-linkedin"
     download_delay = 5
     custom_settings = {
-        "DEPTH_STATS_VERBOSE": True,
         "DOWNLOAD_HANDLERS": {
             "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
             "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
@@ -168,10 +167,20 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request is required to retry {url}")
-        max_retry_times = request.meta.get("max_retry_times", 0)
-        depth = request.meta.get("depth", 0)
+        max_retry_times = request.meta.get(
+            "max_retry_times", self.settings["RETRY_TIMES"]
+        )
+        custom_retry_times = request.meta.get("custom_retry_times", 0) + 1
+        meta = request.meta | dict(
+            playwright=True,
+            custom_retry_times=custom_retry_times,
+        )
+        if custom_retry_times > max_retry_times:
+            raise RuntimeError(
+                f"Max retries exceeded ({custom_retry_times}/{max_retry_times}) for {url}"
+            )
         self.logger.warning(
-            f"Retrying {url} using browser, attempt {depth}/{max_retry_times}"
+            f"Retrying {url} using browser, attempt {custom_retry_times}/{max_retry_times}"
         )
         # TODO proxy support
         # see https://discord.com/channels/801163717915574323/1229374033049423893/1229374033049423893
@@ -181,7 +190,7 @@ class Spider(BaseSpider):
             url=url,
             dont_filter=True,
             headers=self.request_headers,
-            meta=request.meta | dict(playwright=True),
+            meta=meta,
         )
 
     def _request(

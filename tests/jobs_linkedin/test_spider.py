@@ -5,6 +5,7 @@ from typing import cast
 import pytest
 from scrapy import Request
 from scrapy.http import HtmlResponse
+from scrapy.settings import Settings
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_linkedin.spider import (
@@ -23,12 +24,26 @@ FIXTURES_DIR = Path(__file__).parent
 
 
 def test_spider_parse_retry():
+    spider = Spider()
+    spider.settings = Settings({"RETRY_TIMES": 3})
     request = Request(SEARCH_BASE_URL, callback=Spider().parse)
     response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
-    requests = list(Spider().parse(response, SEARCH_BASE_URL))
+    requests = list(spider.parse(response, SEARCH_BASE_URL))
 
     assert len(requests) == 1
     assert requests[0].url == SEARCH_BASE_URL
+
+
+def test_spider_raise_if_too_many_custom_retry_times():
+    spider = Spider()
+    spider.settings = Settings({"RETRY_TIMES": 3})
+    request = Request(
+        SEARCH_BASE_URL, callback=Spider().parse, meta={"custom_retry_times": 3}
+    )
+    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
+
+    with pytest.raises(RuntimeError):
+        list(spider.parse(response, SEARCH_BASE_URL))
 
 
 def test_spider_parse():
@@ -62,9 +77,11 @@ def test_spider_parse_end():
 
 
 def test_spider_parse_job_retry():
+    spider = Spider()
+    spider.settings = Settings({"RETRY_TIMES": 3})
     request = Request(JOB_BASE_URL, callback=Spider().parse_job)
     response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
-    requests = list(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    requests = list(spider.parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
 
     assert len(requests) == 1
     assert requests[0].url == JOB_BASE_URL
