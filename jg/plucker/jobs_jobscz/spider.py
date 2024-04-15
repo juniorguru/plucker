@@ -23,7 +23,7 @@ WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
 WIDGET_DATA_SCRIPT_RE = re.compile(
     r"""
-        exports=JSON.parse\('
+        exports=JSON\.parse\('
         (                     # group we're matching
             {"id":
             (                 # one or more characters that are not the start of the word "function"
@@ -32,7 +32,6 @@ WIDGET_DATA_SCRIPT_RE = re.compile(
             )+
         )
         '\)}
-        (,function|]\);)      # either next function or the end of the JSON
     """,
     re.VERBOSE,
 )
