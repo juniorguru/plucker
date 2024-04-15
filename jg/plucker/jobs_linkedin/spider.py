@@ -29,6 +29,7 @@ class Spider(BaseSpider):
     name = "jobs-linkedin"
     download_delay = 5
     custom_settings = {
+        "DEPTH_STATS_VERBOSE": True,
         "DOWNLOAD_HANDLERS": {
             "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
             "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
@@ -50,21 +51,19 @@ class Spider(BaseSpider):
     lang_cookies = {"lang": "v=2&lang=en-us"}
     results_per_request = 25
 
-    @classmethod
-    def update_settings(cls, settings):
-        super().update_settings(settings)
-        from pprint import pformat
-
-        print("APIFY_PROXY_SETTINGS:", pformat(settings.get("APIFY_PROXY_SETTINGS")))
-        # "PLAYWRIGHT_LAUNCH_OPTIONS": {
-        #     "proxy": {
-        #         "server": "http://myproxy.com:3128",
-        #         "username": "user",
-        #         "password": "pass",
-        #     },
-        # }
-        # playwright_launch_options = settings.setdefault("PLAYWRIGHT_LAUNCH_OPTIONS", {})
-        # playwright_launch_options.update(cls.custom_feed)
+    @property
+    def request_headers(self) -> dict[str, str]:
+        return {
+            "Host": "www.linkedin.com",
+            "Referer": (
+                "https://www.linkedin.com/jobs/search"
+                "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
+                "&currentJobId=3864058898"
+                "&position=2"
+                "&pageNum=0"
+            ),
+            **self.lang_headers,
+        }
 
     def start_requests(self) -> Generator[Request, None, None]:
         for location in self.locations:
@@ -82,9 +81,6 @@ class Spider(BaseSpider):
         self, response: HtmlResponse, pagination_url: str
     ) -> Generator[Request, None, None]:
         if not response.url.startswith(SEARCH_BASE_URL):
-            self.logger.warning(
-                f"Unexpected listing URL: {response.url} (retrying {pagination_url})"
-            )
             yield self._retry(pagination_url, response.request)
             return
 
@@ -113,9 +109,6 @@ class Spider(BaseSpider):
         self, response: HtmlResponse, job_url: str, source_url: str
     ) -> Generator[Job | Request, None, None]:
         if not response.url.startswith(JOB_BASE_URL):
-            self.logger.warning(
-                f"Unexpected job URL: {response.url} (retrying {job_url})"
-            )
             yield self._retry(job_url, response.request)
             return
 
@@ -174,16 +167,22 @@ class Spider(BaseSpider):
 
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
-            raise ValueError("Request is required for retry")
-        headers = {
-            "Host": request.headers.get("Host"),
-            "Referer": request.headers.get("Referer"),
-            **self.lang_headers,
-        }
-        headers = {name: value for name, value in headers.items() if value}
-        meta = request.meta | dict(playwright=True)
-        print("Retrying with:\n", headers, "\n", meta)
-        return request.replace(url=url, dont_filter=True, headers=headers, meta=meta)
+            raise ValueError(f"Request is required to retry {url}")
+        max_retry_times = request.meta.get("max_retry_times", 0)
+        depth = request.meta.get("depth", 0)
+        self.logger.warning(
+            f"Retrying {url} using browser, attempt {depth}/{max_retry_times}"
+        )
+        # TODO proxy support
+        # see https://discord.com/channels/801163717915574323/1229374033049423893/1229374033049423893
+        # see https://github.com/scrapy-plugins/scrapy-playwright?tab=readme-ov-file#proxy-support
+        # see https://docs.scrapy.org/en/latest/topics/spiders.html#scrapy.Spider.update_settings
+        return request.replace(
+            url=url,
+            dont_filter=True,
+            headers=self.request_headers,
+            meta=request.meta | dict(playwright=True),
+        )
 
     def _request(
         self,
@@ -193,17 +192,7 @@ class Spider(BaseSpider):
     ) -> Request:
         return Request(
             url,
-            headers={
-                "Host": "www.linkedin.com",
-                "Referer": (
-                    "https://www.linkedin.com/jobs/search"
-                    "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
-                    "&currentJobId=3864058898"
-                    "&position=2"
-                    "&pageNum=0"
-                ),
-                **self.lang_headers,
-            },
+            headers=self.request_headers,
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
