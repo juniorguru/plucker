@@ -19,6 +19,8 @@ RUN echo "Python version:" \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
  && pip freeze
+ && echo "Installing Playwright dependencies:" \
+ && poetry run playwright install firefox
 
 RUN python3 -m compileall -q ./jg/plucker
 
