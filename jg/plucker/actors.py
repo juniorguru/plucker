@@ -7,7 +7,6 @@ from apify.scrapy.utils import apply_apify_settings
 from scrapy import Item, Spider
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
-from scrapy.utils.reactor import install_reactor
 
 from jg.plucker.spiders import run_spider
 
@@ -24,7 +23,6 @@ async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
 
 
 def configure_async():
-    install_reactor("twisted.internet.asyncioreactor.AsyncioSelectorReactor")
     nest_asyncio.apply()
 
 

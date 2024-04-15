@@ -28,6 +28,12 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 class Spider(BaseSpider):
     name = "jobs-linkedin"
     download_delay = 5
+    custom_settings = {
+        "DOWNLOAD_HANDLERS": {
+            "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+            "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+        },
+    }
 
     search_params = {
         "f_TPR": "r2592000",  # past month
@@ -43,6 +49,22 @@ class Spider(BaseSpider):
     lang_headers = {"Accept-Language": "en-us"}
     lang_cookies = {"lang": "v=2&lang=en-us"}
     results_per_request = 25
+
+    @classmethod
+    def update_settings(cls, settings):
+        super().update_settings(settings)
+        from pprint import pformat
+
+        print("APIFY_PROXY_SETTINGS:", pformat(settings.get("APIFY_PROXY_SETTINGS")))
+        # "PLAYWRIGHT_LAUNCH_OPTIONS": {
+        #     "proxy": {
+        #         "server": "http://myproxy.com:3128",
+        #         "username": "user",
+        #         "password": "pass",
+        #     },
+        # }
+        # playwright_launch_options = settings.setdefault("PLAYWRIGHT_LAUNCH_OPTIONS", {})
+        # playwright_launch_options.update(cls.custom_feed)
 
     def start_requests(self) -> Generator[Request, None, None]:
         for location in self.locations:
@@ -153,7 +175,14 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError("Request is required for retry")
-        return request.replace(url=url, dont_filter=True)
+        headers = {
+            "Host": request.headers["Host"],
+            "Referer": request.headers["Referer"],
+            **self.lang_headers,
+        }
+        meta = request.meta | dict(playwright=True)
+        print("Retrying with:\n", headers, "\n", meta)
+        return request.replace(url=url, dont_filter=True, headers=headers, meta=meta)
 
     def _request(
         self,

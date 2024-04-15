@@ -31,3 +31,12 @@ ITEM_PIPELINES = {
 CLOSESPIDER_ERRORCOUNT = 1
 
 AUTOTHROTTLE_ENABLED = True
+
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+
+PLAYWRIGHT_BROWSER_TYPE = "firefox"
+
+EXTENSIONS = {
+    "scrapy.extensions.memusage.MemoryUsage": None,
+    "scrapy_playwright.memusage.ScrapyPlaywrightMemoryUsageExtension": 0,
+}
