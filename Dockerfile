@@ -18,7 +18,7 @@ RUN echo "Python version:" \
  && poetry install --only=main --no-interaction --no-ansi \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
- && pip freeze
+ && pip freeze \
  && echo "Installing Playwright dependencies:" \
  && poetry run playwright install firefox
 
