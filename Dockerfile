@@ -20,7 +20,7 @@ RUN echo "Python version:" \
  && echo "All installed Python packages:" \
  && pip freeze \
  && echo "Installing Playwright dependencies:" \
- && poetry run playwright install firefox
+ && poetry run playwright install firefox --with-deps
 
 RUN python3 -m compileall -q ./jg/plucker
 
