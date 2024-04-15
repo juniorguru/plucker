@@ -22,8 +22,8 @@
             }
         }
     },
-    "dockerfile": "../../../Dockerfile",
-    "dockerContextDir": "../../../",
+    "dockerfile": "../../../../Dockerfile",
+    "dockerContextDir": "../../../../",
     "storages": {
         "dataset": "../../schemas/jobSchema.json"
     }

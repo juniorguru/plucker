@@ -22,10 +22,42 @@ assert len(spider_packages) > 0, "no spider packages found"
         for spider_package in spider_packages
     ],
 )
-def test_actor_config_exists(spider_package: Path):
+def test_actor_config_is_readable(spider_package: Path):
     actor_config_path = spider_package / ".actor/actor.json"
 
-    assert actor_config_path.exists()
+    assert json.loads(actor_config_path.read_text())
+
+
+@pytest.mark.parametrize(
+    "spider_package",
+    [
+        pytest.param(spider_package, id=spider_package.name)
+        for spider_package in spider_packages
+    ],
+)
+def test_actor_config_has_valid_docker_paths(spider_package: Path):
+    actor_config_path = spider_package / ".actor/actor.json"
+    actor_config = json.loads(actor_config_path.read_text())
+    dockerfile_path = actor_config_path.parent / actor_config["dockerfile"]
+    docker_context_path = actor_config_path.parent / actor_config["dockerContextDir"]
+
+    assert dockerfile_path.read_text()
+    assert dockerfile_path.parent == docker_context_path
+
+
+@pytest.mark.parametrize(
+    "spider_package",
+    [
+        pytest.param(spider_package, id=spider_package.name)
+        for spider_package in spider_packages
+    ],
+)
+def test_actor_config_has_valid_schema_path(spider_package: Path):
+    actor_config_path = spider_package / ".actor/actor.json"
+    actor_config = json.loads(actor_config_path.read_text())
+    dataset_path = actor_config_path.parent / actor_config["storages"]["dataset"]
+
+    assert json.loads(dataset_path.read_text())
 
 
 @pytest.mark.parametrize(

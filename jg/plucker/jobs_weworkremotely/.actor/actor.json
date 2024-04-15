@@ -3,8 +3,8 @@
     "name": "jobs-weworkremotely",
     "title": "jobs-weworkremotely",
     "version": "0.0",
-    "dockerfile": "../../../Dockerfile",
-    "dockerContextDir": "../../../",
+    "dockerfile": "../../../../Dockerfile",
+    "dockerContextDir": "../../../../",
     "storages": {
         "dataset": "../../schemas/jobSchema.json"
     }

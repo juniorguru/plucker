@@ -3,8 +3,8 @@
     "name": "exchange-rates",
     "title": "exchange-rates",
     "version": "0.0",
-    "dockerfile": "../../../Dockerfile",
-    "dockerContextDir": "../../../",
+    "dockerfile": "../../../../Dockerfile",
+    "dockerContextDir": "../../../../",
     "storages": {
         "dataset": "../../schemas/exchangeRateSchema.json"
     }

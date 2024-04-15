@@ -24,8 +24,8 @@
     }
   },
   {% endif -%}
-  "dockerfile": "../../../Dockerfile",
-  "dockerContextDir": "../../../",
+  "dockerfile": "../../../../Dockerfile",
+  "dockerContextDir": "../../../../",
   "storages": {
     "dataset": "../../schemas/{{ cookiecutter.schema_name }}"
   }
