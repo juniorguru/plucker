@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import sys
+import time
 
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
@@ -110,7 +111,14 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
     "git_repo_url_match",
     default="https://github.com/juniorguru/plucker#main",
 )
-def build(token: str, git_repo_url_match: str):
+@click.option("--build-timeout", default=4 * 60, type=int, help="In seconds.")
+@click.option("--build-polling-wait", default=30, type=int, help="In seconds.")
+def build(
+    token: str,
+    git_repo_url_match: str,
+    build_timeout: int,
+    build_polling_wait: int,
+):
     client = ApifyClient(token=token)
     for actor_info in client.actors().list(my=True).items:
         logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
@@ -125,10 +133,22 @@ def build(token: str, git_repo_url_match: str):
             git_repo_url = latest_version.get("gitRepoUrl") or ""
             if git_repo_url.startswith(git_repo_url_match):
                 logger.info("Building actor…")
+                total_attempts = build_timeout // build_polling_wait
                 build_info = actor_client.build(
-                    version_number=latest_version["versionNumber"],
-                    wait_for_finish=60,
+                    version_number=latest_version["versionNumber"]
                 )
+                build = client.build(build_info["id"])
+                time.sleep(build_polling_wait)
+                for attempt in range(1, total_attempts):
+                    build_info = build.get()
+                    if build_info is None:
+                        raise RuntimeError("Build not found")
+                    if build_info["status"] == ActorJobStatus.SUCCEEDED:
+                        break
+                    logger.info(
+                        f"Waiting for build to finish… ({attempt}/{total_attempts}, {build_info['status']})"
+                    )
+                    time.sleep(build_polling_wait)
                 if build_info["status"] != ActorJobStatus.SUCCEEDED:
                     logger.error(f"Status: {build_info['status']}")
                     raise click.Abort()
