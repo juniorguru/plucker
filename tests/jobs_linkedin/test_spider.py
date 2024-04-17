@@ -34,18 +34,6 @@ def test_spider_parse_retry():
     assert requests[0].url == SEARCH_BASE_URL
 
 
-def test_spider_raise_if_too_many_custom_retry_times():
-    spider = Spider()
-    spider.settings = Settings({"RETRY_TIMES": 3})
-    request = Request(
-        SEARCH_BASE_URL, callback=Spider().parse, meta={"custom_retry_times": 3}
-    )
-    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
-
-    with pytest.raises(RuntimeError):
-        list(spider.parse(response, SEARCH_BASE_URL))
-
-
 def test_spider_parse():
     response = HtmlResponse(
         SEARCH_BASE_URL, body=Path(FIXTURES_DIR / "more.html").read_bytes()

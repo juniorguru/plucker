@@ -20,7 +20,7 @@ ROBOTSTXT_OBEY = False
 # For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
 HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501, 999]
 
-SPIDER_LOADER_CLASS = "jg.plucker.actors.SpiderLoader"
+SPIDER_LOADER_CLASS = "jg.plucker.scrapers.SpiderLoader"
 
 SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"
 

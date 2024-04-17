@@ -166,22 +166,10 @@ class Spider(BaseSpider):
 
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
-            raise ValueError(f"Request is required to retry {url}")
-        max_retry_times = request.meta.get(
-            "max_retry_times", self.settings["RETRY_TIMES"]
-        )
-        custom_retry_times = request.meta.get("custom_retry_times", 0) + 1
-        meta = request.meta | dict(
-            playwright=True,
-            custom_retry_times=custom_retry_times,
-        )
-        if custom_retry_times > max_retry_times:
-            raise RuntimeError(
-                f"Max retries exceeded ({custom_retry_times}/{max_retry_times}) for {url}"
-            )
-        self.logger.warning(
-            f"Retrying {url} using browser, attempt {custom_retry_times}/{max_retry_times}"
-        )
+            raise ValueError(f"Request object is required to retry {url}")
+        meta = request.meta | dict(playwright=True)
+        self.logger.warning(f"Retrying {url} using browser")
+
         # TODO proxy support
         # see https://docs.apify.com/sdk/python/docs/concepts/proxy-management#configuring-proxy-based-on-actor-input
         # see https://github.com/scrapy-plugins/scrapy-playwright?tab=readme-ov-file#proxy-support
