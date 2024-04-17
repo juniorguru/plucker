@@ -167,18 +167,12 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
-        meta = request.meta | dict(playwright=True)
         self.logger.warning(f"Retrying {url} using browser")
-
-        # TODO proxy support
-        # see https://docs.apify.com/sdk/python/docs/concepts/proxy-management#configuring-proxy-based-on-actor-input
-        # see https://github.com/scrapy-plugins/scrapy-playwright?tab=readme-ov-file#proxy-support
-        # see https://docs.scrapy.org/en/latest/topics/spiders.html#scrapy.Spider.update_settings
         return request.replace(
             url=url,
             dont_filter=True,
             headers=self.request_headers,
-            meta=meta,
+            meta=request.meta | dict(playwright=True),
         )
 
     def _request(

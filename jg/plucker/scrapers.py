@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 from typing import Any, Generator, Self, Type
 from urllib.parse import urlparse
@@ -141,10 +142,12 @@ class PlaywrightApifyHttpProxyMiddleware(ApifyHttpProxyMiddleware):
                 )
 
             proxy = url.geturl()
-            Actor.log.info(f"Creating a new Playwright context with proxy {proxy}")
+            proxy_hash = hashlib.sha1(proxy.encode()).hexdigest()[0:8]
+            context_name = f"proxy_{proxy_hash}"
+            Actor.log.info(f"Using Playwright context {context_name}")
             request.meta.update(
                 {
-                    "playwright_context": f"proxy_{urlparse(request.url).hostname}",
+                    "playwright_context": f"proxy_{context_name}",
                     "playwright_context_kwargs": {
                         "proxy": {
                             "server": proxy,
