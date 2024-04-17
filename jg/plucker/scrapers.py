@@ -141,6 +141,7 @@ class PlaywrightApifyHttpProxyMiddleware(ApifyHttpProxyMiddleware):
                 )
 
             proxy = url.geturl()
+            Actor.log.info(f"Creating a new Playwright context with proxy {proxy}")
             request.meta.update(
                 {
                     "playwright_context": f"proxy_{urlparse(request.url).hostname}",
