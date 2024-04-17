@@ -23,14 +23,15 @@ from pathlib import Path
 import click
 from scrapy import Item
 
-from jg.plucker.actors import (
+from jg.plucker.scrapers import (
+    StatsError,
     configure_async,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
     run_actor,
+    run_spider,
 )
-from jg.plucker.spiders import StatsError, run_spider
 
 
 logger = logging.getLogger("jg.plucker")

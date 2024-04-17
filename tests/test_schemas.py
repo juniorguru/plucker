@@ -5,7 +5,7 @@ import pytest
 from scrapy import Item
 
 from jg.plucker import items
-from jg.plucker.actors import generate_schema
+from jg.plucker.scrapers import generate_schema
 
 
 items_module_members = [getattr(items, name) for name in dir(items)]

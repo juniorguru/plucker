@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from scrapy import Spider
 
-from jg.plucker.spiders import StatsError, raise_for_stats
+from jg.plucker.scrapers import StatsError, raise_for_stats
 
 
 spider_packages = [

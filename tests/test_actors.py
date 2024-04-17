@@ -2,7 +2,7 @@ from pathlib import Path
 
 from scrapy import Field, Item
 
-from jg.plucker.actors import generate_schema, get_spider_module_name
+from jg.plucker.scrapers import generate_schema, get_spider_module_name
 
 
 def test_get_spider_module():
