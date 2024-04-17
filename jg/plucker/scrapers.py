@@ -1,7 +1,6 @@
 import hashlib
 from pathlib import Path
 from typing import Any, Generator, Self, Type
-from urllib.parse import urlparse
 
 import nest_asyncio
 from apify import Actor, Configuration
