@@ -206,18 +206,13 @@ class Spider(BaseSpider):
                 widget_id=widget_data["id"],
                 track_id=track_id,
             )
-        elif matches := list(
-            re.finditer(WIDGET_DATA_SCRIPT_MESS_RE, script_response.text)
-        ):
-            data = {match.group("key"): match.group("value") for match in matches}
-            if not (widget_host := urlparse(url).hostname):
-                raise ValueError(f"Invalid URL: {url!r}")
+        elif mess := parse_widget_script_mess(script_response.text):
             yield from self.parse_job_widget(
                 url,
                 item,
-                widget_host=widget_host,
-                widget_api_key=data["widgetApiKey"],
-                widget_id=data["widgetId"],
+                widget_host=get_widget_host(url),
+                widget_api_key=mess["widgetApiKey"],
+                widget_id=mess["widgetId"],
                 track_id=track_id,
             )
         elif script_urls:
@@ -330,6 +325,21 @@ def select_widget(names: list[str]) -> str:
         if name.startswith("main"):
             return name
     return names[0]
+
+
+def parse_widget_script_mess(text: str) -> dict[str, str] | None:
+    matches = re.finditer(WIDGET_DATA_SCRIPT_MESS_RE, text)
+    data = {match.group("key"): match.group("value") for match in matches}
+    try:
+        return {"widgetId": data["widgetId"], "widgetApiKey": data["widgetApiKey"]}
+    except KeyError:
+        return None
+
+
+def get_widget_host(url: str) -> str:
+    if widget_host := urlparse(url).hostname:
+        return widget_host
+    raise ValueError(f"Invalid URL: {url!r}")
 
 
 def get_script_relevance(url: str) -> int:
