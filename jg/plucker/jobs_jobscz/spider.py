@@ -7,7 +7,7 @@ from datetime import date, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Generator, Iterable, cast
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
@@ -21,10 +21,10 @@ from jg.plucker.url_params import get_params, strip_params
 
 WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
-WIDGET_DATA_SCRIPT_RE = re.compile(
+WIDGET_DATA_SCRIPT_JSON_RE = re.compile(
     r"""
         exports=JSON\.parse\('
-        (                     # group we're matching
+        (?P<data>
             {"id":
             (                 # one or more characters that are not the start of the word "function"
                 (?!function)
@@ -36,7 +36,30 @@ WIDGET_DATA_SCRIPT_RE = re.compile(
     re.VERBOSE,
 )
 
-SCRIPT_URL_RE = re.compile(r"/assets/js/([^/]+/)?script\.min\.js")
+WIDGET_DATA_SCRIPT_MESS_RE = re.compile(
+    r"""
+        \([^"]+
+        "
+            (?P<key>[^"]+)
+        "
+        \s*,\s*
+        "
+            (?P<value>[^"]+)
+        "
+        \)
+    """,
+    re.VERBOSE,
+)
+
+SCRIPT_URL_RE = re.compile(
+    r"""
+        /assets/js/
+        ([^/]+/)?
+        (?P<name>\w+)
+        \.min\.js
+    """,
+    re.VERBOSE,
+)
 
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
@@ -132,13 +155,25 @@ class Spider(BaseSpider):
             self.track_logger(track_id).debug(
                 "Looking for widget data in attached JavaScript"
             )
-            script_url = select_script_url(
-                response.css('script[src*="script.min.js"]::attr(src)').getall()
+            script_urls = sorted(
+                map(
+                    response.urljoin,
+                    response.css(
+                        'script[src*="assets/"][src*=".min.js"]::attr(src)'
+                    ).getall(),
+                ),
+                key=get_script_relevance,
             )
+            self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
             yield response.follow(
-                script_url,
+                script_urls.pop(0),
                 callback=self.parse_job_widget_script,
-                cb_kwargs=dict(item=item, url=response.url, track_id=track_id),
+                cb_kwargs=dict(
+                    item=item,
+                    url=response.url,
+                    script_urls=script_urls,
+                    track_id=track_id,
+                ),
             )
         else:
             yield from self.parse_job_widget(
@@ -155,15 +190,14 @@ class Spider(BaseSpider):
         script_response: TextResponse,
         url: str,
         item: Job,
+        script_urls: list[str],
         track_id: str,
     ) -> Generator[Request, None, None]:
-        if match := re.search(WIDGET_DATA_SCRIPT_RE, script_response.text):
-            data_text = re.sub(r"\'", r"\\'", match.group(1))
+        if match := re.search(WIDGET_DATA_SCRIPT_JSON_RE, script_response.text):
+            data_text = re.sub(r"\'", r"\\'", match.group("data"))
             data = json.loads(data_text)
-
             widget_name = select_widget(list(data["widgets"].keys()))
             widget_data = data["widgets"][widget_name]
-
             yield from self.parse_job_widget(
                 url,
                 item,
@@ -171,6 +205,32 @@ class Spider(BaseSpider):
                 widget_api_key=widget_data["apiKey"],
                 widget_id=widget_data["id"],
                 track_id=track_id,
+            )
+        elif matches := list(
+            re.finditer(WIDGET_DATA_SCRIPT_MESS_RE, script_response.text)
+        ):
+            data = {match.group("key"): match.group("value") for match in matches}
+            if not (widget_host := urlparse(url).hostname):
+                raise ValueError(f"Invalid URL: {url!r}")
+            yield from self.parse_job_widget(
+                url,
+                item,
+                widget_host=widget_host,
+                widget_api_key=data["widgetApiKey"],
+                widget_id=data["widgetId"],
+                track_id=track_id,
+            )
+        elif script_urls:
+            self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
+            yield Request(
+                script_urls.pop(0),
+                callback=self.parse_job_widget_script,
+                cb_kwargs=dict(
+                    item=item,
+                    url=url,
+                    script_urls=script_urls,
+                    track_id=track_id,
+                ),
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -228,7 +288,10 @@ class Spider(BaseSpider):
         self, response: TextResponse, item: Job, track_id: str
     ) -> Generator[Job, None, None]:
         self.track_logger(track_id).debug("Parsing job widget API response")
-        payload = cast(dict, response.json())
+        try:
+            payload = cast(dict, response.json())
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON: {response!r}\n{response.text!r}") from e
         job_ad = payload["data"]["widget"]["jobAd"]
 
         loader = Loader(item=item, response=response)
@@ -269,17 +332,17 @@ def select_widget(names: list[str]) -> str:
     return names[0]
 
 
-def select_script_url(urls: list[str]) -> str:
-    matching_urls = (url for url in urls if SCRIPT_URL_RE.match(url))
-    relevant_urls = (
-        url
-        for url in matching_urls
-        if not url.startswith("/assets/js/common/script.min.js")
-    )
-    try:
-        return next(relevant_urls)
-    except StopIteration:
-        raise ValueError(f"URLs: {urls!r}")
+def get_script_relevance(url: str) -> int:
+    if "/assets/js/common/script.min.js" in url:
+        return 3
+    if match := SCRIPT_URL_RE.search(url):
+        name = match.group("name")
+        if name == "script":
+            return 1
+        if name == "react":
+            return 2
+        return 3
+    return 3
 
 
 def clean_url(url: str) -> str:

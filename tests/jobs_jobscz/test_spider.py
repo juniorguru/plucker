@@ -225,7 +225,9 @@ def test_spider_parse_job_widget_script_response():
         "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c",
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
-    request = next(Spider().parse_job_widget_script(response, html_url, Job(), "123"))
+    request = next(
+        Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
+    )
 
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
@@ -268,7 +270,7 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
     response = TextResponse(
         "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
-    requests = Spider().parse_job_widget_script(response, html_url, Job(), "123")
+    requests = Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
 
     assert next(requests)
 
