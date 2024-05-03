@@ -29,7 +29,6 @@ class Spider(BaseSpider):
     name = "jobs-linkedin"
     download_delay = 5
     custom_settings = {
-        "AUTOTHROTTLE_ENABLED": True,
         "DOWNLOAD_HANDLERS": {
             "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
             "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",

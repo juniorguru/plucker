@@ -67,6 +67,9 @@ WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 class Spider(BaseSpider):
     name = "jobs-jobscz"
 
+    custom_settings = {
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
+    }
     start_urls = [
         "https://beta.www.jobs.cz/prace/programator/",
         "https://beta.www.jobs.cz/prace/tester/",
