@@ -68,7 +68,7 @@ class Spider(BaseSpider):
     name = "jobs-jobscz"
 
     custom_settings = {
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
     }
     start_urls = [
         "https://beta.www.jobs.cz/prace/programator/",
