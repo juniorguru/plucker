@@ -74,3 +74,6 @@ Apify used to send summary e-mail about actor runs, but they removed that featur
 -   _spider_ - This is how [Scrapy](https://scrapy.org/) framework calls implementation of a scraper.
 -   _actor_ - This is how the [Apify](https://apify.com) platform calls implementation of a scraper.
 -   _plucker_ - Repository of Junior Guru scrapers. In English, a plucker is one who or that which plucks. Naming in Junior Guru is usually poultry-themed, and Honza felt that plucking is a nice analogy to web scraping.
+
+## License
+[AGPL-3.0-only](LICENSE), copyright (c) 2024 Jan Javorek, and contributors.
