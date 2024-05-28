@@ -3,6 +3,7 @@ name: nightly
 on:
   schedule:
     - cron: "0 4 * * *"  # every day at 4am
+  workflow_dispatch:  # allows manual triggering of the workflow
 
 jobs:
   build:
