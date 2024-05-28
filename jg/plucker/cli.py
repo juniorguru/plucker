@@ -112,7 +112,7 @@ def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
     "git_repo_url_match",
     default="https://github.com/juniorguru/plucker#main",
 )
-@click.option("--build-timeout", default=4 * 60, type=int, help="In seconds.")
+@click.option("--build-timeout", default=5 * 60, type=int, help="In seconds.")
 @click.option("--build-polling-wait", default=30, type=int, help="In seconds.")
 def build(
     token: str,
