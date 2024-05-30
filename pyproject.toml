@@ -18,7 +18,7 @@ apify = {version = "1.7.2b1", extras = ["scrapy"], allow-prereleases = true}
 apify-client = {version = "1.6.5b2", allow-prereleases = true}
 apify-shared = {version = "1.1.2b3", allow-prereleases = true}
 click = "8.1.7"
-extruct = "0.16.0"
+extruct = "0.17.0"
 feedparser = "6.0.11"
 nest-asyncio = "1.6.0"
 scrapy = "2.11.2"
