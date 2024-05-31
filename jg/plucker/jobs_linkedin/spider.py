@@ -44,6 +44,7 @@ class Spider(BaseSpider):
         "junior vyvojar",
         "junior programator",
         "junior tester",
+        "junior data",
     ]
     locations = ["Czechia", "Slovakia"]
     lang_headers = {"Accept-Language": "en-us"}
