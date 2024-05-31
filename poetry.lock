@@ -44,32 +44,32 @@ trio = ["trio (>=0.23)"]
 
 [[package]]
 name = "apify"
-version = "1.7.2b1"
+version = "1.7.2b2"
 description = "Apify SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "apify-1.7.2b1-py3-none-any.whl", hash = "sha256:8743772693ef6ed469b461c3accf0cde7644b0b599b0a30691915a79f0cf80e4"},
-    {file = "apify-1.7.2b1.tar.gz", hash = "sha256:c3a723ba8f6a6d2345726dbc68f02c89eb489af0915e24a51b8471a8aa5fec2e"},
+    {file = "apify-1.7.2b2-py3-none-any.whl", hash = "sha256:b82ecfa7f1f8479af5cab82733f57c2ad448ec83513938be2e98e36695016f1b"},
+    {file = "apify-1.7.2b2.tar.gz", hash = "sha256:3b2e20bbf9319b0c0b63cc34af95446858326992bcc7e72d5e2f63140a564c5b"},
 ]
 
 [package.dependencies]
 aiofiles = ">=22.1.0"
 aioshutil = ">=1.0"
-apify-client = ">=1.6.2,<1.7.0"
-apify-shared = ">=1.1.1,<1.2.0"
+apify-client = ">=1.6.0,<1.7.0"
+apify-shared = ">=1.1.0,<1.2.0"
 colorama = ">=0.4.6"
 cryptography = ">=39.0.0"
-httpx = ">=0.24.1"
-psutil = ">=5.9.5"
-pyee = ">=11.0.1"
+httpx = ">=0.24.0"
+psutil = ">=5.9.0"
+pyee = ">=11.0.0"
 scrapy = {version = ">=2.11.0", optional = true, markers = "extra == \"scrapy\""}
-sortedcollections = ">=2.0.1"
+sortedcollections = ">=2.0.0"
 typing-extensions = ">=4.1.0"
 websockets = ">=10.1"
 
 [package.extras]
-dev = ["build (>=1.2.0,<1.3.0)", "filelock (>=3.14.0,<3.15.0)", "mypy (>=1.10.0,<1.11.0)", "pre-commit (>=3.5.0,<3.6.0)", "pydoc-markdown (>=4.8.0,<4.9.0)", "pytest (>=8.2.0,<8.3.0)", "pytest-asyncio (>=0.23.0,<0.24.0)", "pytest-cov (>=5.0.0,<5.1.0)", "pytest-only (>=2.1.0,<2.2.0)", "pytest-timeout (>=2.3.0,<2.4.0)", "pytest-xdist (>=3.6.0,<3.7.0)", "respx (>=0.21.0,<0.22.0)", "ruff (>=0.4.0,<0.5.0)", "twine (>=5.1.0,<5.2.0)", "types-aiofiles (>=23.2.0.20240403,<23.3.0.0)", "types-colorama (>=0.4.15.20240311,<0.5.0.0)", "types-psutil (>=5.9.5.20240516,<5.10.0.0)"]
+dev = ["build (>=1.2.0,<1.3.0)", "filelock (>=3.14.0,<3.15.0)", "mypy (>=1.10.0,<1.11.0)", "pre-commit (>=3.5.0,<3.6.0)", "pydoc-markdown (>=4.8.0,<4.9.0)", "pytest (>=8.2.0,<8.3.0)", "pytest-asyncio (>=0.23.0,<0.24.0)", "pytest-cov (>=5.0.0,<5.1.0)", "pytest-only (>=2.1.0,<2.2.0)", "pytest-timeout (>=2.3.0,<2.4.0)", "pytest-xdist (>=3.6.0,<3.7.0)", "respx (>=0.21.0,<0.22.0)", "ruff (>=0.4.0,<0.5.0)", "setuptools (>=70.0.0,<70.1.0)", "twine (>=5.1.0,<5.2.0)", "types-aiofiles (>=23.2.0.20240403,<23.3.0.0)", "types-colorama (>=0.4.15.20240311,<0.5.0.0)", "types-psutil (>=5.9.5.20240516,<5.10.0.0)"]
 scrapy = ["scrapy (>=2.11.0)"]
 
 [[package]]
@@ -2026,4 +2026,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "1147e87fc9cbd6e4f1d873c26283679e520e9f2a9f32de64656dab07fb73acb7"
+content-hash = "4629fdcef83ad1bd6719fc09bca18823b90e12f4d0236a9d2b1ecf1b25d47d2a"
