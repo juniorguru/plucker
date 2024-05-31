@@ -73,7 +73,7 @@ class Spider(BaseSpider):
     start_urls = [
         "https://beta.www.jobs.cz/prace/programator/",
         "https://beta.www.jobs.cz/prace/tester/",
-        "https://www.jobs.cz/prace/datovy-analytik/",
+        "https://beta.www.jobs.cz/prace/datovy-analytik/",
     ]
     employment_types_labels = [
         "Typ pracovního poměru",
