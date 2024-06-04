@@ -10,6 +10,7 @@ Contributing new scraper shouldn't be hard if you have some knowledge of how Scr
 
 The scrapers are then deployed to the [Apify](https://apify.com) platform as so called _actors_.
 The code here works as a monorepo for Apify actors and diverges quite significantly from the [Scrapy template](https://github.com/apify/actor-templates/tree/master/templates/python-scrapy) Apify provides.
+Deploying new scraper to Apify is a manual process and it is documented below.
 
 Code in this repository is executed by Apify, on their infrastructure.
 The [main Junior Guru codebase](https://github.com/juniorguru/junior.guru) then gets the scraped data in form of [datasets](https://docs.apify.com/platform/storage/dataset) available through the Apify API.
