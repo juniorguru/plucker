@@ -25,7 +25,7 @@ WIDGET_DATA_SCRIPT_JSON_RE = re.compile(
     r"""
         exports=JSON\.parse\('
         (?P<data>
-            {"id":
+            {"[^"]+":         # JSON object key
             (                 # one or more characters that are not the start of the word "function"
                 (?!function)
                 .
@@ -197,9 +197,7 @@ class Spider(BaseSpider):
         script_urls: list[str],
         track_id: str,
     ) -> Generator[Request, None, None]:
-        if match := re.search(WIDGET_DATA_SCRIPT_JSON_RE, script_response.text):
-            data_text = re.sub(r"\'", r"\\'", match.group("data"))
-            data = json.loads(data_text)
+        if data := parse_widget_script_json(script_response.text):
             widget_name = select_widget(list(data["widgets"].keys()))
             widget_data = data["widgets"][widget_name]
             yield from self.parse_job_widget(
@@ -329,6 +327,14 @@ def select_widget(names: list[str]) -> str:
         if name.startswith("main"):
             return name
     return names[0]
+
+
+def parse_widget_script_json(text: str) -> dict[str, Any] | None:
+    if match := re.search(WIDGET_DATA_SCRIPT_JSON_RE, text):
+        data_text = re.sub(r"\'", r"\\'", match.group("data"))
+        data = json.loads(data_text)
+        return data
+    return None
 
 
 def parse_widget_script_mess(text: str) -> dict[str, str] | None:
