@@ -1,6 +1,6 @@
 import json
 from enum import IntEnum, unique
-from pprint import pformat, pprint
+from pprint import pformat
 from typing import Generator
 
 from scrapy import Request, Spider as BaseSpider
@@ -104,7 +104,6 @@ class Spider(BaseSpider):
                         cz_business_id=course["osoba"]["ico"],
                     )
                 except KeyError:
-                    pprint(course)
                     self.logger.error(f"Failed to parse:\n{pformat(course)}")
                     raise
             yield self.fetch_courses(next_start)
