@@ -255,7 +255,7 @@ def deploy(
     if build:
         logger.info(f"Building actor {actor_info['name']}…")
         build_info = client.actor(actor_info["id"]).build(
-            version_number=version, wait_for_finish=60
+            version_number=version, wait_for_finish=60 * 5
         )
         if build_info["status"] != ActorJobStatus.SUCCEEDED:
             logger.error(f"Status: {build_info['status']}")
