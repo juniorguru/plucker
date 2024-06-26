@@ -36,4 +36,5 @@ class CourseProvider(Item):
     url = Field(required=True, apify_format="link")
     name = Field(required=True)
     description = Field(required=True)
+    company_name = Field(required=True)
     cz_business_id = Field(required=True, apify_format="number")
