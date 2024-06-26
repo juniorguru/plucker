@@ -1,0 +1,41 @@
+{
+    "title": "CourseProvider",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "CourseProvider",
+            "transformation": {
+                "fields": [
+                    "cz_business_id",
+                    "description",
+                    "id",
+                    "name",
+                    "url"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "cz_business_id": {
+                        "label": "cz_business_id",
+                        "format": "number"
+                    },
+                    "description": {
+                        "label": "description"
+                    },
+                    "id": {
+                        "label": "id",
+                        "format": "number"
+                    },
+                    "name": {
+                        "label": "name"
+                    },
+                    "url": {
+                        "label": "url",
+                        "format": "link"
+                    }
+                }
+            }
+        }
+    }
+}

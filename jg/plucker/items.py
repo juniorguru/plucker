@@ -23,9 +23,17 @@ class Job(Item):
     description_html = Field(required=True)
 
     source = Field(required=True)
-    source_urls = Field(apify_format="array", required=True)
+    source_urls = Field(required=True, apify_format="array")
 
 
 class ExchangeRate(Item):
     code = Field(required=True)
     rate = Field(required=True, apify_format="number")
+
+
+class CourseProvider(Item):
+    id = Field(required=True, apify_format="number")
+    url = Field(required=True, apify_format="link")
+    name = Field(required=True)
+    description = Field(required=True)
+    cz_business_id = Field(required=True, apify_format="number")

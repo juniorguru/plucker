@@ -2,6 +2,7 @@ import logging
 import subprocess
 import sys
 import time
+from typing import Generator, Type
 
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
@@ -86,21 +87,13 @@ def crawl(
     default="jg/plucker/schemas",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
-def schemas(items_module_name: str, output_path: Path, do_print: bool = False):
-    items_module = importlib.import_module(items_module_name)
+def schemas(items_module_name: str, output_path: Path):
+    for item_type in item_types(items_module_name):
+        item_type_name = item_type.__name__
+        logger.info(f"Generating schema for {item_type_name}…")
+        schema = generate_schema(item_type)
 
-    for member_name in dir(items_module):
-        member = getattr(items_module, member_name)
-        if not isinstance(member, type):
-            continue
-        if not issubclass(member, Item):
-            continue
-        if member == Item:
-            continue
-        logger.info(f"Generating schema for {member_name}…")
-        schema = generate_schema(member)
-
-        schema_name = member_name[0].lower() + member_name[1:]
+        schema_name = item_type_name[0].lower() + item_type_name[1:]
         schema_path = output_path / f"{schema_name}Schema.json"
         schema_path.write_text(json.dumps(schema, indent=4, ensure_ascii=False) + "\n")
 
@@ -180,13 +173,22 @@ def check(token: str):
 
 
 @main.command()
-def new():
+@click.argument("items_module_name", default="jg.plucker.items", type=str)
+def new(items_module_name: str):
     try:
         from cookiecutter.main import cookiecutter
     except ImportError:
         logger.error("Cookiecutter not installed")
         raise click.Abort()
-    cookiecutter(".", directory="scraper_template", output_dir="jg/plucker")
+    item_name_choices = sorted(
+        item_type.__name__ for item_type in item_types(items_module_name)
+    )
+    cookiecutter(
+        ".",
+        directory="scraper_template",
+        output_dir="jg/plucker",
+        extra_context={"item_name": item_name_choices},
+    )
     subprocess.run(["ruff", "check", "--fix", "--quiet"], check=True)
     subprocess.run(["ruff", "format", "--quiet"], check=True)
 
@@ -276,3 +278,16 @@ def get_scraper(
         # e.g. jg/plucker/exchange_rates
         return (get_spider_module_name(actor_path), Path(actor_path))
     raise click.BadParameter("Either spider_name or actor_path must be specified")
+
+
+def item_types(items_module_name: str) -> Generator[Type[Item], None, None]:
+    items_module = importlib.import_module(items_module_name)
+    for member_name in dir(items_module):
+        member = getattr(items_module, member_name)
+        if not isinstance(member, type):
+            continue
+        if not issubclass(member, Item):
+            continue
+        if member == Item:
+            continue
+        yield member
