@@ -1,7 +1,7 @@
 from typing import Generator
 
-from scrapy import Request
-from scrapy.http import Response, Spider as BaseSpider
+from scrapy import Request, Spider as BaseSpider
+from scrapy.http import TextResponse
 
 from jg.plucker.items import {{ cookiecutter.item_name }}
 
@@ -11,5 +11,5 @@ class Spider(BaseSpider):
 
     start_urls = []
 
-    def parse(self, response: Response) -> Generator[Request | {{ cookiecutter.item_name }}, None, None]:
+    def parse(self, response: TextResponse) -> Generator[Request | {{ cookiecutter.item_name }}, None, None]:
         raise NotImplementedError()
