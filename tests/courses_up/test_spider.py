@@ -26,7 +26,10 @@ def test_parse_courses():
     course = cast(CourseProvider, results[0])
 
     assert course["id"] == 17834
-    assert course["url"] == "https://www.uradprace.cz/rekvalifikace/kurz/17834"
+    assert (
+        course["url"]
+        == "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu#/rekvalifikacni-kurz-detail/17834"
+    )
     assert (
         course["name"]
         == "Účetnictví a daňová evidence (s využitím výpočetní techniky, v rozsahu 170 hodin teoretické výuky, z toho 170 hodin distanční formou) - živé vysílání se záznamem"

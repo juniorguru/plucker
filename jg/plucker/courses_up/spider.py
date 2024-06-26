@@ -97,7 +97,10 @@ class Spider(BaseSpider):
                 try:
                     yield CourseProvider(
                         id=course["id"],
-                        url=f"https://www.uradprace.cz/rekvalifikace/kurz/{course['id']}",
+                        url=(
+                            "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"
+                            f"#/rekvalifikacni-kurz-detail/{course['id']}"
+                        ),
                         name=course["nazev"],
                         description=course["popisRekvalifikace"],
                         company_name=course["osoba"]["nazev"],
