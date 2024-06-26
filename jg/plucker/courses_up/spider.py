@@ -101,7 +101,7 @@ class Spider(BaseSpider):
                         name=course["nazev"],
                         description=course["popisRekvalifikace"],
                         company_name=course["osoba"]["nazev"],
-                        cz_business_id=course["osoba"]["ico"],
+                        cz_business_id=int(course["osoba"]["ico"].lstrip("0")),
                     )
                 except KeyError:
                     self.logger.error(f"Failed to parse:\n{pformat(course)}")
