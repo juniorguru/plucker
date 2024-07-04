@@ -1613,13 +1613,13 @@ w3lib = ">=1.17.0"
 
 [[package]]
 name = "scrapy-playwright"
-version = "0.0.36"
+version = "0.0.37"
 description = "Playwright integration for Scrapy"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "scrapy_playwright-0.0.36-py3-none-any.whl", hash = "sha256:288d27bfb96d704984801f1ecf5753606b33792d016c23f3e1454150008bfaed"},
-    {file = "scrapy_playwright-0.0.36.tar.gz", hash = "sha256:6c819f7d248c5ab6f0cb620c5186803577e39c38d91ecca0c996d8dd678b17c1"},
+    {file = "scrapy_playwright-0.0.37-py3-none-any.whl", hash = "sha256:ba287692a14c4b7e171718c821b3c2cd97985b76ea0f61462257090b6e7ecc62"},
+    {file = "scrapy_playwright-0.0.37.tar.gz", hash = "sha256:ce060ca84ed0493a8ec843591c9080116134d62ec30b3e602d4e1641a8977187"},
 ]
 
 [package.dependencies]
@@ -2027,4 +2027,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.*"
-content-hash = "643ac3fa46a11563bfdcbf7070c817ecaea36d785232da54293bbfbd43b18b3e"
+content-hash = "c4785cdd97a2531939e9db7d8a8fbba105793cc0108986a0a6d2a51d0a2fe9a6"
