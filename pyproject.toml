@@ -23,7 +23,7 @@ feedparser = "6.0.11"
 nest-asyncio = "1.6.0"
 scrapy = "2.11.2"
 lxml = "5.1.0"  # line can be removed if https://github.com/scrapinghub/extruct/issues/215 is resolved
-scrapy-playwright = "0.0.37"
+scrapy-playwright = "0.0.39"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.2.2"
