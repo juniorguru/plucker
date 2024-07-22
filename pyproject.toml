@@ -27,7 +27,7 @@ scrapy-playwright = "0.0.40"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.2.2"
-pytest-ruff = "0.4.0"
+pytest-ruff = "0.4.1"
 ruff = "0.5.*"
 cookiecutter = "2.6.0"
 
