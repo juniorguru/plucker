@@ -23,15 +23,17 @@ WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
 WIDGET_DATA_SCRIPT_JSON_RE = re.compile(
     r"""
-        exports=JSON\.parse\('
+        =JSON\.parse\('
         (?P<data>
             {"[^"]+":         # JSON object key
-            (                 # one or more characters that are not the start of the word "function"
+            (                 # one or more characters that are not the start of "function" or "JSON.parse"
                 (?!function)
+                (?!JSON\.parse)
                 .
             )+
         )
-        '\)}
+        '\)
+        (}|,\w+={)
     """,
     re.VERBOSE,
 )
