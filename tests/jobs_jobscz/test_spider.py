@@ -75,6 +75,17 @@ def test_spider_parse_without_logo():
     assert "company_logo_urls" not in request.cb_kwargs["item"]
 
 
+def test_spider_parse_multiple_locations():
+    response = HtmlResponse(
+        "https://beta.www.jobs.cz/prace/...",
+        body=Path(FIXTURES_DIR / "listing_location.html").read_bytes(),
+    )
+    requests = list(Spider().parse(response))
+    job = requests[8].cb_kwargs["item"]
+
+    assert job["locations_raw"] == ["Zlín"]
+
+
 def test_spider_parse_job_standard():
     response = HtmlResponse(
         "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228",
@@ -83,13 +94,14 @@ def test_spider_parse_job_standard():
     job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
     assert sorted(job.keys()) == sorted(
-        ["employment_types", "description_html", "source_urls", "url"]
+        ["employment_types", "description_html", "locations_raw", "source_urls", "url"]
     )
     assert job["url"] == "https://beta.www.jobs.cz/rpd/1613133866/"
     assert job["employment_types"] == [
         "práce na plný úvazek",
         "práce na zkrácený úvazek",
     ]
+    assert job["locations_raw"] == ["Brno"]
     assert job["source_urls"] == [
         "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228"
     ]
@@ -111,6 +123,21 @@ def test_spider_parse_job_en():
     assert job["employment_types"] == ["full-time work"]
 
 
+def test_spider_parse_job_multiple_locations():
+    response = HtmlResponse(
+        "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
+        body=Path(FIXTURES_DIR / "job_location.html").read_bytes(),
+    )
+    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+
+    assert sorted(job["locations_raw"]) == [
+        "Horní náměstí 3, Vsetín",
+        "Masarykova třída 936/50, Olomouc – Hodolany",
+        "Stojanova 1336, Uherské Hradiště",
+        "Vavrečkova 7074, Zlín",
+    ]
+
+
 def test_spider_parse_job_company():
     response = HtmlResponse(
         "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
@@ -122,6 +149,7 @@ def test_spider_parse_job_company():
         [
             "employment_types",
             "description_html",
+            "locations_raw",
             "source_urls",
             "url",
             "company_url",
@@ -130,6 +158,7 @@ def test_spider_parse_job_company():
     )
     assert job["url"] == "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/"
     assert job["employment_types"] == ["práce na plný úvazek"]
+    assert job["locations_raw"] == ["U Pergamenky 1522/2, Praha – Holešovice"]
     assert job["source_urls"] == [
         "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233"
     ]

@@ -19,6 +19,19 @@ from jg.plucker.processors import first, split
 from jg.plucker.url_params import get_params, strip_params
 
 
+MULTIPLE_LOCATIONS_RE = re.compile(
+    r"""
+        \s+
+        \+  # plus sign
+        \s+
+        \d+  # number of additional locations
+        \s+
+        (další\s+lokal\w+|other\+local\w+)  # Czech or English
+        $
+    """,
+    re.VERBOSE,
+)
+
 WIDGET_DATA_RE = re.compile(r"window\.__LMC_CAREER_WIDGET__\.push\((.+)\);")
 
 WIDGET_DATA_SCRIPT_JSON_RE = re.compile(
@@ -134,6 +147,7 @@ class Spider(BaseSpider):
                     "employment_types",
                     f"//span[contains(text(), {label!r})]/following-sibling::p/text()",
                 )
+            loader.add_css("locations_raw", '[data-test="jd-info-location"]::text')
             loader.add_css("description_html", '[data-jobad="body"]')
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
@@ -382,6 +396,10 @@ def remove_empty(values: Iterable[Any]) -> Iterable[Any]:
     return filter(None, values)
 
 
+def parse_multiple_locations(text: str) -> str:
+    return MULTIPLE_LOCATIONS_RE.sub("", text.strip())
+
+
 class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
@@ -392,6 +410,7 @@ class Loader(ItemLoader):
     description_html_out = Compose(join)
     employment_types_in = MapCompose(str.lower, split)
     employment_types_out = Identity()
+    locations_raw_in = MapCompose(parse_multiple_locations)
     locations_raw_out = Compose(remove_empty, set, list)
     source_urls_out = Compose(set, list)
     posted_on_in = Identity()
