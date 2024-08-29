@@ -248,6 +248,41 @@ def test_spider_parse_job_widget_script_request_when_there_is_vendor_slug_in_its
     )
 
 
+def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
+    response = HtmlResponse(
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
+        body=Path(FIXTURES_DIR / "job_widget_script_react_chunks.js").read_bytes(),
+    )
+    request = next(
+        Spider().parse_job_widget_script(
+            response,
+            "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
+            Job(),
+            [
+                "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
+                "https://cdn.capybara.lmc.cz/cs-framework-api/v1/build/js/api.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
+                "https://cdn.capybara.lmc.cz/translations/v1/build/js/translations.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
+                "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
+            ],
+            "123",
+        )
+    )
+
+    assert request.method == "GET"
+    assert (
+        request.url
+        == "https://czechoslovakgroup.jobs.cz/assets/js/react.50e0a46e.react.min.js?av=666e27a672636e0c"
+    )
+    assert request.cb_kwargs["script_urls"] == [
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.49d0a293.react.min.js?av=666e27a672636e0c",
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.b48beae3.react.min.js?av=666e27a672636e0c",
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.a6b7edbd.react.min.js?av=666e27a672636e0c",
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.092d452b.react.min.js?av=666e27a672636e0c",
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.493cc602.react.min.js?av=666e27a672636e0c",
+        "https://czechoslovakgroup.jobs.cz/assets/js/react.229eafb5.react.min.js?av=666e27a672636e0c",
+    ]
+
+
 def test_spider_parse_job_widget_script_response():
     html_url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
     response = TextResponse(

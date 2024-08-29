@@ -76,6 +76,8 @@ SCRIPT_URL_RE = re.compile(
     re.VERBOSE,
 )
 
+REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
+
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 
@@ -233,6 +235,21 @@ class Spider(BaseSpider):
                 widget_id=mess["widgetId"],
                 track_id=track_id,
             )
+        elif chunk_names := parse_react_chunk_names(script_response.text):
+            chunk_urls = [
+                url.replace("react.min.js", chunk_name) for chunk_name in chunk_names
+            ]
+            self.track_logger(track_id).debug(f"Chunk URLs: {chunk_urls!r}")
+            yield Request(
+                chunk_urls.pop(0),
+                callback=self.parse_job_widget_script,
+                cb_kwargs=dict(
+                    item=item,
+                    url=url,
+                    script_urls=chunk_urls,
+                    track_id=track_id,
+                ),
+            )
         elif script_urls:
             self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
             yield Request(
@@ -361,6 +378,10 @@ def parse_widget_script_mess(text: str) -> dict[str, str] | None:
         return {"widgetId": data["widgetId"], "widgetApiKey": data["widgetApiKey"]}
     except KeyError:
         return None
+
+
+def parse_react_chunk_names(text: str) -> list[str]:
+    return [match.group("chunk_name") for match in REACT_CHUNK_RE.finditer(text)]
 
 
 def get_widget_host(url: str) -> str:
