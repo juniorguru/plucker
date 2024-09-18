@@ -1,8 +1,13 @@
+import asyncio
+import importlib
+import json
 import logging
 import subprocess
 import sys
 import time
-from typing import Generator, Type
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Generator, Type
 
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
@@ -16,11 +21,6 @@ configure_logging(settings, sys.argv)
 
 
 # ruff: noqa: E402
-import asyncio
-import importlib
-import json
-from pathlib import Path
-
 import click
 from scrapy import Item
 
@@ -33,6 +33,13 @@ from jg.plucker.scrapers import (
     run_actor,
     run_spider,
 )
+
+
+@dataclass
+class BuildWaitStatus:
+    attempt: int
+    total_attempts: int
+    status: ActorJobStatus
 
 
 logger = logging.getLogger("jg.plucker")
@@ -114,6 +121,7 @@ def build(
     build_polling_wait: int,
 ):
     client = ApifyClient(token=token)
+    success = False
     for actor_info in client.actors().list(my=True).items:
         logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
         actor_client = client.actor(actor_info["id"])
@@ -126,26 +134,32 @@ def build(
 
             git_repo_url = latest_version.get("gitRepoUrl") or ""
             if git_repo_url.startswith(git_repo_url_match):
-                logger.info("Building actor…")
-                total_attempts = build_timeout // build_polling_wait
-                build_info = actor_client.build(
-                    version_number=latest_version["versionNumber"]
-                )
-                build = client.build(build_info["id"])
-                time.sleep(build_polling_wait)
-                for attempt in range(1, total_attempts):
-                    build_info = build.get()
-                    if build_info is None:
-                        raise RuntimeError("Build not found")
-                    if build_info["status"] == ActorJobStatus.SUCCEEDED:
-                        break
-                    logger.info(
-                        f"Waiting for build to finish… ({attempt}/{total_attempts}, {build_info['status']})"
+                for attempt in range(1, 2):
+                    logger.info("Building actor…")
+                    build_info = actor_client.build(
+                        version_number=latest_version["versionNumber"]
                     )
-                    time.sleep(build_polling_wait)
-                if build_info["status"] != ActorJobStatus.SUCCEEDED:
-                    logger.error(f"Status: {build_info['status']}")
-                    raise click.Abort()
+                    build = client.build(build_info["id"])
+                    try:
+                        for build_wait_status in wait_for_build_status(
+                            build.get, build_timeout, build_polling_wait
+                        ):
+                            logger.info(
+                                "Waiting for build to finish… "
+                                f"({build_wait_status.attempt}/{build_wait_status.total_attempts}, "
+                                f"{build_wait_status.status})"
+                            )
+                        logger.info("Good, the plucker repo can be built")
+                        success = True
+                        break
+                    except RuntimeError as e:
+                        logger.error(str(e))
+                        if success and attempt == 1:
+                            logger.info(
+                                "The plucker repo can be built, but this build failed. Retrying…"
+                            )
+                        else:
+                            raise click.Abort()
             else:
                 logger.warning("Not a plucker actor")
         else:
@@ -291,3 +305,20 @@ def item_types(items_module_name: str) -> Generator[Type[Item], None, None]:
         if member == Item:
             continue
         yield member
+
+
+def wait_for_build_status(
+    get_build_info: Callable, build_timeout: int, build_polling_wait: int
+) -> Generator[BuildWaitStatus, None, None]:
+    total_attempts = build_timeout // build_polling_wait
+    time.sleep(build_polling_wait)
+    for attempt in range(1, total_attempts):
+        build_info = get_build_info()
+        if build_info is None:
+            raise RuntimeError("Build not found")
+        if build_info["status"] in [ActorJobStatus.SUCCEEDED, ActorJobStatus.FAILED]:
+            break
+        yield BuildWaitStatus(attempt, total_attempts, build_info["status"])
+        time.sleep(build_polling_wait)
+    if build_info["status"] != ActorJobStatus.SUCCEEDED:
+        raise RuntimeError(f"Build status: {build_info['status']}")
