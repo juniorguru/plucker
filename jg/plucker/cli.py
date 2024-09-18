@@ -149,8 +149,9 @@ def build(
                                 f"({build_wait_status.attempt}/{build_wait_status.total_attempts}, "
                                 f"{build_wait_status.status})"
                             )
-                        logger.info("Good, the plucker repo can be built")
-                        success = True
+                        if not success:
+                            logger.info("Good, the plucker repo can be built")
+                            success = True
                         break
                     except RuntimeError as e:
                         logger.error(str(e))
