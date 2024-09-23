@@ -32,7 +32,7 @@ Creating new scraper, e.g. `gravel-bikes`:
     It is a [cookiecutter](https://github.com/cookiecutter/cookiecutter).
     It takes the `scraper_template` directory and creates a scaffolding of a new scraper for you.
 1.  Fill the newly created `jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
-    See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) You can also learn scraping from Apify's [Web scraping basics](https://docs.apify.com/academy/scraping-basics-python) course.
+    See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) You can also learn scraping from the Apify's [Web scraping basics](https://docs.apify.com/academy/scraping-basics-python) course.
 1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
 1.  Run the spider with `scrapy crawl gravel-bikes`.
     Learn about Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
