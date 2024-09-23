@@ -39,7 +39,7 @@ Creating new scraper, e.g. `gravel-bikes`:
     Develop and debug.
 1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
 
-Deploying to Apify (you need to be admin):
+## Deploying to Apify (you need to be admin)
 
 1.  Push all your code to GitHub.
 1.  Run `plucker deploy gravel-bikes`.
