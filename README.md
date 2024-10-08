@@ -63,7 +63,7 @@ Maybe there is now, but the monitoring is already implemented, so…
 ## Notes on development
 
 -   Use [Poetry](https://python-poetry.org/) for dependency management.
-    After `poetry install` run also `poetry run playwright install firefox` to enable browser scraping.
+    After `poetry install` run also `poetry run playwright install chromium` to enable browser scraping.
 -   It is preferred to pin exact versions of dependencies, without `^`, and let GitHub's Dependabot to upgrade dependencies in Pull Requests.
     Unfortunately there is no setting in pyproject.toml, which would force this behavior, so once new dependencies are added, one needs to go and manually remove the `^` characters.
 -   Run `pytest` to see if your code has any issues.
