@@ -28,12 +28,6 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 class Spider(BaseSpider):
     name = "jobs-linkedin"
     download_delay = 5
-    custom_settings = {
-        "DOWNLOAD_HANDLERS": {
-            "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-            "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-        },
-    }
 
     search_params = {
         "f_TPR": "r2592000",  # past month
@@ -168,12 +162,11 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
-        # self.logger.warning(f"Retrying {url} using browser")
         return request.replace(
             url=url,
             dont_filter=True,
             headers=self.request_headers,
-            meta=request.meta,  # | dict(playwright=True),
+            meta=request.meta,
         )
 
     def _request(
@@ -188,7 +181,7 @@ class Spider(BaseSpider):
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
-            meta=dict(max_retry_times=5),
+            meta=dict(max_retry_times=10),
         )
 
 

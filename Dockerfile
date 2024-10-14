@@ -18,11 +18,9 @@ RUN echo "Python version:" \
  && poetry install --only=main --no-interaction --no-ansi \
  && rm -rf /tmp/.poetry-cache \
  && echo "All installed Python packages:" \
- && pip freeze \
- && echo "Installing Playwright dependencies:" \
- && poetry run playwright install chromium --with-deps
+ && pip freeze
 
 RUN python3 -m compileall -q ./jg/plucker
 
 ENV ACTOR_PATH_IN_DOCKER_CONTEXT="${ACTOR_PATH_IN_DOCKER_CONTEXT}"
-CMD ["poetry", "run", "plucker", "--debug", "crawl", "--apify"]
+CMD ["poetry", "run", "plucker", "crawl", "--apify"]

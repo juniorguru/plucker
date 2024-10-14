@@ -6,7 +6,6 @@ import nest_asyncio
 from apify import Actor, Configuration
 from apify.scrapy.middlewares.apify_proxy import ApifyHttpProxyMiddleware
 from apify.scrapy.utils import apply_apify_settings
-from playwright.sync_api import Error as PlaywrightError
 from scrapy import Item, Request, Spider
 from scrapy.crawler import Crawler, CrawlerProcess
 from scrapy.settings import BaseSettings, Settings
@@ -30,15 +29,6 @@ async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
         actor_input = await Actor.get_input() or {}
         proxy_config = actor_input.get("proxyConfig")
         settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-
-        # use custom proxy middleware
-        priority = settings["DOWNLOADER_MIDDLEWARES"].pop(
-            "apify.scrapy.middlewares.ApifyHttpProxyMiddleware"
-        )
-        settings["DOWNLOADER_MIDDLEWARES"][
-            "jg.plucker.scrapers.PlaywrightApifyHttpProxyMiddleware"
-        ] = priority
-
         run_spider(settings, spider_class)
 
 
@@ -121,59 +111,3 @@ def raise_for_stats(stats: dict[str, Any]):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
-
-
-class PlaywrightApifyHttpProxyMiddleware(ApifyHttpProxyMiddleware):
-    @classmethod
-    def from_crawler(cls, crawler: Crawler) -> Self:
-        Actor.log.info("Using customized ApifyHttpProxyMiddleware.")
-        return cls(super().from_crawler(crawler)._proxy_settings)
-
-    async def process_request(self, request: Request, spider: Spider):
-        if request.meta.get("playwright"):
-            Actor.log.debug(
-                f"ApifyHttpProxyMiddleware.process_request: playwright=True, request={request}, spider={spider}"
-            )
-            url = await self._get_new_proxy_url()
-
-            if not (url.username and url.password):
-                raise ValueError(
-                    "Username and password must be provided in the proxy URL."
-                )
-
-            proxy = url.geturl()
-            proxy_hash = hashlib.sha1(proxy.encode()).hexdigest()[0:8]
-            context_name = f"proxy_{proxy_hash}"
-            Actor.log.info(f"Using Playwright context {context_name}")
-            request.meta.update(
-                {
-                    "playwright_context": f"proxy_{context_name}",
-                    "playwright_context_kwargs": {
-                        "proxy": {
-                            "server": proxy,
-                            "username": url.username,
-                            "password": url.password,
-                        },
-                    },
-                }
-            )
-            Actor.log.debug(
-                f"ApifyHttpProxyMiddleware.process_request: updated request.meta={request.meta}"
-            )
-        else:
-            await super().process_request(request, spider)
-
-    def process_exception(
-        self: ApifyHttpProxyMiddleware,
-        request: Request,
-        exception: Exception,
-        spider: Spider,
-    ) -> None | Request:
-        if request := super().process_exception(request, exception, spider):
-            return request
-        if isinstance(exception, PlaywrightError):
-            Actor.log.warning(
-                f'ApifyHttpProxyMiddleware: Playwright error occurred for request="{request}", reason="{exception}", skipping...'
-            )
-            return request
-        return None
