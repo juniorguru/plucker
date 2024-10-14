@@ -2,7 +2,7 @@ from datetime import date
 from typing import Generator
 
 from ics import Calendar
-from scrapy import Request, Spider as BaseSpider
+from scrapy import Spider as BaseSpider
 from scrapy.http import TextResponse
 
 from jg.plucker.items import Meetup

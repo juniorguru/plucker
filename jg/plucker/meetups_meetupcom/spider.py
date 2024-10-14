@@ -1,7 +1,7 @@
 from typing import Generator
 
 import teemup
-from scrapy import Request, Spider as BaseSpider
+from scrapy import Spider as BaseSpider
 from scrapy.http import TextResponse
 
 from jg.plucker.items import Meetup
