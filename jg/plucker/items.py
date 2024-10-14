@@ -38,3 +38,13 @@ class CourseProvider(Item):
     description = Field(required=True)
     company_name = Field(required=True)
     cz_business_id = Field(required=True, apify_format="number")
+
+
+class Meetup(Item):
+    title = Field(required=True)
+    description = Field()
+    starts_at = Field(required=True, apify_format="date")
+    ends_at = Field(apify_format="date")
+    location = Field()
+    url = Field(required=True, apify_format="link")
+    source_url = Field(required=True, apify_format="link")

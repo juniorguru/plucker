@@ -13,6 +13,7 @@ from jg.plucker.url_params import strip_utm_params
 
 class Spider(BaseSpider):
     name = "jobs-startupjobs"
+
     start_urls = ["https://feedback.startupjobs.cz/feed/juniorguru.php"]
 
     def parse(self, response: XmlResponse) -> Generator[Job, None, None]:

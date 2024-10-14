@@ -87,11 +87,13 @@ class Spider(BaseSpider):
     custom_settings = {
         "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
     }
+
     start_urls = [
         "https://beta.www.jobs.cz/prace/programator/",
         "https://beta.www.jobs.cz/prace/tester/",
         "https://beta.www.jobs.cz/prace/datovy-analytik/",
     ]
+
     employment_types_labels = [
         "Typ pracovního poměru",
         "Employment form",

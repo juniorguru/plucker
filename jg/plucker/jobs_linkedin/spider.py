@@ -27,11 +27,13 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 
 class Spider(BaseSpider):
     name = "jobs-linkedin"
+
     download_delay = 5
 
     search_params = {
         "f_TPR": "r2592000",  # past month
     }
+
     search_terms = [
         "junior software engineer",
         "junior developer",
@@ -40,9 +42,13 @@ class Spider(BaseSpider):
         "junior tester",
         "junior data",
     ]
+
     locations = ["Czechia", "Slovakia"]
+
     lang_headers = {"Accept-Language": "en-us"}
+
     lang_cookies = {"lang": "v=2&lang=en-us"}
+
     results_per_request = 25
 
     @property

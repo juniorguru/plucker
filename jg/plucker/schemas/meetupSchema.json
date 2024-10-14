@@ -1,0 +1,48 @@
+{
+    "title": "Meetup",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Meetup",
+            "transformation": {
+                "fields": [
+                    "description",
+                    "ends_at",
+                    "source_url",
+                    "starts_at",
+                    "title",
+                    "url",
+                    "venue"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "description": {
+                        "label": "description"
+                    },
+                    "ends_at": {
+                        "label": "ends_at",
+                        "format": "date"
+                    },
+                    "source_url": {
+                        "label": "source_url"
+                    },
+                    "starts_at": {
+                        "label": "starts_at",
+                        "format": "date"
+                    },
+                    "title": {
+                        "label": "title"
+                    },
+                    "url": {
+                        "label": "url"
+                    },
+                    "venue": {
+                        "label": "venue"
+                    }
+                }
+            }
+        }
+    }
+}

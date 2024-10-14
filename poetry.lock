@@ -696,6 +696,45 @@ files = [
 idna = ">=2.5"
 
 [[package]]
+name = "ics"
+version = "0.8.0.dev0"
+description = "Pythonic iCalendar (RFC 5545) Parser"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "ics-0.8.0.dev0-py3-none-any.whl", hash = "sha256:7b78a02d3aa7e7143f27ff9072390cbda5795839f59fd09bd2f404932b49eaf6"},
+    {file = "ics-0.8.0.dev0.tar.gz", hash = "sha256:51169026b9368e88abf167e7a86cb39c576299d7c36a871f1a39e36beabcfcae"},
+]
+
+[package.dependencies]
+attrs = ">=20.3"
+ics-vtimezones = ">=2020.1"
+python-dateutil = ">=2.8"
+
+[package.extras]
+checks = ["flake8 (>=3.8.1)", "mypy (==0.960)"]
+dev = ["bump2version (>=1.0.0)", "tox (>=3.25)"]
+docs = ["sphinx (>=5)", "sphinx-autodoc-typehints"]
+test = ["freezegun (>=1.2.1)", "hypothesis (>=6)", "importlib-resources (>=1.4)", "lipsum (>=0.1.2)", "pytest (>=7)", "pytest-cov (>=3)", "tatsu (>4.2)"]
+
+[[package]]
+name = "ics-vtimezones"
+version = "2020.2"
+description = "iCalendar vTimezone Data"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "ics_vtimezones-2020.2-py3-none-any.whl", hash = "sha256:e26de1a7e732b53f23bce88431ce6b2db59d03aad72f47d5785bfa3f56cdf118"},
+    {file = "ics_vtimezones-2020.2.tar.gz", hash = "sha256:ee02fb3bb7df7e2e60ea11ad07ca30d3fee4d40929ae496651f76b76dc1cac73"},
+]
+
+[package.dependencies]
+importlib_resources = ">=1.4"
+
+[package.extras]
+update = ["ics (==0.8.*)"]
+
+[[package]]
 name = "idna"
 version = "3.10"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -708,6 +747,25 @@ files = [
 
 [package.extras]
 all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
+
+[[package]]
+name = "importlib-resources"
+version = "6.4.5"
+description = "Read resources from Python packages"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "importlib_resources-6.4.5-py3-none-any.whl", hash = "sha256:ac29d5f956f01d5e4bb63102a5a19957f1b9175e45649977264a1416783bb717"},
+    {file = "importlib_resources-6.4.5.tar.gz", hash = "sha256:980862a1d16c9e147a59603677fa2aa5fd82b87f223b6cb870695bcfce830065"},
+]
+
+[package.extras]
+check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)"]
+cover = ["pytest-cov"]
+doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
+enabler = ["pytest-enabler (>=2.2)"]
+test = ["jaraco.test (>=5.4)", "pytest (>=6,!=8.1.*)", "zipp (>=3.17)"]
+type = ["pytest-mypy"]
 
 [[package]]
 name = "incremental"
@@ -2003,4 +2061,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.12.*"
-content-hash = "a12d5fd8b79daac3bbe4e9b8497ad8a96cb50af11d06b84a6a6de41529a3497d"
+content-hash = "08384e3f7c95a142817aee0187835783ee78845374cdb22427685fd57abbe5c2"
