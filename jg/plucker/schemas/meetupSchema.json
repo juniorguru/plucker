@@ -8,11 +8,11 @@
                 "fields": [
                     "description",
                     "ends_at",
+                    "location",
                     "source_url",
                     "starts_at",
                     "title",
-                    "url",
-                    "venue"
+                    "url"
                 ]
             },
             "display": {
@@ -25,8 +25,12 @@
                         "label": "ends_at",
                         "format": "date"
                     },
+                    "location": {
+                        "label": "location"
+                    },
                     "source_url": {
-                        "label": "source_url"
+                        "label": "source_url",
+                        "format": "link"
                     },
                     "starts_at": {
                         "label": "starts_at",
@@ -36,10 +40,8 @@
                         "label": "title"
                     },
                     "url": {
-                        "label": "url"
-                    },
-                    "venue": {
-                        "label": "venue"
+                        "label": "url",
+                        "format": "link"
                     }
                 }
             }
