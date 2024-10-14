@@ -139,6 +139,19 @@ def test_raise_for_stats_min_items_passing():
     )
 
 
+def test_raise_for_stats_min_items_passing_zero():
+    raise_for_stats(
+        {
+            "item_scraped_count": 0,
+            "finish_reason": "finished",
+            "item_dropped_reasons_count/MissingRequiredFields": 0,
+            "spider_exceptions": 0,
+            "log_count/ERROR": 0,
+        },
+        min_items=0,
+    )
+
+
 def test_raise_for_stats_min_items_failing():
     with pytest.raises(StatsError):
         raise_for_stats(

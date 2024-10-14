@@ -23,6 +23,7 @@ class Spider(BaseSpider):
         "https://www.meetup.com/praguejs/events/",
         "https://www.meetup.com/techmeetupostrava/events/",
         "https://www.meetup.com/prague-gen-ai/events/",
+        "https://www.meetup.com/brno-java-meetup/events/",
     ]
 
     def parse(self, response: TextResponse) -> Generator[Meetup, None, None]:
@@ -40,11 +41,11 @@ class Spider(BaseSpider):
                 self.logger.info(f"Event: {event['title']} {event['starts_at']}")
                 yield Meetup(
                     title=event["title"],
+                    url=event["url"],
                     description=event["description"],
                     starts_at=event["starts_at"],
                     ends_at=event["ends_at"],
                     location=location,
-                    url=event["url"],
                     source_url=response.url,
                 )
             else:

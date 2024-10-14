@@ -31,9 +31,10 @@ class Spider(BaseSpider):
                 self.logger.info(f"Event: {event.summary} {event.begin}")
                 yield Meetup(
                     title=event.summary,
+                    url=event.url,
+                    description=event.description,
                     starts_at=event.begin,
                     ends_at=event.end,
                     location=event.location,
-                    url=event.url,
                     source_url=response.url,
                 )
