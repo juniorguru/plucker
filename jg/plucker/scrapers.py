@@ -16,7 +16,9 @@ def run_spider(settings: Settings, spider_class: type[Spider]):
     crawler_process.crawl(spider_class)
     stats_collector = get_stats_collector(crawler_process)
     crawler_process.start()
-    raise_for_stats(stats_collector.get_stats())
+
+    min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
+    raise_for_stats(stats_collector.get_stats(), min_items=min_items)
 
 
 async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
@@ -94,7 +96,7 @@ class StatsError(RuntimeError):
     pass
 
 
-def raise_for_stats(stats: dict[str, Any]):
+def raise_for_stats(stats: dict[str, Any], min_items: int):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions"):
         raise StatsError(f"Exceptions raised: {exc_count}")
@@ -102,7 +104,7 @@ def raise_for_stats(stats: dict[str, Any]):
         raise StatsError(f"Critical errors logged: {critical_count}")
     if error_count := stats.get("log_count/ERROR"):
         raise StatsError(f"Errors logged: {error_count}")
-    if item_count < 10:
+    if item_count < min_items:
         raise StatsError(f"Few items scraped: {item_count}")
     if reason := stats.get("finish_reason"):
         if reason != "finished":

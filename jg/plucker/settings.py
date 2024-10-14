@@ -24,9 +24,10 @@ SPIDER_LOADER_CLASS = "jg.plucker.scrapers.SpiderLoader"
 
 SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"
 
-ITEM_PIPELINES = {
-    "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
-}
+# Custom setting, see 'run_spider()' and 'raise_for_stats()'
+SPIDER_MIN_ITEMS = 10
+
+ITEM_PIPELINES = {"jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50}
 
 CLOSESPIDER_ERRORCOUNT = 1
 
@@ -34,6 +35,4 @@ AUTOTHROTTLE_ENABLED = True
 
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
-EXTENSIONS = {
-    "scrapy.extensions.memusage.MemoryUsage": None,
-}
+EXTENSIONS = {"scrapy.extensions.memusage.MemoryUsage": None}

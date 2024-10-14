@@ -1,8 +1,7 @@
 from datetime import date
-from operator import itemgetter
-from typing import Generator, Iterable
+from typing import Generator
 
-from ics import Calendar, Event
+from ics import Calendar
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
 
@@ -14,38 +13,27 @@ class Spider(BaseSpider):
 
     start_urls = ["https://pyvo.cz/api/pyvo.ics"]
 
-    min_items_count = 10
+    min_items = 1
 
     def parse(
         self, response: TextResponse, today: date | None = None
-    ) -> Generator[Request | Meetup, None, None]:
-        today = today or date.today()
-        calendar = Calendar(response.text)
-        meetups = self.parse_events(response.url, calendar.events)
-        meetups = sorted(meetups, key=itemgetter("starts_at"), reverse=True)
-        for i, meetup in enumerate(meetups):
-            if meetup["starts_at"].date() >= today or i <= self.min_items_count:
-                self.logger.info(f"Meetup:\n{meetup!r}")
-                yield meetup
-            else:
-                self.logger.debug(f"Past meetup:\n{meetup!r}")
-
-    def parse_events(
-        self, source_url: str, events: Iterable[Event]
     ) -> Generator[Meetup, None, None]:
-        for event in events:
-            if "tentative-date" in event.categories:
+        today = today or date.today()
+        self.logger.info(f"Parsing {response.url}, today is {today}")
+        calendar = Calendar(response.text)
+        self.logger.debug(f"Total events: {len(calendar.events)}")
+        for event in calendar.events:
+            if event.begin and event.begin.date() < today:
+                self.logger.debug(f"Past event: {event.summary} {event.begin}")
+            elif "tentative-date" in event.categories:
                 self.logger.debug(f"Tentative event: {event.summary} {event.begin}")
             else:
-                self.logger.debug(f"Event: {event.summary} {event.begin}")
-                yield self.parse_event(source_url, event)
-
-    def parse_event(self, source_url: str, event: Event) -> Meetup:
-        return Meetup(
-            title=event.summary,
-            starts_at=event.begin,
-            ends_at=event.end,
-            location=event.location,
-            url=event.url,
-            source_url=source_url,
-        )
+                self.logger.info(f"Event: {event.summary} {event.begin}")
+                yield Meetup(
+                    title=event.summary,
+                    starts_at=event.begin,
+                    ends_at=event.end,
+                    location=event.location,
+                    url=event.url,
+                    source_url=response.url,
+                )

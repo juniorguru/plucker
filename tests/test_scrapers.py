@@ -95,7 +95,8 @@ def test_raise_for_stats_passing():
             "item_dropped_reasons_count/MissingRequiredFields": 0,
             "spider_exceptions": 0,
             "log_count/ERROR": 0,
-        }
+        },
+        min_items=10,
     )
 
 
@@ -120,7 +121,35 @@ def test_raise_for_stats_failing(stats_override: dict):
                 "spider_exceptions": 0,
                 "log_count/ERROR": 0,
             }
-            | stats_override
+            | stats_override,
+            min_items=10,
+        )
+
+
+def test_raise_for_stats_min_items_passing():
+    raise_for_stats(
+        {
+            "item_scraped_count": 7,
+            "finish_reason": "finished",
+            "item_dropped_reasons_count/MissingRequiredFields": 0,
+            "spider_exceptions": 0,
+            "log_count/ERROR": 0,
+        },
+        min_items=5,
+    )
+
+
+def test_raise_for_stats_min_items_failing():
+    with pytest.raises(StatsError):
+        raise_for_stats(
+            {
+                "item_scraped_count": 10,
+                "finish_reason": "finished",
+                "item_dropped_reasons_count/MissingRequiredFields": 0,
+                "spider_exceptions": 0,
+                "log_count/ERROR": 0,
+            },
+            min_items=20,
         )
 
 
