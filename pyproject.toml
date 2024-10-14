@@ -36,8 +36,8 @@ python_files = "test_*.py"
 testpaths = "tests"
 addopts = "--import-mode=importlib --ff --ruff --ruff-format"
 filterwarnings = [
-    "ignore:'cgi' is deprecated:DeprecationWarning",  # scrapy (twisted)
-    "ignore:invalid escape sequence:DeprecationWarning",  # extruct
+    "ignore:twisted.web.http.HTTPClient was deprecated:DeprecationWarning",  # scrapy
+    "ignore:invalid escape sequence:SyntaxWarning",  # extruct
 ]
 
 [tool.ruff]
