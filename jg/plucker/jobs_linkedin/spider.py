@@ -168,12 +168,12 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
-        self.logger.warning(f"Retrying {url} using browser")
+        # self.logger.warning(f"Retrying {url} using browser")
         return request.replace(
             url=url,
             dont_filter=True,
             headers=self.request_headers,
-            meta=request.meta | dict(playwright=True),
+            meta=request.meta,  # | dict(playwright=True),
         )
 
     def _request(
