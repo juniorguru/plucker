@@ -6,6 +6,7 @@ import nest_asyncio
 from apify import Actor, Configuration
 from apify.scrapy.middlewares.apify_proxy import ApifyHttpProxyMiddleware
 from apify.scrapy.utils import apply_apify_settings
+from playwright.sync_api import Error as PlaywrightError
 from scrapy import Item, Request, Spider
 from scrapy.crawler import Crawler, CrawlerProcess
 from scrapy.settings import BaseSettings, Settings
@@ -161,3 +162,17 @@ class PlaywrightApifyHttpProxyMiddleware(ApifyHttpProxyMiddleware):
             )
         else:
             await super().process_request(request, spider)
+
+    def process_exception(
+        self: ApifyHttpProxyMiddleware,
+        request: Request,
+        exception: Exception,
+        spider: Spider,
+    ) -> None | Request:
+        if request := super().process_exception(request, exception, spider):
+            return request
+        if isinstance(exception, PlaywrightError):
+            Actor.log.warning(
+                f'ApifyHttpProxyMiddleware: Playwright error occurred for request="{request}", reason="{exception}", skipping...'
+            )
+            return request
