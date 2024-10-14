@@ -1,13 +1,11 @@
-import hashlib
 from pathlib import Path
-from typing import Any, Generator, Self, Type
+from typing import Any, Generator, Type
 
 import nest_asyncio
 from apify import Actor, Configuration
-from apify.scrapy.middlewares.apify_proxy import ApifyHttpProxyMiddleware
 from apify.scrapy.utils import apply_apify_settings
-from scrapy import Item, Request, Spider
-from scrapy.crawler import Crawler, CrawlerProcess
+from scrapy import Item, Spider
+from scrapy.crawler import CrawlerProcess
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
