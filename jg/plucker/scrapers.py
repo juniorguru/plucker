@@ -176,3 +176,4 @@ class PlaywrightApifyHttpProxyMiddleware(ApifyHttpProxyMiddleware):
                 f'ApifyHttpProxyMiddleware: Playwright error occurred for request="{request}", reason="{exception}", skipping...'
             )
             return request
+        return None
