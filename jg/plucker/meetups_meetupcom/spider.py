@@ -29,6 +29,7 @@ class Spider(BaseSpider):
         "https://www.meetup.com/net-bratislava-meetup/events/",
         "https://www.meetup.com/webup-web-developers-in-zilina/events/",
         "https://www.meetup.com/meetup-group-xlwhsgnm/events/",
+        "https://www.meetup.com/wordpress-brno-meetups/events/",
     ]
 
     def parse(self, response: TextResponse) -> Generator[Meetup, None, None]:
