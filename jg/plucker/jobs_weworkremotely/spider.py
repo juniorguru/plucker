@@ -100,3 +100,4 @@ class Loader(ItemLoader):
     remote_in = MapCompose(bool)
     locations_raw_out = Identity()
     source_urls_out = Identity()
+    employment_types_out = Identity()
