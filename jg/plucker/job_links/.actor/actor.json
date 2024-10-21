@@ -11,14 +11,12 @@
       "links": {
           "title": "Links to check",
           "type": "array",
-          "description": "Links to check",
           "editor": "requestListSources",
           "prefill": [{"url": "https://www.jobs.cz/fp/seyfor-a-s-5591518/2000270091/"}]
       },
       "proxyConfig": {
         "title": "Proxy config",
         "type": "object",
-        "description": "Specifies proxy servers",
         "editor": "proxy",
         "prefill": {
           "useApifyProxy": true,
