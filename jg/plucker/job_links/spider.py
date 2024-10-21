@@ -71,7 +71,9 @@ class Spider(BaseSpider):
             if not response.request:
                 raise ValueError("Request object is required to retry")
             if request := get_retry_request(
-                response.request, spider=self, reason=f"Got {response.url}"
+                response.request.replace(url=url),
+                spider=self,
+                reason=f"Got {response.url}",
             ):
                 yield request
             else:
