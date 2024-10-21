@@ -91,7 +91,7 @@ class Spider(BaseSpider):
             status = data[19]
             if status == "published":
                 yield JobLink(url=url, ok=True, reason="STARTUPJOBS")
-            elif status == "expired":
+            elif status in ["expired", "paused"]:
                 yield JobLink(url=url, ok=False, reason="STARTUPJOBS")
             else:
                 raise NotImplementedError(f"Unexpected status: {status}")

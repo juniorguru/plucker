@@ -52,6 +52,7 @@ def test_spider_parse_linkedin(
     [
         ("startupjobs_expired.html", False, "STARTUPJOBS"),
         ("startupjobs_ok.html", True, "STARTUPJOBS"),
+        ("startupjobs_paused.html", False, "STARTUPJOBS"),
     ],
 )
 def test_spider_parse_startupjobs(
