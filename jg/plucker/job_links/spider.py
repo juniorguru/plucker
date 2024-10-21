@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Generator, Iterable, Literal
+from typing import Callable, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
