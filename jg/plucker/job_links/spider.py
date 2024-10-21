@@ -31,6 +31,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
+        "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
     }
 
     min_items = 0

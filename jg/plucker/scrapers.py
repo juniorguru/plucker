@@ -18,7 +18,7 @@ logger = logging.getLogger("jg.plucker")
 def run_spider(
     settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    logger.info(f"Spider params: {spider_params!r}")
+    logger.debug(f"Spider params: {spider_params!r}")
     settings.set("SPIDER_PARAMS", spider_params)
 
     crawler_process = CrawlerProcess(settings, install_root_handler=False)
@@ -27,7 +27,7 @@ def run_spider(
     crawler_process.start()
 
     min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
-    logger.info(f"Min items required: {min_items}")
+    logger.debug(f"Min items required: {min_items}")
     raise_for_stats(stats_collector.get_stats(), min_items=min_items)
 
 

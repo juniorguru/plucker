@@ -38,7 +38,7 @@ def test_spider_parse_linkedin(
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = next(Spider().parse_linkedin(response, url))
+    link = Spider().parse_linkedin(response, url)
 
     assert link == JobLink(
         url=url,
@@ -62,7 +62,7 @@ def test_spider_parse_startupjobs(
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = next(Spider().parse_startupjobs(response, url))
+    link = Spider().parse_startupjobs(response, url)
 
     assert link == JobLink(
         url=url,

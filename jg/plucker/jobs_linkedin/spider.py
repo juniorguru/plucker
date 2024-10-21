@@ -4,6 +4,7 @@ from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
+from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
@@ -29,6 +30,10 @@ class Spider(BaseSpider):
     name = "jobs-linkedin"
 
     download_delay = 5
+
+    custom_settings = {
+        "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
+    }
 
     search_params = {
         "f_TPR": "r2592000",  # past month
@@ -168,12 +173,13 @@ class Spider(BaseSpider):
     def _retry(self, url: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
-        return request.replace(
-            url=url,
-            dont_filter=True,
-            headers=self.request_headers,
-            meta=request.meta,
-        )
+        if retry_request := get_retry_request(
+            request.replace(url=url, headers=self.request_headers, meta=request.meta),
+            spider=self,
+            reason=f"Got {url}",
+        ):
+            return retry_request
+        raise RuntimeError(f"Failed to retry {url}")
 
     def _request(
         self,
