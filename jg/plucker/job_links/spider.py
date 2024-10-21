@@ -28,6 +28,8 @@ class Spider(BaseSpider):
         "HTTPERROR_ALLOWED_CODES": HTTPERROR_ALLOWED_CODES + [404, 410],
     }
 
+    min_items = 0
+
     domain_mapping = {
         # "linkedin.com": "parse_linkedin",
     }
