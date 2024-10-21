@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
-from scrapy.core.downloader.handlers.http11 import TunnelError
+from scrapy.downloadermiddlewares.retry import get_retry_request
 
 from jg.plucker.items import JobLink
 
@@ -68,17 +68,17 @@ class Spider(BaseSpider):
         self, response: TextResponse, url: str
     ) -> Generator[JobLink | Request, None, None]:
         if "linkedin.com/jobs/view" not in response.url:
-            raise TunnelError(f"Got {response.url}")
-            # self.logger.warning(f"Got {response.url}")
-            # if not response.request:
-            #     raise ValueError("Request object is required to retry")
-            # yield Request(
-            #     url,
-            #     dont_filter=True,
-            #     callback=self.parse_linkedin,
-            #     cb_kwargs={"url": url},
-            #     meta={"max_retry_times": 5},
-            # )
+            if not response.request:
+                raise ValueError("Request object is required to retry")
+            if request := get_retry_request(
+                response.request, spider=self, reason=f"Got {response.url}"
+            ):
+                yield request
+            else:
+                self.logger.warning(
+                    f"Failed to parse {response.url}\n\n{response.text}\n\n"
+                )
+                yield from self.parse(response, url)
         else:
             if response.css(".closed-job").get(None):
                 yield JobLink(url=url, ok=False, reason="LINKEDIN")
