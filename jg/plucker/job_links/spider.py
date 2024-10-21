@@ -26,7 +26,7 @@ class Params(BaseModel):
 class Spider(BaseSpider):
     name = "job-links"
 
-    download_delay = 4
+    # download_delay = 4
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
