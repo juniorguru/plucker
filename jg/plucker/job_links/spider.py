@@ -6,9 +6,9 @@ from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
+from scrapy.core.downloader.handlers.http11 import TunnelError
 
 from jg.plucker.items import JobLink
-from jg.plucker.settings import HTTPERROR_ALLOWED_CODES
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -27,9 +27,7 @@ class Spider(BaseSpider):
 
     download_delay = 1
 
-    custom_settings = {
-        "HTTPERROR_ALLOWED_CODES": HTTPERROR_ALLOWED_CODES + [404, 410],
-    }
+    custom_settings = {"HTTPERROR_ALLOWED_CODES": [404, 410]}
 
     min_items = 0
 
@@ -70,16 +68,17 @@ class Spider(BaseSpider):
         self, response: TextResponse, url: str
     ) -> Generator[JobLink | Request, None, None]:
         if "linkedin.com/jobs/view" not in response.url:
-            self.logger.warning(f"Got {response.url}")
-            if not response.request:
-                raise ValueError("Request object is required to retry")
-            yield Request(
-                url,
-                dont_filter=True,
-                callback=self.parse_linkedin,
-                cb_kwargs={"url": url},
-                meta={"max_retry_times": 5},
-            )
+            raise TunnelError(f"Got {response.url}")
+            # self.logger.warning(f"Got {response.url}")
+            # if not response.request:
+            #     raise ValueError("Request object is required to retry")
+            # yield Request(
+            #     url,
+            #     dont_filter=True,
+            #     callback=self.parse_linkedin,
+            #     cb_kwargs={"url": url},
+            #     meta={"max_retry_times": 5},
+            # )
         else:
             if response.css(".closed-job").get(None):
                 yield JobLink(url=url, ok=False, reason="LINKEDIN")
