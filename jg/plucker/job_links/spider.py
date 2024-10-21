@@ -25,7 +25,7 @@ class Params(BaseModel):
 class Spider(BaseSpider):
     name = "job-links"
 
-    download_delay = 1
+    download_delay = 5
 
     custom_settings = {"HTTPERROR_ALLOWED_CODES": [404, 410]}
 
@@ -54,7 +54,7 @@ class Spider(BaseSpider):
                 url,
                 callback=callback,
                 cb_kwargs={"url": url},
-                meta={"max_retry_times": 5},
+                meta={"max_retry_times": 10},
             )
 
     def parse(self, response: TextResponse, url: str) -> Generator[JobLink, None, None]:
