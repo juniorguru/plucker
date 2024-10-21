@@ -34,14 +34,14 @@ def test_spider_get_callback(url: str, expected: Callable):
 def test_spider_parse_linkedin(
     fixture_basename: str, expected_ok: bool, expected_reason: str
 ):
+    url = "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/"
     response = HtmlResponse(
-        "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/",
-        body=Path(FIXTURES_DIR / fixture_basename).read_bytes(),
+        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = next(Spider().parse_linkedin(response))
+    link = next(Spider().parse_linkedin(response, url))
 
     assert link == JobLink(
-        url="https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/",
+        url=url,
         ok=expected_ok,
         reason=expected_reason,
     )
@@ -57,14 +57,14 @@ def test_spider_parse_linkedin(
 def test_spider_parse_startupjobs(
     fixture_basename: str, expected_ok: bool, expected_reason: str
 ):
+    url = "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu"
     response = HtmlResponse(
-        "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu",
-        body=Path(FIXTURES_DIR / fixture_basename).read_bytes(),
+        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = next(Spider().parse_startupjobs(response))
+    link = next(Spider().parse_startupjobs(response, url))
 
     assert link == JobLink(
-        url="https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu",
+        url=url,
         ok=expected_ok,
         reason=expected_reason,
     )

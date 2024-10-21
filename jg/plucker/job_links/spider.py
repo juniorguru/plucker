@@ -50,31 +50,42 @@ class Spider(BaseSpider):
         for url in (str(link.url) for link in params.links):
             callback = self.get_callback(url)
             self.logger.info(f"Processing {url} with {callback.__name__}()")
-            yield Request(url, callback=callback, meta={"max_retry_times": 10})
+            yield Request(
+                url,
+                callback=callback,
+                cb_kwargs={"url": url},
+                meta={"max_retry_times": 10},
+            )
 
-    def parse(self, response: TextResponse) -> Generator[JobLink, None, None]:
-        url = getattr(response.request, "url", response.url)
+    def parse(self, response: TextResponse, url: str) -> Generator[JobLink, None, None]:
         reason = f"HTTP {response.status}"
         if response.status == 200:
             yield JobLink(url=url, ok=True, reason=reason)
         else:
             yield JobLink(url=url, ok=False, reason=reason)
 
-    def parse_linkedin(self, response: TextResponse) -> Generator[JobLink, None, None]:
-        url = getattr(response.request, "url", response.url)
-        if response.css(".closed-job").get(None):
-            yield JobLink(url=url, ok=False, reason="LINKEDIN")
-        elif response.css(".top-card-layout__cta-container").get(None):
-            yield JobLink(url=url, ok=True, reason="LINKEDIN")
+    def parse_linkedin(
+        self, response: TextResponse, url: str
+    ) -> Generator[JobLink | Request, None, None]:
+        if "linkedin.com/jobs/view" not in response.url:
+            self.logger.warning(f"Got {response.url}")
+            if not response.request:
+                raise ValueError("Request object is required to retry")
+            yield response.request.replace(url=url, dont_filter=True)
         else:
-            raise NotImplementedError(f"Unexpected LinkedIn page: {url}")
-        self.logger.warning(f"Failed to parse {url}\n\n{response.text}\n\n")
-        yield from self.parse(response)
+            if response.css(".closed-job").get(None):
+                yield JobLink(url=url, ok=False, reason="LINKEDIN")
+            elif response.css(".top-card-layout__cta-container").get(None):
+                yield JobLink(url=url, ok=True, reason="LINKEDIN")
+            else:
+                self.logger.warning(
+                    f"Failed to parse {response.url}\n\n{response.text}\n\n"
+                )
+                yield from self.parse(response, url)
 
     def parse_startupjobs(
-        self, response: TextResponse
+        self, response: TextResponse, url: str
     ) -> Generator[JobLink, None, None]:
-        url = getattr(response.request, "url", response.url)
         if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
             data = json.loads(data_text)
             status = data[19]
@@ -84,5 +95,8 @@ class Spider(BaseSpider):
                 yield JobLink(url=url, ok=False, reason="STARTUPJOBS")
             else:
                 raise NotImplementedError(f"Unexpected status: {status}")
-        self.logger.warning(f"Failed to parse {url}\n\n{response.text}\n\n")
-        yield from self.parse(response)
+        else:
+            self.logger.warning(
+                f"Failed to parse {response.url}\n\n{response.text}\n\n"
+            )
+            yield from self.parse(response, url)
