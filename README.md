@@ -39,7 +39,7 @@ $ plucker crawl job-links --params < params.json
 
 You can also run it simply as `plucker crawl job-links --params` and type the JSON manually as a standard input of the command.
 
-At Apify, whatever is set as the [actor input](https://docs.apify.com/platform/actors/running/input-and-output) gets passed down as params (except for the proxy settings).
+At Apify, whatever is set as the [actor input](https://docs.apify.com/platform/actors/running/input-and-output) gets passed down as params (except for the proxy settings). Don't forget to add [input schema](https://docs.apify.com/platform/actors/development/actor-definition/input-schema) in your `actor.json`.
 
 You can access the params inside the spider class as `self.settings.get("SPIDER_PARAMS")`.
 

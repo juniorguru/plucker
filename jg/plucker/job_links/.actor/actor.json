@@ -8,6 +8,13 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+      "startUrls": {
+          "title": "Start URLs",
+          "type": "array",
+          "description": "One or more URLs to check.",
+          "editor": "requestListSources",
+          "prefill": ["https://www.jobs.cz/fp/seyfor-a-s-5591518/2000270091/"]
+      },
       "proxyConfig": {
         "title": "Proxy config",
         "type": "object",
