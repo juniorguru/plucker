@@ -28,7 +28,7 @@ Sometimes scrapers need input data.
 Plucker's `crawl` CLI command can pass parameters to your scraper through the `--params` option. Use shell to pass ad-hoc data:
 
 ```
-$ echo '{"urls": ["https://junior.guru"]}' | plucker crawl job-links --params
+$ echo '{"links": [{"url": "https://junior.guru"}]}' | plucker crawl job-links --params
 ```
 
 Use file for more complex input:

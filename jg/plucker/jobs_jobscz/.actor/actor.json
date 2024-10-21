@@ -14,10 +14,12 @@
                 "description": "Specifies proxy servers",
                 "editor": "proxy",
                 "prefill": {
-                    "useApifyProxy": true
+                    "useApifyProxy": true,
+                    "apifyProxyGroups": ["RESIDENTIAL"]
                 },
                 "default": {
-                    "useApifyProxy": true
+                    "useApifyProxy": true,
+                    "apifyProxyGroups": ["RESIDENTIAL"]
                 }
             }
         }

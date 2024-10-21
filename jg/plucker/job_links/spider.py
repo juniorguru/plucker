@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable
+from typing import Callable, Generator, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -10,8 +10,15 @@ from jg.plucker.items import JobLink
 from jg.plucker.settings import HTTPERROR_ALLOWED_CODES
 
 
+# Trying to be at least somewhat compatible with 'requestListSources'
+# See https://docs.apify.com/platform/actors/development/actor-definition/input-schema/specification/v1
+class Link(BaseModel):
+    url: Url
+    method: Literal["GET"] = "GET"
+
+
 class Params(BaseModel):
-    urls: list[Url]
+    links: list[Link]
 
 
 class Spider(BaseSpider):
@@ -35,7 +42,8 @@ class Spider(BaseSpider):
 
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
-        for url in map(str, params.urls):
+        self.logger.info(f"Loaded {len(params.links)} links")
+        for url in (str(link.url) for link in params.links):
             callback = self.get_callback(url)
             self.logger.info(f"Processing {url} with {callback.__name__}()")
             yield Request(url, callback=callback, meta={"max_retry_times": 10})
