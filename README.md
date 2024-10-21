@@ -17,8 +17,31 @@ The [main Junior Guru codebase](https://github.com/juniorguru/junior.guru) then 
 
 ## Running scrapers
 
-Just use Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
+Use Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
 Plucker has a `crawl` CLI command, which you can also use, but it's more useful for integrating with Apify than for the actual development of the scraper.
+
+After each scraper run you can check the contents of the `items.json` file to see if your scraper works correctly.
+
+## Passing parameters
+
+Sometimes scrapers need input data.
+Plucker's `crawl` CLI command can pass parameters to your scraper through the `--params` option. Use shell to pass ad-hoc data:
+
+```
+$ echo '{"urls": ["https://junior.guru"]}' | plucker crawl job-links --params
+```
+
+Use file for more complex input:
+
+```
+$ plucker crawl job-links --params < params.json
+```
+
+You can also run it simply as `plucker crawl job-links --params` and type the JSON manually as a standard input of the command.
+
+At Apify, whatever is set as the [actor input](https://docs.apify.com/platform/actors/running/input-and-output) gets passed down as params (except for the proxy settings).
+
+You can access the params inside the spider class as `self.settings.get("SPIDER_PARAMS")`.
 
 ## How to add new scraper
 

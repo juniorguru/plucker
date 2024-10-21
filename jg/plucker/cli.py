@@ -82,9 +82,6 @@ def crawl(
     if spider_params_f is None:
         spider_params = {}
     else:
-        # To pass spider params, use `plucker crawl --params < params.json`
-        # or `echo '{"foo": "bar"}' | plucker crawl --params`
-        # or just `plucker crawl --params` and type the JSON
         logger.info("Reading spider params from stdin")
         spider_params = json.load(spider_params_f)
 
