@@ -25,6 +25,8 @@ class Params(BaseModel):
 class Spider(BaseSpider):
     name = "job-links"
 
+    download_delay = 1
+
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": HTTPERROR_ALLOWED_CODES + [404, 410],
     }
@@ -54,7 +56,7 @@ class Spider(BaseSpider):
                 url,
                 callback=callback,
                 cb_kwargs={"url": url},
-                meta={"max_retry_times": 10},
+                meta={"max_retry_times": 5},
             )
 
     def parse(self, response: TextResponse, url: str) -> Generator[JobLink, None, None]:
@@ -71,7 +73,13 @@ class Spider(BaseSpider):
             self.logger.warning(f"Got {response.url}")
             if not response.request:
                 raise ValueError("Request object is required to retry")
-            yield response.request.replace(url=url, dont_filter=True)
+            yield Request(
+                url,
+                dont_filter=True,
+                callback=self.parse_linkedin,
+                cb_kwargs={"url": url},
+                meta={"max_retry_times": 5},
+            )
         else:
             if response.css(".closed-job").get(None):
                 yield JobLink(url=url, ok=False, reason="LINKEDIN")
