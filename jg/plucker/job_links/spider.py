@@ -1,3 +1,4 @@
+import json
 from typing import Callable, Generator, Iterable, Literal
 from urllib.parse import urlparse
 
@@ -31,7 +32,8 @@ class Spider(BaseSpider):
     min_items = 0
 
     domain_mapping = {
-        # "linkedin.com": "parse_linkedin",
+        "linkedin.com": "parse_linkedin",
+        "startupjobs.cz": "parse_startupjobs",
     }
 
     def get_callback(self, url: str) -> Callable:
@@ -57,3 +59,30 @@ class Spider(BaseSpider):
             yield JobLink(url=url, ok=True, reason=reason)
         else:
             yield JobLink(url=url, ok=False, reason=reason)
+
+    def parse_linkedin(self, response: TextResponse) -> Generator[JobLink, None, None]:
+        url = getattr(response.request, "url", response.url)
+        if response.css(".closed-job").get(None):
+            yield JobLink(url=url, ok=False, reason="LINKEDIN")
+        elif response.css(".top-card-layout__cta-container").get(None):
+            yield JobLink(url=url, ok=True, reason="LINKEDIN")
+        else:
+            raise NotImplementedError(f"Unexpected LinkedIn page: {url}")
+        self.logger.warning(f"Failed to parse {url}\n\n{response.text}\n\n")
+        yield from self.parse(response)
+
+    def parse_startupjobs(
+        self, response: TextResponse
+    ) -> Generator[JobLink, None, None]:
+        url = getattr(response.request, "url", response.url)
+        if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
+            data = json.loads(data_text)
+            status = data[19]
+            if status == "published":
+                yield JobLink(url=url, ok=True, reason="STARTUPJOBS")
+            elif status == "expired":
+                yield JobLink(url=url, ok=False, reason="STARTUPJOBS")
+            else:
+                raise NotImplementedError(f"Unexpected status: {status}")
+        self.logger.warning(f"Failed to parse {url}\n\n{response.text}\n\n")
+        yield from self.parse(response)
