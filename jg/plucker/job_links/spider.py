@@ -5,10 +5,11 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import TextResponse
 from scrapy.downloadermiddlewares.retry import get_retry_request
+from scrapy.http import TextResponse
 
 from jg.plucker.items import JobLink
+from jg.plucker.settings import RETRY_HTTP_CODES
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -25,9 +26,12 @@ class Params(BaseModel):
 class Spider(BaseSpider):
     name = "job-links"
 
-    download_delay = 5
+    download_delay = 4
 
-    custom_settings = {"HTTPERROR_ALLOWED_CODES": [404, 410]}
+    custom_settings = {
+        "HTTPERROR_ALLOWED_CODES": [404, 410],
+        "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
+    }
 
     min_items = 0
 
@@ -57,16 +61,13 @@ class Spider(BaseSpider):
                 meta={"max_retry_times": 10},
             )
 
-    def parse(self, response: TextResponse, url: str) -> Generator[JobLink, None, None]:
+    def parse(self, response: TextResponse, url: str) -> JobLink:
         reason = f"HTTP {response.status}"
         if response.status == 200:
-            yield JobLink(url=url, ok=True, reason=reason)
-        else:
-            yield JobLink(url=url, ok=False, reason=reason)
+            return JobLink(url=url, ok=True, reason=reason)
+        return JobLink(url=url, ok=False, reason=reason)
 
-    def parse_linkedin(
-        self, response: TextResponse, url: str
-    ) -> Generator[JobLink | Request, None, None]:
+    def parse_linkedin(self, response: TextResponse, url: str) -> JobLink | Request:
         if "linkedin.com/jobs/view" not in response.url:
             if not response.request:
                 raise ValueError("Request object is required to retry")
@@ -75,37 +76,28 @@ class Spider(BaseSpider):
                 spider=self,
                 reason=f"Got {response.url}",
             ):
-                yield request
-            else:
-                self.logger.warning(
-                    f"Failed to parse {response.url}\n\n{response.text}\n\n"
-                )
-                yield from self.parse(response, url)
-        else:
-            if response.css(".closed-job").get(None):
-                yield JobLink(url=url, ok=False, reason="LINKEDIN")
-            elif response.css(".top-card-layout__cta-container").get(None):
-                yield JobLink(url=url, ok=True, reason="LINKEDIN")
-            else:
-                self.logger.warning(
-                    f"Failed to parse {response.url}\n\n{response.text}\n\n"
-                )
-                yield from self.parse(response, url)
+                return request
+            self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
+            return self.parse(response, url)
 
-    def parse_startupjobs(
-        self, response: TextResponse, url: str
-    ) -> Generator[JobLink, None, None]:
+        if response.css(".closed-job").get(None):
+            return JobLink(url=url, ok=False, reason="LINKEDIN")
+        if response.css(".top-card-layout__cta-container").get(None):
+            return JobLink(url=url, ok=True, reason="LINKEDIN")
+
+        self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
+        return self.parse(response, url)
+
+    def parse_startupjobs(self, response: TextResponse, url: str) -> JobLink:
         if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
             data = json.loads(data_text)
             status = data[19]
+
             if status == "published":
-                yield JobLink(url=url, ok=True, reason="STARTUPJOBS")
-            elif status in ["expired", "paused"]:
-                yield JobLink(url=url, ok=False, reason="STARTUPJOBS")
-            else:
-                raise NotImplementedError(f"Unexpected status: {status}")
-        else:
-            self.logger.warning(
-                f"Failed to parse {response.url}\n\n{response.text}\n\n"
-            )
-            yield from self.parse(response, url)
+                return JobLink(url=url, ok=True, reason="STARTUPJOBS")
+            if status in ["expired", "paused"]:
+                return JobLink(url=url, ok=False, reason="STARTUPJOBS")
+            raise NotImplementedError(f"Unexpected status: {status}")
+
+        self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}\n\n")
+        return self.parse(response, url)
