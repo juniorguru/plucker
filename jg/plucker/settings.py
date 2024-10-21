@@ -36,3 +36,12 @@ AUTOTHROTTLE_ENABLED = True
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 EXTENSIONS = {"scrapy.extensions.memusage.MemoryUsage": None}
+
+FEEDS = {
+    "items.json": {
+        "format": "json",
+        "encoding": "utf-8",
+        "indent": 2,
+        "overwrite": True,
+    },
+}

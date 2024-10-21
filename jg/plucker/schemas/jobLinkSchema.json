@@ -1,0 +1,32 @@
+{
+    "title": "JobLink",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "JobLink",
+            "transformation": {
+                "fields": [
+                    "ok",
+                    "reason",
+                    "url"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "ok": {
+                        "label": "ok",
+                        "format": "boolean"
+                    },
+                    "reason": {
+                        "label": "reason"
+                    },
+                    "url": {
+                        "label": "url",
+                        "format": "link"
+                    }
+                }
+            }
+        }
+    }
+}

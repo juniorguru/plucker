@@ -187,7 +187,7 @@ class Spider(BaseSpider):
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
-            meta=dict(max_retry_times=10),
+            meta={"max_retry_times": 10},
         )
 
 

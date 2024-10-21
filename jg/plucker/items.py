@@ -26,6 +26,12 @@ class Job(Item):
     source_urls = Field(required=True, apify_format="array")
 
 
+class JobLink(Item):
+    url = Field(required=True, apify_format="link")
+    ok = Field(required=True, apify_format="boolean")
+    reason = Field(required=True)
+
+
 class ExchangeRate(Item):
     code = Field(required=True)
     rate = Field(required=True, apify_format="number")

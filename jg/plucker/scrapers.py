@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any, Generator, Type
 
@@ -11,25 +12,36 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
 
 
-def run_spider(settings: Settings, spider_class: type[Spider]):
+logger = logging.getLogger("jg.plucker")
+
+
+def run_spider(
+    settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
+) -> None:
+    logger.info(f"Spider params: {spider_params!r}")
+    settings.set("SPIDER_PARAMS", spider_params)
+
     crawler_process = CrawlerProcess(settings, install_root_handler=False)
     crawler_process.crawl(spider_class)
     stats_collector = get_stats_collector(crawler_process)
     crawler_process.start()
 
     min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
+    logger.info(f"Min items required: {min_items}")
     raise_for_stats(stats_collector.get_stats(), min_items=min_items)
 
 
-async def run_actor(settings: Settings, spider_class: Type[Spider]) -> None:
+async def run_actor(
+    settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
+) -> None:
     config = Configuration.get_global_configuration()
     config.purge_on_start = True
     async with Actor:
         Actor.log.info(f"Spider {spider_class.name}")
-        actor_input = await Actor.get_input() or {}
-        proxy_config = actor_input.get("proxyConfig")
+        spider_params = dict(spider_params or (await Actor.get_input()) or {})
+        proxy_config = spider_params.pop("proxyConfig", None)
         settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-        run_spider(settings, spider_class)
+        run_spider(settings, spider_class, spider_params)
 
 
 def configure_async():

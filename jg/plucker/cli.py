@@ -5,12 +5,12 @@ import logging
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Generator, Type
+from typing import IO, Callable, Generator, Type
 
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
+from pydantic import BaseModel
 from scrapy.utils.project import get_project_settings
 
 from jg.plucker.loggers import configure_logging
@@ -35,11 +35,13 @@ from jg.plucker.scrapers import (
 )
 
 
-@dataclass
-class BuildWaitStatus:
+class BuildWaitStatus(BaseModel):
     attempt: int
     total_attempts: int
     status: ActorJobStatus
+
+    def __str__(self) -> str:
+        return f"{self.attempt}/{self.total_attempts}, {self.status}"
 
 
 logger = logging.getLogger("jg.plucker")
@@ -51,7 +53,7 @@ def main(debug: bool = False):
     pass  # --debug is processed in configure_logging()
 
 
-@main.command()
+@main.command(context_settings={"ignore_unknown_options": True})
 @click.argument("spider_name", type=str, required=False)
 @click.option(
     "--actor",
@@ -60,14 +62,31 @@ def main(debug: bool = False):
     envvar="ACTOR_PATH_IN_DOCKER_CONTEXT",
 )
 @click.option("--apify/--no-apify", default=False)
+@click.option(
+    "--params",
+    "spider_params_f",
+    is_flag=False,
+    flag_value=sys.stdin,
+    type=click.File("r"),
+)
 def crawl(
     spider_name: str | None = None,
     actor_path: str | None | Path = None,
     apify: bool = False,
+    spider_params_f: IO | None = None,
 ):
     spider_module_name, actor_path = get_scraper(spider_name, actor_path)
     logger.info(f"Importing spider from {spider_module_name!r}")
     spider_class = importlib.import_module(spider_module_name).Spider
+
+    if spider_params_f is None:
+        spider_params = {}
+    else:
+        # To pass spider params, use `plucker crawl --params < params.json`
+        # or `echo '{"foo": "bar"}' | plucker crawl --params`
+        # or just `plucker crawl --params` and type the JSON
+        logger.info("Reading spider params from stdin")
+        spider_params = json.load(spider_params_f)
 
     configure_async()
     try:
@@ -78,10 +97,10 @@ def crawl(
                 raise click.BadParameter(
                     f"Actor {actor_path} not found! Valid actors: {actors}"
                 )
-            asyncio.run(run_actor(settings, spider_class))
+            asyncio.run(run_actor(settings, spider_class, spider_params))
         else:
             logger.info(f"Crawling as Scrapy spider {spider_name!r}")
-            run_spider(settings, spider_class)
+            run_spider(settings, spider_class, spider_params)
     except StatsError as e:
         logger.error(e)
         raise click.Abort()
@@ -141,14 +160,10 @@ def build(
                     )
                     build = client.build(build_info["id"])
                     try:
-                        for build_wait_status in wait_for_build_status(
+                        for status in wait_for_build_status(
                             build.get, build_timeout, build_polling_wait
                         ):
-                            logger.info(
-                                "Waiting for build to finish… "
-                                f"({build_wait_status.attempt}/{build_wait_status.total_attempts}, "
-                                f"{build_wait_status.status})"
-                            )
+                            logger.info(f"Waiting for build to finish… ({status})")
                         if not success:
                             logger.info("Good, the plucker repo can be built")
                             success = True
@@ -319,7 +334,11 @@ def wait_for_build_status(
             raise RuntimeError("Build not found")
         if build_info["status"] in [ActorJobStatus.SUCCEEDED, ActorJobStatus.FAILED]:
             break
-        yield BuildWaitStatus(attempt, total_attempts, build_info["status"])
+        yield BuildWaitStatus(
+            attempt=attempt,
+            total_attempts=total_attempts,
+            status=build_info["status"],
+        )
         time.sleep(build_polling_wait)
     if build_info["status"] != ActorJobStatus.SUCCEEDED:
         raise RuntimeError(f"Build status: {build_info['status']}")
