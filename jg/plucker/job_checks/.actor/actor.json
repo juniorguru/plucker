@@ -32,6 +32,6 @@
   "dockerfile": "../../../../Dockerfile",
   "dockerContextDir": "../../../../",
   "storages": {
-    "dataset": "../../schemas/jobLinkSchema.json"
+    "dataset": "../../schemas/jobCheckSchema.json"
   }
 }
