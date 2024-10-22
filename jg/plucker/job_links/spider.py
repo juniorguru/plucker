@@ -26,19 +26,26 @@ class Params(BaseModel):
 class Spider(BaseSpider):
     name = "job-links"
 
-    # download_delay = 4
-
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0",
+        "DEFAULT_REQUEST_HEADERS": {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+            "Referer": "https://duckduckgo.com/",
+            "Accept-Language": "en-US,en;q=0.8,cs;q=0.6,sk;q=0.4,es;q=0.2",
+            "DNT": "1",
+        },
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
+        "METAREFRESH_ENABLED": False,
     }
 
     min_items = 0
 
     domain_mapping = {
-        "linkedin.com": "parse_linkedin",
-        "startupjobs.cz": "parse_startupjobs",
+        "linkedin.com": "check_linkedin",
+        "startupjobs.cz": "check_startupjobs",
     }
 
     def get_callback(self, url: str) -> Callable:
@@ -47,14 +54,14 @@ class Spider(BaseSpider):
             if pattern in netloc:
                 method_name = self.domain_mapping[pattern]
                 return getattr(self, method_name)
-        return self.parse
+        return self.check_http
 
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
         for url in (str(link.url) for link in params.links):
             callback = self.get_callback(url)
-            self.logger.info(f"Processing {url} with {callback.__name__}()")
+            self.logger.debug(f"Processing {url} with {callback.__name__}()")
             yield Request(
                 url,
                 callback=callback,
@@ -62,24 +69,24 @@ class Spider(BaseSpider):
                 meta={"max_retry_times": 10},
             )
 
-    def parse(self, response: TextResponse, url: str) -> JobLink:
+    def check_http(self, response: TextResponse, url: str) -> JobLink:
         reason = f"HTTP {response.status}"
         if response.status == 200:
             return JobLink(url=url, ok=True, reason=reason)
         return JobLink(url=url, ok=False, reason=reason)
 
-    def parse_linkedin(self, response: TextResponse, url: str) -> JobLink | Request:
+    def check_linkedin(self, response: TextResponse, url: str) -> JobLink | Request:
         if "linkedin.com/jobs/view" not in response.url:
-            if not response.request:
-                raise ValueError("Request object is required to retry")
-            if request := get_retry_request(
-                response.request.replace(url=url),
-                spider=self,
-                reason=f"Got {response.url}",
-            ):
-                return request
-            self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
-            return self.parse(response, url)
+            self.logger.warning(f"Unexpected URL: {response.url}")
+            if request := response.request:
+                if retry_request := get_retry_request(
+                    request.replace(url=url, headers={"Host": urlparse(url).netloc}),
+                    spider=self,
+                    reason=f"Got {response.url}",
+                ):
+                    return retry_request
+                raise RuntimeError(f"Failed to retry {response.url} ({url})")
+            raise ValueError("Request object is required to retry")
 
         if response.css(".closed-job").get(None):
             return JobLink(url=url, ok=False, reason="LINKEDIN")
@@ -87,9 +94,9 @@ class Spider(BaseSpider):
             return JobLink(url=url, ok=True, reason="LINKEDIN")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
-        return self.parse(response, url)
+        return self.check_http(response, url)
 
-    def parse_startupjobs(self, response: TextResponse, url: str) -> JobLink:
+    def check_startupjobs(self, response: TextResponse, url: str) -> JobLink:
         if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
             data = json.loads(data_text)
             status = data[19]
@@ -101,4 +108,4 @@ class Spider(BaseSpider):
             raise NotImplementedError(f"Unexpected status: {status}")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}\n\n")
-        return self.parse(response, url)
+        return self.check_http(response, url)

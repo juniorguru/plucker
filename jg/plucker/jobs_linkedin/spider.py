@@ -33,6 +33,20 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
+        "DEFAULT_REQUEST_HEADERS": {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+            "Host": "www.linkedin.com",
+            "Referer": (
+                "https://www.linkedin.com/jobs/search"
+                "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
+                "&currentJobId=3864058898"
+                "&position=2"
+                "&pageNum=0"
+            ),
+            "Accept-Language": "en-us",
+            "DNT": "1",
+        },
     }
 
     search_params = {
@@ -50,25 +64,9 @@ class Spider(BaseSpider):
 
     locations = ["Czechia", "Slovakia"]
 
-    lang_headers = {"Accept-Language": "en-us"}
-
     lang_cookies = {"lang": "v=2&lang=en-us"}
 
     results_per_request = 25
-
-    @property
-    def request_headers(self) -> dict[str, str]:
-        return {
-            "Host": "www.linkedin.com",
-            "Referer": (
-                "https://www.linkedin.com/jobs/search"
-                "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
-                "&currentJobId=3864058898"
-                "&position=2"
-                "&pageNum=0"
-            ),
-            **self.lang_headers,
-        }
 
     def start_requests(self) -> Generator[Request, None, None]:
         for location in self.locations:
@@ -174,7 +172,7 @@ class Spider(BaseSpider):
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
         if retry_request := get_retry_request(
-            request.replace(url=url, headers=self.request_headers, meta=request.meta),
+            request.replace(url=url, meta=request.meta),
             spider=self,
             reason=f"Got {url}",
         ):
@@ -189,7 +187,6 @@ class Spider(BaseSpider):
     ) -> Request:
         return Request(
             url,
-            headers=self.request_headers,
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},

@@ -15,9 +15,9 @@ FIXTURES_DIR = Path(__file__).parent
     "url, expected",
     [
         ("https://www.jobs.cz/", Spider.parse),
-        ("https://www.linkedin.com/", Spider.parse_linkedin),
-        ("https://cz.linkedin.com/", Spider.parse_linkedin),
-        ("https://www.startupjobs.cz/", Spider.parse_startupjobs),
+        ("https://www.linkedin.com/", Spider.check_linkedin),
+        ("https://cz.linkedin.com/", Spider.check_linkedin),
+        ("https://www.startupjobs.cz/", Spider.check_startupjobs),
     ],
 )
 def test_spider_get_callback(url: str, expected: Callable):
@@ -31,14 +31,14 @@ def test_spider_get_callback(url: str, expected: Callable):
         ("linkedin_ok.html", True, "LINKEDIN"),
     ],
 )
-def test_spider_parse_linkedin(
+def test_spider_check_linkedin(
     fixture_basename: str, expected_ok: bool, expected_reason: str
 ):
     url = "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/"
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = Spider().parse_linkedin(response, url)
+    link = Spider().check_linkedin(response, url)
 
     assert link == JobLink(
         url=url,
@@ -55,14 +55,14 @@ def test_spider_parse_linkedin(
         ("startupjobs_paused.html", False, "STARTUPJOBS"),
     ],
 )
-def test_spider_parse_startupjobs(
+def test_spider_check_startupjobs(
     fixture_basename: str, expected_ok: bool, expected_reason: str
 ):
     url = "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu"
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = Spider().parse_startupjobs(response, url)
+    link = Spider().check_startupjobs(response, url)
 
     assert link == JobLink(
         url=url,
