@@ -23,4 +23,4 @@ RUN echo "Python version:" \
 RUN python3 -m compileall -q ./jg/plucker
 
 ENV ACTOR_PATH_IN_DOCKER_CONTEXT="${ACTOR_PATH_IN_DOCKER_CONTEXT}"
-CMD ["poetry", "run", "plucker", "--debug", "crawl", "--apify"]
+CMD ["poetry", "run", "plucker", "crawl", "--apify"]
