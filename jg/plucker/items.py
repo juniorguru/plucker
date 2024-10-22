@@ -26,7 +26,7 @@ class Job(Item):
     source_urls = Field(required=True, apify_format="array")
 
 
-class JobLink(Item):
+class JobCheck(Item):
     url = Field(required=True, apify_format="link")
     ok = Field(required=True, apify_format="boolean")
     reason = Field(required=True)

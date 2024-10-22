@@ -8,7 +8,7 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http import TextResponse
 
-from jg.plucker.items import JobLink
+from jg.plucker.items import JobCheck
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
@@ -24,7 +24,7 @@ class Params(BaseModel):
 
 
 class Spider(BaseSpider):
-    name = "job-links"
+    name = "job-checks"
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
@@ -69,13 +69,13 @@ class Spider(BaseSpider):
                 meta={"max_retry_times": 10},
             )
 
-    def check_http(self, response: TextResponse, url: str) -> JobLink:
+    def check_http(self, response: TextResponse, url: str) -> JobCheck:
         reason = f"HTTP {response.status}"
         if response.status == 200:
-            return JobLink(url=url, ok=True, reason=reason)
-        return JobLink(url=url, ok=False, reason=reason)
+            return JobCheck(url=url, ok=True, reason=reason)
+        return JobCheck(url=url, ok=False, reason=reason)
 
-    def check_linkedin(self, response: TextResponse, url: str) -> JobLink | Request:
+    def check_linkedin(self, response: TextResponse, url: str) -> JobCheck | Request:
         if "linkedin.com/jobs/view" not in response.url:
             self.logger.warning(f"Unexpected URL: {response.url}")
             if request := response.request:
@@ -89,22 +89,22 @@ class Spider(BaseSpider):
             raise ValueError("Request object is required to retry")
 
         if response.css(".closed-job").get(None):
-            return JobLink(url=url, ok=False, reason="LINKEDIN")
+            return JobCheck(url=url, ok=False, reason="LINKEDIN")
         if response.css(".top-card-layout__cta-container").get(None):
-            return JobLink(url=url, ok=True, reason="LINKEDIN")
+            return JobCheck(url=url, ok=True, reason="LINKEDIN")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
         return self.check_http(response, url)
 
-    def check_startupjobs(self, response: TextResponse, url: str) -> JobLink:
+    def check_startupjobs(self, response: TextResponse, url: str) -> JobCheck:
         if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
             data = json.loads(data_text)
             status = data[19]
 
             if status == "published":
-                return JobLink(url=url, ok=True, reason="STARTUPJOBS")
+                return JobCheck(url=url, ok=True, reason="STARTUPJOBS")
             if status in ["expired", "paused"]:
-                return JobLink(url=url, ok=False, reason="STARTUPJOBS")
+                return JobCheck(url=url, ok=False, reason="STARTUPJOBS")
             raise NotImplementedError(f"Unexpected status: {status}")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}\n\n")

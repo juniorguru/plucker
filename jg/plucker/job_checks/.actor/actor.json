@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
-  "name": "job-links",
-  "title": "job-links",
+  "name": "job-checks",
+  "title": "job-checks",
   "version": "0.0",
   "input": {
     "title": "Input",

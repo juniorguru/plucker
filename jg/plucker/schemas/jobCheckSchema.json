@@ -1,9 +1,9 @@
 {
-    "title": "JobLink",
+    "title": "JobCheck",
     "actorSpecification": 1,
     "views": {
         "titles": {
-            "title": "JobLink",
+            "title": "JobCheck",
             "transformation": {
                 "fields": [
                     "ok",

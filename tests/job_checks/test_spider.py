@@ -4,8 +4,8 @@ from typing import Callable
 import pytest
 from scrapy.http import HtmlResponse
 
-from jg.plucker.items import JobLink
-from jg.plucker.job_links.spider import Spider
+from jg.plucker.items import JobCheck
+from jg.plucker.job_checks.spider import Spider
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -40,7 +40,7 @@ def test_spider_check_linkedin(
     )
     link = Spider().check_linkedin(response, url)
 
-    assert link == JobLink(
+    assert link == JobCheck(
         url=url,
         ok=expected_ok,
         reason=expected_reason,
@@ -64,7 +64,7 @@ def test_spider_check_startupjobs(
     )
     link = Spider().check_startupjobs(response, url)
 
-    assert link == JobLink(
+    assert link == JobCheck(
         url=url,
         ok=expected_ok,
         reason=expected_reason,
