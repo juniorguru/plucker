@@ -85,7 +85,7 @@ class Spider(BaseSpider):
                     reason=f"Got {response.url}",
                 ):
                     return retry_request
-                raise RuntimeError(f"Failed to retry {response.url} ({url})")
+                raise RuntimeError(f"Failed to retry {url}")
             raise ValueError("Request object is required to retry")
 
         if response.css(".closed-job").get(None):

@@ -29,11 +29,10 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 class Spider(BaseSpider):
     name = "jobs-linkedin"
 
-    download_delay = 5
+    download_delay = 1
 
     custom_settings = {
-        "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
             "Host": "www.linkedin.com",
@@ -47,6 +46,8 @@ class Spider(BaseSpider):
             "Accept-Language": "en-us",
             "DNT": "1",
         },
+        "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
+        "METAREFRESH_ENABLED": False,
     }
 
     search_params = {
@@ -84,7 +85,7 @@ class Spider(BaseSpider):
         self, response: HtmlResponse, pagination_url: str
     ) -> Generator[Request, None, None]:
         if not response.url.startswith(SEARCH_BASE_URL):
-            yield self._retry(pagination_url, response.request)
+            yield self._retry(pagination_url, f"Got {response.url}", response.request)
             return
 
         urls = [
@@ -112,7 +113,7 @@ class Spider(BaseSpider):
         self, response: HtmlResponse, job_url: str, source_url: str
     ) -> Generator[Job | Request, None, None]:
         if not response.url.startswith(JOB_BASE_URL):
-            yield self._retry(job_url, response.request)
+            yield self._retry(job_url, f"Got {response.url}", response.request)
             return
 
         loader = Loader(item=Job(), response=response)
@@ -168,13 +169,11 @@ class Spider(BaseSpider):
         loader.replace_value("apply_url", response.url)
         yield loader.load_item()
 
-    def _retry(self, url: str, request: Request | None = None) -> Request:
+    def _retry(self, url: str, reason: str, request: Request | None = None) -> Request:
         if not request:
             raise ValueError(f"Request object is required to retry {url}")
         if retry_request := get_retry_request(
-            request.replace(url=url, meta=request.meta),
-            spider=self,
-            reason=f"Got {url}",
+            request.replace(url=url, meta=request.meta), spider=self, reason=reason
         ):
             return retry_request
         raise RuntimeError(f"Failed to retry {url}")
