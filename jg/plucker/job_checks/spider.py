@@ -1,4 +1,5 @@
 import json
+import random
 from typing import Callable, Iterable, Literal
 from urllib.parse import urlparse
 
@@ -30,21 +31,14 @@ class Spider(BaseSpider):
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_DELAY": 0.8,
-        "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0",
-        "DEFAULT_REQUEST_HEADERS": {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
-            "Referer": "https://duckduckgo.com/",
-            "Accept-Language": "en-US,en;q=0.8,cs;q=0.6,sk;q=0.4,es;q=0.2",
-            "DNT": "1",
-        },
+        "DOWNLOAD_DELAY": 1,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
     }
 
     min_items = 0
 
-    max_retry_times = 20
+    max_retry_times = 10
 
     domain_mapping = {
         "linkedin.com": "check_linkedin",
@@ -59,6 +53,38 @@ class Spider(BaseSpider):
                 return getattr(self, method_name)
         return self.check_http
 
+    def headers(self) -> dict:
+        return {
+            "Accept": random.choice(
+                [
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+                    "*/*",
+                ]
+            ),
+            "Accept-Language": random.choice(
+                [
+                    "cs;q=0.8,en;q=0.6",
+                    "en-us",
+                    "en-US,en;q=0.8,cs;q=0.6,sk;q=0.4,es;q=0.2",
+                ]
+            ),
+            "User-Agent": random.choice(
+                [
+                    self.settings.get("USER_AGENT"),
+                    "HTTPie/3.2.3",
+                    "curl/8.7.1",
+                ]
+            ),
+            "Referer": random.choice(
+                [
+                    "https://duckduckgo.com/",
+                    "https://www.google.com/",
+                    "https://www.bing.com/",
+                    "https://search.yahoo.com/",
+                ]
+            ),
+        }
+
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
@@ -67,6 +93,7 @@ class Spider(BaseSpider):
             self.logger.debug(f"Processing {url} with {callback.__name__}()")
             yield Request(
                 url,
+                headers=self.headers(),
                 callback=callback,
                 cb_kwargs={"url": url},
                 meta={"max_retry_times": self.max_retry_times},
@@ -83,7 +110,7 @@ class Spider(BaseSpider):
             self.logger.warning(f"Unexpected URL: {response.url}")
             if request := response.request:
                 if retry_request := get_retry_request(
-                    request.replace(url=url, headers={"Host": urlparse(url).netloc}),
+                    request.replace(url=url, headers=self.headers()),
                     spider=self,
                     reason=f"Got {response.url}",
                 ):
