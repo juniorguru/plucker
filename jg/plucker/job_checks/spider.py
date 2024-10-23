@@ -30,7 +30,7 @@ class Spider(BaseSpider):
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_DELAY": 0.5,
+        "DOWNLOAD_DELAY": 0.8,
         "USER_AGENT": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0",
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
@@ -43,6 +43,8 @@ class Spider(BaseSpider):
     }
 
     min_items = 0
+
+    max_retry_times = 20
 
     domain_mapping = {
         "linkedin.com": "check_linkedin",
@@ -67,7 +69,7 @@ class Spider(BaseSpider):
                 url,
                 callback=callback,
                 cb_kwargs={"url": url},
-                meta={"max_retry_times": 10},
+                meta={"max_retry_times": self.max_retry_times},
             )
 
     def check_http(self, response: TextResponse, url: str) -> JobCheck:
