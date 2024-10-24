@@ -1,20 +1,15 @@
 import logging
-import random
 from pathlib import Path
 from typing import Any, Generator, Type
-from urllib.parse import urlparse
 
 import nest_asyncio
 from apify import Actor, Configuration
 from apify.scrapy.utils import apply_apify_settings
-from scrapy import Item, Request, Spider
+from scrapy import Item, Spider
 from scrapy.crawler import CrawlerProcess
-from scrapy.http import TextResponse
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
-from scrapy.utils.response import response_status_message
-from scrapy_fake_useragent.middleware import RetryUserAgentMiddleware
 
 
 logger = logging.getLogger("jg.plucker")
@@ -128,56 +123,3 @@ def raise_for_stats(stats: dict[str, Any], min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
-
-
-class RetryMiddleware(RetryUserAgentMiddleware):
-    def process_response(
-        self, request: Request, response: TextResponse, spider: Spider
-    ) -> TextResponse | Request:
-        if request.meta.get("dont_retry", False):
-            return response
-
-        if response.status in self.retry_http_codes:
-            reason = response_status_message(response.status)
-            request.headers.update(self.get_random_headers())
-            return self._retry(request, reason, spider) or response
-
-        if is_linkedin_block(response.url):
-            if original_url := request.meta.get("original_url"):
-                reason = f"Got {response.url}"
-                retry_request = request.replace(
-                    url=original_url,
-                    headers=request.headers | self.get_random_headers(),
-                )
-                return self._retry(retry_request, reason, spider) or response
-            raise ValueError("Cannot retry without 'original_url' in request meta")
-
-        return response
-
-    def get_random_headers(self) -> dict:
-        return {
-            "Accept": random.choice(
-                [
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
-                    "*/*",
-                ]
-            ),
-            "Accept-Language": random.choice(
-                [
-                    "cs;q=0.8,en;q=0.6",
-                    "en-us",
-                    "en-US,en;q=0.8,cs;q=0.6,sk;q=0.4,es;q=0.2",
-                ]
-            ),
-            "User-Agent": self._ua_provider.get_random_ua(),
-        }
-
-
-def is_linkedin_block(url: str) -> bool:
-    url_parts = urlparse(url)
-    domain = ".".join(url_parts.netloc.split(".")[-2:])
-    if domain != "linkedin.com":
-        return False
-    if not url_parts.path.strip("/"):
-        return True
-    return False

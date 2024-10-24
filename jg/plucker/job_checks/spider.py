@@ -32,6 +32,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "DOWNLOAD_SLOTS": {"www.linkedin.com": {"delay": 1}},
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
@@ -52,7 +53,6 @@ class Spider(BaseSpider):
                     headers=LINKEDIN_HEADERS,
                     callback=self.check_linkedin,
                     cb_kwargs={"job_url": url},
-                    meta={"original_url": api_url},
                 )
             elif "startupjobs.cz" in netloc:
                 startupjobs_urls.append(url)

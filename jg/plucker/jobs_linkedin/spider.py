@@ -164,7 +164,6 @@ class Spider(BaseSpider):
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
-            meta={"original_url": url},
         )
 
 

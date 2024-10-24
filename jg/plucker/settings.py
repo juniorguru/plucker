@@ -42,7 +42,7 @@ DOWNLOADER_MIDDLEWARES = {
     "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
     "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
     "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 400,
-    "jg.plucker.scrapers.RetryMiddleware": 401,
+    "scrapy_fake_useragent.middleware.RetryUserAgentMiddleware": 401,
 }
 
 CLOSESPIDER_ERRORCOUNT = 1

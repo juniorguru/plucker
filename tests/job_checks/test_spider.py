@@ -1,27 +1,13 @@
 from pathlib import Path
-from typing import Callable
 
 import pytest
-from scrapy.http import HtmlResponse
+from scrapy.http import HtmlResponse, XmlResponse
 
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import Spider
 
 
 FIXTURES_DIR = Path(__file__).parent
-
-
-@pytest.mark.parametrize(
-    "url, expected",
-    [
-        ("https://www.jobs.cz/", Spider.check_http),
-        ("https://www.linkedin.com/", Spider.check_linkedin),
-        ("https://cz.linkedin.com/", Spider.check_linkedin),
-        ("https://www.startupjobs.cz/", Spider.check_startupjobs),
-    ],
-)
-def test_spider_get_callback(url: str, expected: Callable):
-    assert Spider().get_callback(url).__name__ == expected.__name__
 
 
 @pytest.mark.parametrize(
@@ -38,7 +24,7 @@ def test_spider_check_linkedin(
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = Spider().check_linkedin(response)
+    link = Spider().check_linkedin(response, job_url=url)
 
     assert link == JobCheck(
         url=url,
@@ -47,25 +33,30 @@ def test_spider_check_linkedin(
     )
 
 
-@pytest.mark.parametrize(
-    "fixture_basename, expected_ok, expected_reason",
-    [
-        ("startupjobs_expired.html", False, "STARTUPJOBS"),
-        ("startupjobs_ok.html", True, "STARTUPJOBS"),
-        ("startupjobs_paused.html", False, "STARTUPJOBS"),
-    ],
-)
-def test_spider_check_startupjobs(
-    fixture_basename: str, expected_ok: bool, expected_reason: str
-):
-    url = "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu"
-    response = HtmlResponse(
-        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
+def test_spider_check_startupjobs():
+    response = XmlResponse(
+        "https://example.com/feed.xml",
+        body=Path(FIXTURES_DIR / "startupjobs.xml").read_bytes(),
     )
-    link = Spider().check_startupjobs(response)
+    links = list(
+        Spider().check_startupjobs(
+            response,
+            urls=[
+                "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu",
+                "https://www.startupjobs.cz/nabidka/82417/ict-engineer-se-zamerenim-na-linux-a-voip",
+            ],
+        )
+    )
 
-    assert link == JobCheck(
-        url=url,
-        ok=expected_ok,
-        reason=expected_reason,
-    )
+    assert links == [
+        JobCheck(
+            url="https://www.startupjobs.cz/nabidka/81775/junior-software-administrator-do-naseho-interniho-it-tymu",
+            ok=False,
+            reason="STARTUPJOBS",
+        ),
+        JobCheck(
+            url="https://www.startupjobs.cz/nabidka/82417/ict-engineer-se-zamerenim-na-linux-a-voip",
+            ok=True,
+            reason="STARTUPJOBS",
+        ),
+    ]

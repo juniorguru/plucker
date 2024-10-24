@@ -9,7 +9,6 @@ from jg.plucker.scrapers import (
     StatsError,
     generate_schema,
     get_spider_module_name,
-    is_linkedin_block,
     raise_for_stats,
 )
 
@@ -205,19 +204,3 @@ def test_generate_schema():
             }
         },
     }
-
-
-@pytest.mark.parametrize(
-    "url, expected",
-    [
-        ("https://www.linkedin.com/", True),
-        ("https://www.linkedin.com", True),
-        ("https://linkedin.com/", True),
-        ("https://linkedin.com", True),
-        ("https://honzajavorek.cz/", False),
-        ("https://www.linkedin.com/jobs/view/12345", False),
-        ("https://cz.linkedin.com/jobs/view/junior-4041800658", False),
-    ],
-)
-def test_is_linkedin_block(url: str, expected: bool):
-    assert is_linkedin_block(url) is expected
