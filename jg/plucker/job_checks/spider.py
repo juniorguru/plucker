@@ -36,19 +36,6 @@ class Spider(BaseSpider):
 
     min_items = 0
 
-    domain_mapping = {
-        "linkedin.com": "check_linkedin",
-        "startupjobs.cz": "check_startupjobs",
-    }
-
-    def get_callback(self, url: str) -> Callable:
-        netloc = urlparse(url).netloc
-        for pattern in self.domain_mapping:
-            if pattern in netloc:
-                method_name = self.domain_mapping[pattern]
-                return getattr(self, method_name)
-        return self.check_http
-
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
@@ -57,9 +44,11 @@ class Spider(BaseSpider):
         for url in (str(link.url) for link in params.links):
             netloc = urlparse(url).netloc
             if "linkedin.com" in netloc:
+                api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
                 yield Request(
-                    url,
+                    api_url,
                     callback=self.check_linkedin,
+                    cb_kwargs={"url": url},
                     meta={"original_url": url},
                 )
             elif "startupjobs.cz" in netloc:
@@ -81,15 +70,17 @@ class Spider(BaseSpider):
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
 
-    def check_linkedin(self, response: TextResponse) -> JobCheck | Request:
-        self.logger.info(f"Checking {response.url} (LinkedIn)")
-        if response.css(".closed-job").get(None):
-            return JobCheck(url=response.url, ok=False, reason="LINKEDIN")
-        if response.css(".top-card-layout__cta-container").get(None):
-            return JobCheck(url=response.url, ok=True, reason="LINKEDIN")
+    def check_linkedin(
+        self, api_response: TextResponse, job_url: str
+    ) -> JobCheck | Request:
+        self.logger.info(f"Checking {job_url} (LinkedIn)")
+        if api_response.css(".closed-job").get(None):
+            return JobCheck(url=job_url, ok=False, reason="LINKEDIN")
+        if api_response.css(".top-card-layout__cta-container").get(None):
+            return JobCheck(url=job_url, ok=True, reason="LINKEDIN")
 
-        self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
-        return self.check_http(response)
+        self.logger.error(f"Failed to parse {api_response.url}\n\n{api_response.text}")
+        raise NotImplementedError("Failed to parse LinkedIn API response")
 
     def check_startupjobs(
         self, response: XmlResponse, urls: list[str]
@@ -106,7 +97,14 @@ class Spider(BaseSpider):
                 yield JobCheck(url=url, ok=False, reason="STARTUPJOBS")
 
 
+def parse_linkedin_id(url: str) -> int:
+    path = urlparse(url).path.strip("/")
+    if match := re.search(r"(\d+)$", path):
+        return int(match.group(1))
+    raise ValueError(f"Could not parse LinkedIn ID: {url}")
+
+
 def parse_startupjobs_id(url: str) -> int:
     if match := re.search(r"/nabidka/(\d+)/", url):
         return int(match.group(1))
-    raise ValueError(f"Could not parse startupjobs ID: {url}")
+    raise ValueError(f"Could not parse StartupJobs ID: {url}")
