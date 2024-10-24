@@ -1,3 +1,4 @@
+from functools import lru_cache
 import re
 from typing import Generator, Iterable, Literal
 from urllib.parse import urlparse
@@ -43,22 +44,24 @@ class Spider(BaseSpider):
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
+
+        # Sort LinkedIn URLs first as they are usually the slowest
+        urls = sorted(
+            (str(link.url) for link in params.links),
+            key=lambda url: 0 if is_linkedin_url(url) else 1,
+        )
+
+        # StartupJobs URLs are checked in bulk
         startupjobs_urls = []
-        for url in (str(link.url) for link in params.links):
-            netloc = urlparse(url).netloc
-            if "linkedin.com" in netloc:
-                api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
-                yield Request(
-                    api_url,
-                    headers=LINKEDIN_HEADERS,
-                    callback=self.check_linkedin,
-                    cb_kwargs={"job_url": url},
-                    meta={"impersonate": "edge101"},
-                )
-            elif "startupjobs.cz" in netloc:
+
+        for url in urls:
+            if is_linkedin_url(url):
+                yield self._linkedin_request(url)
+            elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
                 yield Request(url, callback=self.check_http)
+
         if startupjobs_urls:
             yield Request(
                 STARTUPJOBS_EXPORT_URL,
@@ -72,6 +75,16 @@ class Spider(BaseSpider):
         if response.status == 200:
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
+
+    def _linkedin_request(self, url: str) -> Request:
+        api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
+        return Request(
+            api_url,
+            headers=LINKEDIN_HEADERS,
+            callback=self.check_linkedin,
+            cb_kwargs={"job_url": url},
+            meta={"impersonate": "edge101"},
+        )
 
     def check_linkedin(
         self, api_response: TextResponse, job_url: str
@@ -98,6 +111,14 @@ class Spider(BaseSpider):
                 yield JobCheck(url=url, ok=True, reason="STARTUPJOBS")
             else:
                 yield JobCheck(url=url, ok=False, reason="STARTUPJOBS")
+
+
+def is_linkedin_url(url: str) -> bool:
+    return "linkedin.com" in urlparse(url).netloc
+
+
+def is_startupjobs_url(url: str) -> bool:
+    return "startupjobs.cz" in urlparse(url).netloc
 
 
 def parse_startupjobs_id(url: str) -> int:
