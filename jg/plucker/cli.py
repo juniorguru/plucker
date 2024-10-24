@@ -88,7 +88,7 @@ def crawl(
     configure_async()
     try:
         if apify:
-            logger.info(f"Crawling as Apify actor {actor_path!r}")
+            logger.info(f"Crawling as Apify actor {actor_path}")
             if not (actor_path / ".actor/actor.json").is_file():
                 actors = ", ".join([str(path) for path in iter_actor_paths(".")])
                 raise click.BadParameter(
