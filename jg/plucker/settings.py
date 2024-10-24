@@ -12,12 +12,17 @@ DEFAULT_REQUEST_HEADERS = {
     "DNT": "1",
 }
 
+FAKEUSERAGENT_PROVIDERS = [
+    "scrapy_fake_useragent.providers.FakeUserAgentProvider",
+    "scrapy_fake_useragent.providers.FakerProvider",
+    "scrapy_fake_useragent.providers.FixedUserAgentProvider",
+]
+
 USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.8 Mobile/15E148 DuckDuckGo/7 Safari/605.1.15"
 
 ROBOTSTXT_OBEY = False
 
-# If these occur, let's fail fast!
-# For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
+# If these occur, let's fail fast! For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
 HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501]
 
 RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 429, 999]
@@ -29,7 +34,16 @@ SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"
 # Custom setting, see 'run_spider()' and 'raise_for_stats()'
 SPIDER_MIN_ITEMS = 10
 
-ITEM_PIPELINES = {"jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50}
+ITEM_PIPELINES = {
+    "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
+}
+
+DOWNLOADER_MIDDLEWARES = {
+    "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
+    "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
+    "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 400,
+    "jg.plucker.scrapers.RetryMiddleware": 401,
+}
 
 CLOSESPIDER_ERRORCOUNT = 1
 

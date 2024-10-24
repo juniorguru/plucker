@@ -14,7 +14,7 @@ FIXTURES_DIR = Path(__file__).parent
 @pytest.mark.parametrize(
     "url, expected",
     [
-        ("https://www.jobs.cz/", Spider.parse),
+        ("https://www.jobs.cz/", Spider.check_http),
         ("https://www.linkedin.com/", Spider.check_linkedin),
         ("https://cz.linkedin.com/", Spider.check_linkedin),
         ("https://www.startupjobs.cz/", Spider.check_startupjobs),
@@ -38,7 +38,7 @@ def test_spider_check_linkedin(
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = Spider().check_linkedin(response, url)
+    link = Spider().check_linkedin(response)
 
     assert link == JobCheck(
         url=url,
@@ -62,7 +62,7 @@ def test_spider_check_startupjobs(
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
-    link = Spider().check_startupjobs(response, url)
+    link = Spider().check_startupjobs(response)
 
     assert link == JobCheck(
         url=url,

@@ -1,16 +1,14 @@
 import json
-import random
 from typing import Callable, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
-from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http import TextResponse
 
 from jg.plucker.items import JobCheck
-from jg.plucker.settings import RETRY_HTTP_CODES
+from jg.plucker.settings import RETRY_HTTP_CODES as DEFAULT_RETRY_HTTP_CODES
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -29,16 +27,14 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
-        "RETRY_HTTP_CODES": RETRY_HTTP_CODES + [403],
+        "RETRY_HTTP_CODES": DEFAULT_RETRY_HTTP_CODES + [403],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_DELAY": 1,
+        "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
     }
 
     min_items = 0
-
-    max_retry_times = 10
 
     domain_mapping = {
         "linkedin.com": "check_linkedin",
@@ -53,38 +49,6 @@ class Spider(BaseSpider):
                 return getattr(self, method_name)
         return self.check_http
 
-    def headers(self) -> dict:
-        return {
-            "Accept": random.choice(
-                [
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
-                    "*/*",
-                ]
-            ),
-            "Accept-Language": random.choice(
-                [
-                    "cs;q=0.8,en;q=0.6",
-                    "en-us",
-                    "en-US,en;q=0.8,cs;q=0.6,sk;q=0.4,es;q=0.2",
-                ]
-            ),
-            "User-Agent": random.choice(
-                [
-                    self.settings.get("USER_AGENT"),
-                    "HTTPie/3.2.3",
-                    "curl/8.7.1",
-                ]
-            ),
-            "Referer": random.choice(
-                [
-                    "https://duckduckgo.com/",
-                    "https://www.google.com/",
-                    "https://www.bing.com/",
-                    "https://search.yahoo.com/",
-                ]
-            ),
-        }
-
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
@@ -93,49 +57,46 @@ class Spider(BaseSpider):
             self.logger.debug(f"Processing {url} with {callback.__name__}()")
             yield Request(
                 url,
-                headers=self.headers(),
                 callback=callback,
-                cb_kwargs={"url": url},
-                meta={"max_retry_times": self.max_retry_times},
+                meta={"original_url": url},
             )
 
-    def check_http(self, response: TextResponse, url: str) -> JobCheck:
+    def check_http(self, response: TextResponse) -> JobCheck:
         reason = f"HTTP {response.status}"
         if response.status == 200:
-            return JobCheck(url=url, ok=True, reason=reason)
-        return JobCheck(url=url, ok=False, reason=reason)
+            return JobCheck(url=response.url, ok=True, reason=reason)
+        return JobCheck(url=response.url, ok=False, reason=reason)
 
-    def check_linkedin(self, response: TextResponse, url: str) -> JobCheck | Request:
-        if "linkedin.com/jobs/view" not in response.url:
-            self.logger.warning(f"Unexpected URL: {response.url}")
-            if request := response.request:
-                if retry_request := get_retry_request(
-                    request.replace(url=url, headers=self.headers()),
-                    spider=self,
-                    reason=f"Got {response.url}",
-                ):
-                    return retry_request
-                raise RuntimeError(f"Failed to retry {url}")
-            raise ValueError("Request object is required to retry")
-
+    def check_linkedin(self, response: TextResponse) -> JobCheck | Request:
+        self.logger.info(f"Checking LinkedIn: {self.get_info(response)}")
         if response.css(".closed-job").get(None):
-            return JobCheck(url=url, ok=False, reason="LINKEDIN")
+            return JobCheck(url=response.url, ok=False, reason="LINKEDIN")
         if response.css(".top-card-layout__cta-container").get(None):
-            return JobCheck(url=url, ok=True, reason="LINKEDIN")
+            return JobCheck(url=response.url, ok=True, reason="LINKEDIN")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
-        return self.check_http(response, url)
+        return self.check_http(response)
 
-    def check_startupjobs(self, response: TextResponse, url: str) -> JobCheck:
+    def check_startupjobs(self, response: TextResponse) -> JobCheck:
+        self.logger.info(f"Checking StartupJobs: {self.get_info(response)}")
         if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
             data = json.loads(data_text)
             status = data[19]
 
             if status == "published":
-                return JobCheck(url=url, ok=True, reason="STARTUPJOBS")
+                return JobCheck(url=response.url, ok=True, reason="STARTUPJOBS")
             if status in ["expired", "paused"]:
-                return JobCheck(url=url, ok=False, reason="STARTUPJOBS")
+                return JobCheck(url=response.url, ok=False, reason="STARTUPJOBS")
             raise NotImplementedError(f"Unexpected status: {status}")
 
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}\n\n")
-        return self.check_http(response, url)
+        return self.check_http(response)
+
+    def get_info(self, response: TextResponse) -> dict:
+        return {
+            "request_url": getattr(response.request, "url", None),
+            "request_headers": getattr(response.request, "headers", None),
+            "request_proxy": getattr(response.request, "meta", {}).get("proxy"),
+            "response_url": response.url,
+            "response_status": response.status,
+        }

@@ -3,9 +3,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from scrapy import Request
 from scrapy.http import HtmlResponse
-from scrapy.settings import Settings
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_linkedin.spider import (
@@ -23,22 +21,11 @@ from jg.plucker.jobs_linkedin.spider import (
 FIXTURES_DIR = Path(__file__).parent
 
 
-def test_spider_parse_retry():
-    spider = Spider()
-    spider.settings = Settings({"RETRY_TIMES": 3})
-    request = Request(SEARCH_BASE_URL, callback=Spider().parse)
-    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
-    requests = list(spider.parse(response, SEARCH_BASE_URL))
-
-    assert len(requests) == 1
-    assert requests[0].url == SEARCH_BASE_URL
-
-
-def test_spider_parse():
+def test_spider_parse_search():
     response = HtmlResponse(
         SEARCH_BASE_URL, body=Path(FIXTURES_DIR / "more.html").read_bytes()
     )
-    requests = list(Spider().parse(response, SEARCH_BASE_URL))
+    requests = list(Spider().parse_search(response))
     job_requests = list(filter(lambda r: "/jobPosting/" in r.url, requests))
     more_requests = list(filter(lambda r: "/seeMoreJobPostings/" in r.url, requests))
 
@@ -56,7 +43,7 @@ def test_spider_parse_end():
     response = HtmlResponse(
         SEARCH_BASE_URL, body=Path(FIXTURES_DIR / "more_end.html").read_bytes()
     )
-    requests = list(Spider().parse(response, SEARCH_BASE_URL))
+    requests = list(Spider().parse_search(response))
     job_requests = list(filter(lambda r: "/jobPosting/" in r.url, requests))
     more_requests = list(filter(lambda r: "/seeMoreJobPostings/" in r.url, requests))
 
@@ -64,22 +51,11 @@ def test_spider_parse_end():
     assert len(more_requests) == 0
 
 
-def test_spider_parse_job_retry():
-    spider = Spider()
-    spider.settings = Settings({"RETRY_TIMES": 3})
-    request = Request(JOB_BASE_URL, callback=Spider().parse_job)
-    response = HtmlResponse("https://www.linkedin.com/", body=b"", request=request)
-    requests = list(spider.parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
-
-    assert len(requests) == 1
-    assert requests[0].url == JOB_BASE_URL
-
-
 def test_spider_parse_job():
     response = HtmlResponse(
         JOB_BASE_URL, body=Path(FIXTURES_DIR / "job.html").read_bytes()
     )
-    jobs = list(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    jobs = list(Spider().parse_job(response, SEARCH_BASE_URL))
 
     assert len(jobs) == 1
 
@@ -123,7 +99,7 @@ def test_spider_parse_job_description_doesnt_include_criteria_list():
     response = HtmlResponse(
         JOB_BASE_URL, body=Path(FIXTURES_DIR / "job.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    job = next(Spider().parse_job(response, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert "Employment type" not in job["description_html"]
@@ -134,7 +110,7 @@ def test_spider_parse_job_no_company_url():
     response = HtmlResponse(
         JOB_BASE_URL, body=Path(FIXTURES_DIR / "job_no_company_url.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    job = next(Spider().parse_job(response, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert job["company_name"] == "NeoTreks, Inc."
@@ -146,7 +122,7 @@ def test_spider_parse_job_company_logo():
     response = HtmlResponse(
         JOB_BASE_URL, body=Path(FIXTURES_DIR / "job_company_logo.html").read_bytes()
     )
-    job = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    job = next(Spider().parse_job(response, SEARCH_BASE_URL))
     job = cast(Job, job)
 
     assert job["company_logo_urls"] == [
@@ -159,7 +135,7 @@ def test_spider_parse_job_apply_on_company_website():
         JOB_BASE_URL,
         body=Path(FIXTURES_DIR / "job_apply_on_company_website.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, JOB_BASE_URL, SEARCH_BASE_URL))
+    request = next(Spider().parse_job(response, SEARCH_BASE_URL))
     job = request.cb_kwargs["item"]
 
     assert (

@@ -4,7 +4,6 @@ from urllib.parse import urlencode, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
-from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http import HtmlResponse
 from scrapy.loader import ItemLoader
 
@@ -33,6 +32,7 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "RETRY_TIMES": 10,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
             "Host": "www.linkedin.com",
@@ -79,15 +79,9 @@ class Spider(BaseSpider):
                     **self.search_params,
                 )
                 url = f"{SEARCH_BASE_URL}?{urlencode(params)}"
-                yield self._request(url, self.parse, cb_kwargs=dict(pagination_url=url))
+                yield self._request(url, self.parse_search)
 
-    def parse(
-        self, response: HtmlResponse, pagination_url: str
-    ) -> Generator[Request, None, None]:
-        if not response.url.startswith(SEARCH_BASE_URL):
-            yield self._retry(pagination_url, f"Got {response.url}", response.request)
-            return
-
+    def parse_search(self, response: HtmlResponse) -> Generator[Request, None, None]:
         urls = [
             f"{JOB_BASE_URL}/{get_job_id(url)}"
             for url in response.css(
@@ -97,25 +91,17 @@ class Spider(BaseSpider):
         self.logger.info(f"Found {len(urls)} job URLs: {response.url}")
         for url in urls:
             yield self._request(
-                url,
-                self.parse_job,
-                cb_kwargs=dict(job_url=url, source_url=response.url),
+                url, self.parse_job, cb_kwargs={"source_url": response.url}
             )
 
         if len(urls) >= self.results_per_request:
             url = increment_param(response.url, "start", self.results_per_request)
             self.logger.info(f"Paginating: {url}")
-            yield self._request(
-                url, self.parse, cb_kwargs=dict(pagination_url=pagination_url)
-            )
+            yield self._request(url, self.parse_search)
 
     def parse_job(
-        self, response: HtmlResponse, job_url: str, source_url: str
+        self, response: HtmlResponse, source_url: str
     ) -> Generator[Job | Request, None, None]:
-        if not response.url.startswith(JOB_BASE_URL):
-            yield self._retry(job_url, f"Got {response.url}", response.request)
-            return
-
         loader = Loader(item=Job(), response=response)
         loader.add_value("source", self.name)
         loader.add_value("source_urls", source_url)
@@ -169,27 +155,15 @@ class Spider(BaseSpider):
         loader.replace_value("apply_url", response.url)
         yield loader.load_item()
 
-    def _retry(self, url: str, reason: str, request: Request | None = None) -> Request:
-        if not request:
-            raise ValueError(f"Request object is required to retry {url}")
-        if retry_request := get_retry_request(
-            request.replace(url=url, meta=request.meta), spider=self, reason=reason
-        ):
-            return retry_request
-        raise RuntimeError(f"Failed to retry {url}")
-
     def _request(
-        self,
-        url: str,
-        callback: Callable,
-        cb_kwargs: dict | None = None,
+        self, url: str, callback: Callable, cb_kwargs: dict | None = None
     ) -> Request:
         return Request(
             url,
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
-            meta={"max_retry_times": 10},
+            meta={"original_url": url},
         )
 
 
