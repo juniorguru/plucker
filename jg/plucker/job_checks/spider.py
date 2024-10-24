@@ -75,12 +75,14 @@ class Spider(BaseSpider):
             )
 
     def check_http(self, response: TextResponse) -> JobCheck:
+        self.logger.info(f"Checking {response.url} (HTTP)")
         reason = f"HTTP {response.status}"
         if response.status == 200:
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
 
     def check_linkedin(self, response: TextResponse) -> JobCheck | Request:
+        self.logger.info(f"Checking {response.url} (LinkedIn)")
         if response.css(".closed-job").get(None):
             return JobCheck(url=response.url, ok=False, reason="LINKEDIN")
         if response.css(".top-card-layout__cta-container").get(None):
@@ -92,6 +94,7 @@ class Spider(BaseSpider):
     def check_startupjobs(
         self, response: XmlResponse, urls: list[str]
     ) -> Generator[JobCheck, None, None]:
+        self.logger.info(f"Checking {len(urls)} URLs (StartupJobs)")
         current_ids = set(
             parse_startupjobs_id(url)
             for url in response.xpath("//url/text()").extract()
