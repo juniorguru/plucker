@@ -170,14 +170,6 @@ class RetryMiddleware(RetryUserAgentMiddleware):
                 ]
             ),
             "User-Agent": self._ua_provider.get_random_ua(),
-            "Referer": random.choice(
-                [
-                    "https://www.linkedin.com/",
-                    "https://duckduckgo.com/",
-                    "https://www.google.com/",
-                    "https://www.bing.com/",
-                ]
-            ),
         }
 
 

@@ -8,7 +8,6 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
 
 from jg.plucker.items import JobCheck
-from jg.plucker.settings import RETRY_HTTP_CODES as DEFAULT_RETRY_HTTP_CODES
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -27,7 +26,6 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
-        "RETRY_HTTP_CODES": DEFAULT_RETRY_HTTP_CODES + [403],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",

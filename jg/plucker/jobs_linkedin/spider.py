@@ -28,11 +28,10 @@ JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
 class Spider(BaseSpider):
     name = "jobs-linkedin"
 
-    download_delay = 1
-
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
         "RETRY_TIMES": 10,
+        "DOWNLOAD_DELAY": 1,
         "DEFAULT_REQUEST_HEADERS": {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
             "Host": "www.linkedin.com",
