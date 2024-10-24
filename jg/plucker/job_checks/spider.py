@@ -1,4 +1,3 @@
-from functools import lru_cache
 import re
 from typing import Generator, Iterable, Literal
 from urllib.parse import urlparse
@@ -33,7 +32,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        # "DOWNLOAD_SLOTS": {"www.linkedin.com": {"concurrency": 1, "delay": 1}},
+        "DOWNLOAD_SLOTS": {"www.linkedin.com": {"concurrency": 1, "delay": 1}},
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
