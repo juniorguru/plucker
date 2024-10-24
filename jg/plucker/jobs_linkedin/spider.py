@@ -18,6 +18,20 @@ from jg.plucker.url_params import (
 )
 
 
+HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+    "Host": "www.linkedin.com",
+    "Referer": (
+        "https://www.linkedin.com/jobs/search"
+        "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
+        "&currentJobId=3864058898"
+        "&position=2"
+        "&pageNum=0"
+    ),
+    "Accept-Language": "en-us",
+    "DNT": "1",
+}
+
 SEARCH_BASE_URL = (
     "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 )
@@ -32,19 +46,7 @@ class Spider(BaseSpider):
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
         "RETRY_TIMES": 10,
         "DOWNLOAD_DELAY": 1,
-        "DEFAULT_REQUEST_HEADERS": {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
-            "Host": "www.linkedin.com",
-            "Referer": (
-                "https://www.linkedin.com/jobs/search"
-                "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
-                "&currentJobId=3864058898"
-                "&position=2"
-                "&pageNum=0"
-            ),
-            "Accept-Language": "en-us",
-            "DNT": "1",
-        },
+        "DEFAULT_REQUEST_HEADERS": HEADERS,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
     }
@@ -169,7 +171,7 @@ class Spider(BaseSpider):
 def get_job_id(url: str) -> str:
     if match := re.search(r"-(\d+)$", urlparse(url).path):
         return match.group(1)
-    raise ValueError(f"Could not parse job ID: {url}")
+    raise ValueError(f"Could not parse LinkedIn job ID: {url}")
 
 
 def clean_proxied_url(url: str) -> str:

@@ -1,6 +1,5 @@
-import json
 import re
-from typing import Callable, Generator, Iterable, Literal
+from typing import Generator, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -9,7 +8,11 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse, XmlResponse
 
 from jg.plucker.items import JobCheck
-from jg.plucker.url_params import strip_utm_params
+from jg.plucker.jobs_linkedin.spider import (
+    HEADERS as LINKEDIN_HEADERS,
+    get_job_id as parse_linkedin_id,
+)
+from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -39,7 +42,6 @@ class Spider(BaseSpider):
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
-
         startupjobs_urls = []
         for url in (str(link.url) for link in params.links):
             netloc = urlparse(url).netloc
@@ -47,18 +49,18 @@ class Spider(BaseSpider):
                 api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
                 yield Request(
                     api_url,
+                    headers=LINKEDIN_HEADERS,
                     callback=self.check_linkedin,
-                    cb_kwargs={"url": url},
-                    meta={"original_url": url},
+                    cb_kwargs={"job_url": url},
+                    meta={"original_url": api_url},
                 )
             elif "startupjobs.cz" in netloc:
                 startupjobs_urls.append(url)
             else:
                 yield Request(url, callback=self.check_http)
-
         if startupjobs_urls:
             yield Request(
-                "https://feedback.startupjobs.cz/feed/juniorguru.php",
+                STARTUPJOBS_EXPORT_URL,
                 callback=self.check_startupjobs,
                 cb_kwargs={"urls": startupjobs_urls},
             )
@@ -95,13 +97,6 @@ class Spider(BaseSpider):
                 yield JobCheck(url=url, ok=True, reason="STARTUPJOBS")
             else:
                 yield JobCheck(url=url, ok=False, reason="STARTUPJOBS")
-
-
-def parse_linkedin_id(url: str) -> int:
-    path = urlparse(url).path.strip("/")
-    if match := re.search(r"(\d+)$", path):
-        return int(match.group(1))
-    raise ValueError(f"Could not parse LinkedIn ID: {url}")
 
 
 def parse_startupjobs_id(url: str) -> int:

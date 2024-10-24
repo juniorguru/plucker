@@ -11,10 +11,13 @@ from jg.plucker.processors import parse_iso_date
 from jg.plucker.url_params import strip_utm_params
 
 
+EXPORT_URL = "https://feedback.startupjobs.cz/feed/juniorguru.php"
+
+
 class Spider(BaseSpider):
     name = "jobs-startupjobs"
 
-    start_urls = ["https://feedback.startupjobs.cz/feed/juniorguru.php"]
+    start_urls = [EXPORT_URL]
 
     def parse(self, response: XmlResponse) -> Generator[Job, None, None]:
         for n, offer in enumerate(response.xpath("//offer"), start=1):
