@@ -1,13 +1,15 @@
 import json
-from typing import Callable, Iterable, Literal
+import re
+from typing import Callable, Generator, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import TextResponse
+from scrapy.http import TextResponse, XmlResponse
 
 from jg.plucker.items import JobCheck
+from jg.plucker.url_params import strip_utm_params
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -50,13 +52,26 @@ class Spider(BaseSpider):
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
+
+        startupjobs_urls = []
         for url in (str(link.url) for link in params.links):
-            callback = self.get_callback(url)
-            self.logger.debug(f"Processing {url} with {callback.__name__}()")
+            netloc = urlparse(url).netloc
+            if "linkedin.com" in netloc:
+                yield Request(
+                    url,
+                    callback=self.check_linkedin,
+                    meta={"original_url": url},
+                )
+            elif "startupjobs.cz" in netloc:
+                startupjobs_urls.append(url)
+            else:
+                yield Request(url, callback=self.check_http)
+
+        if startupjobs_urls:
             yield Request(
-                url,
-                callback=callback,
-                meta={"original_url": url},
+                "https://feedback.startupjobs.cz/feed/juniorguru.php",
+                callback=self.check_startupjobs,
+                cb_kwargs={"urls": startupjobs_urls},
             )
 
     def check_http(self, response: TextResponse) -> JobCheck:
@@ -66,7 +81,6 @@ class Spider(BaseSpider):
         return JobCheck(url=response.url, ok=False, reason=reason)
 
     def check_linkedin(self, response: TextResponse) -> JobCheck | Request:
-        self.logger.info(f"Checking LinkedIn: {self.get_info(response)}")
         if response.css(".closed-job").get(None):
             return JobCheck(url=response.url, ok=False, reason="LINKEDIN")
         if response.css(".top-card-layout__cta-container").get(None):
@@ -75,26 +89,21 @@ class Spider(BaseSpider):
         self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}")
         return self.check_http(response)
 
-    def check_startupjobs(self, response: TextResponse) -> JobCheck:
-        self.logger.info(f"Checking StartupJobs: {self.get_info(response)}")
-        if data_text := response.css("script#__NUXT_DATA__::text").extract_first():
-            data = json.loads(data_text)
-            status = data[19]
+    def check_startupjobs(
+        self, response: XmlResponse, urls: list[str]
+    ) -> Generator[JobCheck, None, None]:
+        current_ids = set(
+            parse_startupjobs_id(url)
+            for url in response.xpath("//url/text()").extract()
+        )
+        for url in urls:
+            if parse_startupjobs_id(url) in current_ids:
+                yield JobCheck(url=url, ok=True, reason="STARTUPJOBS")
+            else:
+                yield JobCheck(url=url, ok=False, reason="STARTUPJOBS")
 
-            if status == "published":
-                return JobCheck(url=response.url, ok=True, reason="STARTUPJOBS")
-            if status in ["expired", "paused"]:
-                return JobCheck(url=response.url, ok=False, reason="STARTUPJOBS")
-            raise NotImplementedError(f"Unexpected status: {status}")
 
-        self.logger.warning(f"Failed to parse {response.url}\n\n{response.text}\n\n")
-        return self.check_http(response)
-
-    def get_info(self, response: TextResponse) -> dict:
-        return {
-            "request_url": getattr(response.request, "url", None),
-            "request_headers": getattr(response.request, "headers", None),
-            "request_proxy": getattr(response.request, "meta", {}).get("proxy"),
-            "response_url": response.url,
-            "response_status": response.status,
-        }
+def parse_startupjobs_id(url: str) -> int:
+    if match := re.search(r"/nabidka/(\d+)/", url):
+        return int(match.group(1))
+    raise ValueError(f"Could not parse startupjobs ID: {url}")
