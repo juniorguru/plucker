@@ -53,6 +53,7 @@ class Spider(BaseSpider):
                     headers=LINKEDIN_HEADERS,
                     callback=self.check_linkedin,
                     cb_kwargs={"job_url": url},
+                    meta={"impersonate": "edge101"},
                 )
             elif "startupjobs.cz" in netloc:
                 startupjobs_urls.append(url)

@@ -38,12 +38,17 @@ ITEM_PIPELINES = {
     "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
 }
 
-DOWNLOADER_MIDDLEWARES = {
-    "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
-    "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
-    "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 500,
-    "scrapy_fake_useragent.middleware.RetryUserAgentMiddleware": 501,
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_impersonate.ImpersonateDownloadHandler",
+    "https": "scrapy_impersonate.ImpersonateDownloadHandler",
 }
+
+# DOWNLOADER_MIDDLEWARES = {
+#     "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
+#     "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
+#     "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 500,
+#     "scrapy_fake_useragent.middleware.RetryUserAgentMiddleware": 501,
+# }
 
 CLOSESPIDER_ERRORCOUNT = 1
 

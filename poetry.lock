@@ -535,6 +535,35 @@ files = [
 ]
 
 [[package]]
+name = "curl-cffi"
+version = "0.7.3"
+description = "libcurl ffi bindings for Python, with impersonation support."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "curl_cffi-0.7.3-cp38-abi3-macosx_10_9_x86_64.whl", hash = "sha256:890f1b0e1454977ff6bd388d29eb1eafb76bb8ef63d3c8b7539aafd4808a6cec"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:b5520bcf6284417e66c82728512e344b50bc0e9d8bd7949923b30558746b49a3"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:43367efb8d48e9997cf7591084ed7529409ad98bb67e284ae152f2a15e4ee68e"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ec6718bc5151b3e0ecc35aaf40078a39cc239405182c63fc95933eb7bff572dd"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9a90bfd0bcc7bf0f30ef6de6f4e612ea1bdc238a48928845532109a0273f6275"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:3f9373ce27b20e65fb1e6cbea6e4411edca1f3b4440be68090b262eece728544"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:a357d3da6aa8ccd41f1e6e422b9ff09ad4cc99b23b8f6299998cbfee6e690f01"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-win32.whl", hash = "sha256:fe01be42c27667353028ee06802cc32e3936496e645a39175db4cf7bea45bb10"},
+    {file = "curl_cffi-0.7.3-cp38-abi3-win_amd64.whl", hash = "sha256:39e195a13b95bd7e4a1e8eb7804807b4504c462f6886fde01dfe4b7552fd965e"},
+    {file = "curl_cffi-0.7.3.tar.gz", hash = "sha256:901012e21af899bdf1278fd9fcee5aad6931ed56e1f5a620ffa90220c9e79f10"},
+]
+
+[package.dependencies]
+certifi = ">=2024.2.2"
+cffi = ">=1.12.0"
+typing-extensions = "*"
+
+[package.extras]
+build = ["cibuildwheel", "wheel"]
+dev = ["charset-normalizer (>=3.3.2,<4.0)", "coverage (>=6.4.1,<7.0)", "cryptography (>=42.0.5,<43.0)", "httpx (==0.23.1)", "mypy (>=1.9.0,<2.0)", "pytest (>=8.1.1,<9.0)", "pytest-asyncio (>=0.23.6,<1.0)", "pytest-trio (>=0.8.0,<1.0)", "ruff (>=0.3.5,<1.0)", "trio (>=0.25.0,<1.0)", "trustme (>=1.1.0,<2.0)", "uvicorn (>=0.29.0,<1.0)", "websockets (>=12.0,<13.0)"]
+test = ["charset-normalizer (>=3.3.2,<4.0)", "cryptography (>=42.0.5,<43.0)", "fastapi (==0.110.0)", "httpx (==0.23.1)", "proxy.py (>=2.4.3,<3.0)", "pytest (>=8.1.1,<9.0)", "pytest-asyncio (>=0.23.6,<1.0)", "pytest-trio (>=0.8.0,<1.0)", "python-multipart (>=0.0.9,<1.0)", "trio (>=0.25.0,<1.0)", "trustme (>=1.1.0,<2.0)", "uvicorn (>=0.29.0,<1.0)", "websockets (>=12.0,<13.0)"]
+
+[[package]]
 name = "defusedxml"
 version = "0.7.1"
 description = "XML bomb protection for Python stdlib modules"
@@ -1847,6 +1876,21 @@ fake-useragent = "*"
 faker = "*"
 
 [[package]]
+name = "scrapy-impersonate"
+version = "1.4.1"
+description = "Scrapy download handler that can impersonate browser fingerprints"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "scrapy_impersonate-1.4.1-py3-none-any.whl", hash = "sha256:ae3ed0d7bf474014b2b8a96876455fa5e669c5c1878539f9d29d8692bad8dedd"},
+    {file = "scrapy_impersonate-1.4.1.tar.gz", hash = "sha256:095068eb65ce1e6fdd4cb2e939b49f2f35504a695a5d4ed12bd23d11dd6f7f35"},
+]
+
+[package.dependencies]
+curl-cffi = ">=0.7.0"
+scrapy = ">=2.10.1"
+
+[[package]]
 name = "service-identity"
 version = "24.1.0"
 description = "Service identity verification for pyOpenSSL & cryptography."
@@ -2253,4 +2297,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.12.*"
-content-hash = "6c0dfbdc9a731c50305d9e0b7f819b34117808b7925e432f65d6ae1a96f6330f"
+content-hash = "d824b4d372ef4fec5710c66f3b662e741592f3cef71452e19cb0e813db8e2617"

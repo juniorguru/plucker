@@ -26,7 +26,8 @@ scrapy = "2.11.2"
 ics = {version = "0.8.0.dev0", allow-prereleases = true}
 teemup = "1.1.1"
 pydantic = "2.9.2"
-scrapy-fake-useragent = "^1.4.4"
+scrapy-fake-useragent = "1.4.4"
+scrapy-impersonate = "1.4.1"
 
 [tool.poetry.group.dev.dependencies]
 cookiecutter = "2.6.0"
