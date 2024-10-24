@@ -599,32 +599,6 @@ w3lib = "*"
 cli = ["requests"]
 
 [[package]]
-name = "fake-useragent"
-version = "1.5.1"
-description = "Up-to-date simple useragent faker with real world database"
-optional = false
-python-versions = "*"
-files = [
-    {file = "fake-useragent-1.5.1.tar.gz", hash = "sha256:6387269f5a2196b5ba7ed8935852f75486845a1c95c50e72460e6a8e762f5c49"},
-    {file = "fake_useragent-1.5.1-py3-none-any.whl", hash = "sha256:57415096557c8a4e23b62a375c21c55af5fd4ba30549227f562d2c4f5b60e3b3"},
-]
-
-[[package]]
-name = "faker"
-version = "30.8.0"
-description = "Faker is a Python package that generates fake data for you."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "Faker-30.8.0-py3-none-any.whl", hash = "sha256:4cd0c5ea4bc1e4c902967f6e662f5f5da69f1674d9a94f54e516d27f3c2a6a16"},
-    {file = "faker-30.8.0.tar.gz", hash = "sha256:3608c7fcac2acde0eaa6da28dae97628f18f14d54eaa2a92b96ae006f1621bd7"},
-]
-
-[package.dependencies]
-python-dateutil = ">=2.4"
-typing-extensions = "*"
-
-[[package]]
 name = "feedparser"
 version = "6.0.11"
 description = "Universal feed parser, handles RSS 0.9x, RSS 1.0, RSS 2.0, CDF, Atom 0.3, and Atom 1.0 feeds"
@@ -1861,21 +1835,6 @@ w3lib = ">=1.17.0"
 "zope.interface" = ">=5.1.0"
 
 [[package]]
-name = "scrapy-fake-useragent"
-version = "1.4.4"
-description = "Use a random User-Agent provided by fake-useragent for every request"
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "scrapy-fake-useragent-1.4.4.macosx-10.9-x86_64.tar.gz", hash = "sha256:3b17e982e646918dc25080da0672812d07bfb7a92a58377c014c74e0182c665e"},
-    {file = "scrapy_fake_useragent-1.4.4-py2.py3-none-any.whl", hash = "sha256:da0589d9245fe6348b491821f3be3387dd6563540146058e6b6c4f1bbe1358bf"},
-]
-
-[package.dependencies]
-fake-useragent = "*"
-faker = "*"
-
-[[package]]
 name = "scrapy-impersonate"
 version = "1.4.1"
 description = "Scrapy download handler that can impersonate browser fingerprints"
@@ -2297,4 +2256,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.12.*"
-content-hash = "d824b4d372ef4fec5710c66f3b662e741592f3cef71452e19cb0e813db8e2617"
+content-hash = "1f2c96468cfd20a02ae9e6152bb192ca7e8b9fe074a55eec4bf7b4ac342338fe"

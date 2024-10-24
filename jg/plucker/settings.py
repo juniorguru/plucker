@@ -12,12 +12,6 @@ DEFAULT_REQUEST_HEADERS = {
     "DNT": "1",
 }
 
-FAKEUSERAGENT_PROVIDERS = [
-    "scrapy_fake_useragent.providers.FakeUserAgentProvider",
-    "scrapy_fake_useragent.providers.FakerProvider",
-    "scrapy_fake_useragent.providers.FixedUserAgentProvider",
-]
-
 USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.8 Mobile/15E148 DuckDuckGo/7 Safari/605.1.15"
 
 ROBOTSTXT_OBEY = False
@@ -42,13 +36,6 @@ DOWNLOAD_HANDLERS = {
     "http": "scrapy_impersonate.ImpersonateDownloadHandler",
     "https": "scrapy_impersonate.ImpersonateDownloadHandler",
 }
-
-# DOWNLOADER_MIDDLEWARES = {
-#     "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
-#     "scrapy.downloadermiddlewares.retry.RetryMiddleware": None,
-#     "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 500,
-#     "scrapy_fake_useragent.middleware.RetryUserAgentMiddleware": 501,
-# }
 
 CLOSESPIDER_ERRORCOUNT = 1
 
