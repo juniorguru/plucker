@@ -31,8 +31,8 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "DOWNLOAD_SLOTS": {"www.linkedin.com": {"delay": 1}},
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
+        "DOWNLOAD_SLOTS": {"www.linkedin.com": {"concurrency": 1, "delay": 1}},
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
