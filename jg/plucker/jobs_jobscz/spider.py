@@ -86,13 +86,14 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
+        "DOWNLOAD_DELAY": 0.8,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
     }
 
     start_urls = [
-        "https://beta.www.jobs.cz/prace/programator/",
-        "https://beta.www.jobs.cz/prace/tester/",
-        "https://beta.www.jobs.cz/prace/datovy-analytik/",
+        "https://www.jobs.cz/prace/programator/",
+        "https://www.jobs.cz/prace/tester/",
+        "https://www.jobs.cz/prace/datovy-analytik/",
     ]
 
     employment_types_labels = [
@@ -127,13 +128,16 @@ class Spider(BaseSpider):
                 url,
                 callback=self.parse_job,
                 cb_kwargs=dict(item=item, track_id=track_id),
+                meta={"impersonate": "edge101"},
             )
         urls = [
             response.urljoin(relative_url)
             for relative_url in response.css(".Pagination__link::attr(href)").getall()
             if "page=" in relative_url
         ]
-        yield from response.follow_all(urls, callback=self.parse)
+        yield from response.follow_all(
+            urls, callback=self.parse, meta={"impersonate": "edge101"}
+        )
 
     def parse_job(
         self, response: HtmlResponse, item: Job, track_id: str
@@ -199,6 +203,7 @@ class Spider(BaseSpider):
                     script_urls=script_urls,
                     track_id=track_id,
                 ),
+                meta={"impersonate": "edge101"},
             )
         else:
             yield from self.parse_job_widget(
@@ -252,6 +257,7 @@ class Spider(BaseSpider):
                     script_urls=chunk_urls,
                     track_id=track_id,
                 ),
+                meta={"impersonate": "edge101"},
             )
         elif script_urls:
             self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
@@ -264,6 +270,7 @@ class Spider(BaseSpider):
                     script_urls=script_urls,
                     track_id=track_id,
                 ),
+                meta={"impersonate": "edge101"},
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -308,13 +315,14 @@ class Spider(BaseSpider):
                         host=widget_host,
                         referer=url,
                         version="v3.49.1",
-                        pageReferer="https://beta.www.jobs.cz/",
+                        pageReferer="https://www.jobs.cz/",
                     ),
                     query=load_gql(WIDGET_QUERY_PATH),
                 )
             ),
             callback=self.parse_job_widget_api,
             cb_kwargs=dict(item=loader.load_item(), track_id=track_id),
+            meta={"impersonate": "edge101"},
         )
 
     def parse_job_widget_api(
