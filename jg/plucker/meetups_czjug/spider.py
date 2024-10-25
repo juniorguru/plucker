@@ -7,7 +7,7 @@ from scrapy import Spider as BaseSpider
 from scrapy.http import TextResponse
 
 from jg.plucker.items import Meetup
-from jg.plucker.meetups_meetupcom.spider import Spider as MeetupComSpider
+from jg.plucker.meetups_meetupcom.spider import GROUPS as MEETUPCOM_GROUPS
 
 
 class Spider(BaseSpider):
@@ -20,14 +20,7 @@ class Spider(BaseSpider):
     min_items = 0
 
     meetup_com_url_re = re.compile(
-        r"|".join(
-            re.escape(
-                url.removeprefix("https://www.")
-                .removesuffix("/")
-                .removesuffix("/events")
-            )
-            for url in MeetupComSpider.start_urls
-        ),
+        r"|".join(re.escape(f"meetup.com/{slug}/") for slug in MEETUPCOM_GROUPS),
         re.IGNORECASE,
     )
 
@@ -79,4 +72,7 @@ class Spider(BaseSpider):
             ends_at=event.end,
             location=event.location,
             source_url=source_url,
+            series_name="CZJUG",
+            series_org="komunita kolem Javy",
+            series_url="https://www.jug.cz/",
         )

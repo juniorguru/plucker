@@ -54,3 +54,6 @@ class Meetup(Item):
     location = Field()
     url = Field(required=True, apify_format="link")
     source_url = Field(required=True, apify_format="link")
+    series_name = Field(required=True)
+    series_org = Field(required=True)
+    series_url = Field(required=True, apify_format="link")

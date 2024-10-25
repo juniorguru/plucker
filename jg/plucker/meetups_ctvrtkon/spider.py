@@ -46,4 +46,7 @@ class Spider(BaseSpider):
             ),
             location=f"{event['venue']['name']}, {event['venue']['address']}",
             source_url=source_url,
+            series_name="Čtvrtkon",
+            series_org="místní IT komunita",
+            series_url="https://ctvrtkon.cz/",
         )

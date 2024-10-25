@@ -43,4 +43,7 @@ class Spider(BaseSpider):
             ends_at=event.end,
             location=event.location,
             source_url=source_url,
+            series_name="Pyvo",
+            series_org="komunita kolem Pythonu",
+            series_url="https://pyvo.cz/",
         )
