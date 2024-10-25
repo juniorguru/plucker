@@ -1,5 +1,5 @@
 import re
-from typing import Generator, Iterable, Literal
+from typing import Any, Generator, Iterable, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ from jg.plucker.jobs_linkedin.spider import (
     get_job_id as parse_linkedin_id,
 )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
+from jg.plucker.scrapers import evaluate_stats
 
 
 # Trying to be at least somewhat compatible with 'requestListSources'
@@ -39,6 +40,19 @@ class Spider(BaseSpider):
     }
 
     min_items = 0
+
+    @classmethod
+    def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
+        max_retries = stats.get("retry/max_reached", 0)
+        error_count = stats.get("log_count/ERROR", 0)
+
+        # tolerate up to 3 errors (lost job checks) caused by max retries
+        if error_count and max_retries <= 3:
+            stats_copy = stats.copy()
+            stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
+            return evaluate_stats(stats_copy, min_items)
+
+        return evaluate_stats(stats, min_items)
 
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))

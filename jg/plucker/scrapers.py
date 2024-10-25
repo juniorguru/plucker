@@ -28,7 +28,10 @@ def run_spider(
 
     min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
     logger.debug(f"Min items required: {min_items}")
-    raise_for_stats(stats_collector.get_stats(), min_items=min_items)
+
+    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
+    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
+    evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
 
 
 async def run_actor(
@@ -108,7 +111,7 @@ class StatsError(RuntimeError):
     pass
 
 
-def raise_for_stats(stats: dict[str, Any], min_items: int):
+def evaluate_stats(stats: dict[str, Any], min_items: int):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions"):
         raise StatsError(f"Exceptions raised: {exc_count}")

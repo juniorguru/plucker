@@ -7,9 +7,9 @@ from scrapy import Field, Item, Spider
 
 from jg.plucker.scrapers import (
     StatsError,
+    evaluate_stats,
     generate_schema,
     get_spider_module_name,
-    raise_for_stats,
 )
 
 
@@ -87,8 +87,8 @@ def test_spider_names(
     assert spider_class.name == actor_config["name"] == actor_config["title"]
 
 
-def test_raise_for_stats_passing():
-    raise_for_stats(
+def test_evaluate_stats_passing():
+    evaluate_stats(
         {
             "item_scraped_count": 10,
             "finish_reason": "finished",
@@ -111,9 +111,9 @@ def test_raise_for_stats_passing():
         {"log_count/ERROR": 1},
     ],
 )
-def test_raise_for_stats_failing(stats_override: dict):
+def test_evaluate_stats_failing(stats_override: dict):
     with pytest.raises(StatsError):
-        raise_for_stats(
+        evaluate_stats(
             {
                 "item_scraped_count": 10,
                 "finish_reason": "finished",
@@ -126,8 +126,8 @@ def test_raise_for_stats_failing(stats_override: dict):
         )
 
 
-def test_raise_for_stats_min_items_passing():
-    raise_for_stats(
+def test_evaluate_stats_min_items_passing():
+    evaluate_stats(
         {
             "item_scraped_count": 7,
             "finish_reason": "finished",
@@ -139,8 +139,8 @@ def test_raise_for_stats_min_items_passing():
     )
 
 
-def test_raise_for_stats_min_items_passing_zero():
-    raise_for_stats(
+def test_evaluate_stats_min_items_passing_zero():
+    evaluate_stats(
         {
             "item_scraped_count": 0,
             "finish_reason": "finished",
@@ -152,9 +152,9 @@ def test_raise_for_stats_min_items_passing_zero():
     )
 
 
-def test_raise_for_stats_min_items_failing():
+def test_evaluate_stats_min_items_failing():
     with pytest.raises(StatsError):
-        raise_for_stats(
+        evaluate_stats(
             {
                 "item_scraped_count": 10,
                 "finish_reason": "finished",
