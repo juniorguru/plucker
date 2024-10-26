@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Generator
 
 from ics import Calendar, Event
@@ -34,13 +34,18 @@ class Spider(BaseSpider):
             self.logger.debug(f"Tentative event: {event.summary} {event.begin}")
             return
 
+        if not event.begin:
+            raise ValueError(f"Event without start time: {event}")
+
         self.logger.info(f"Event: {event.summary} {event.begin}")
+        default_ends_at = event.begin + timedelta(hours=3)
+
         return Meetup(
             title=event.summary,
             url=event.url,
             description=event.description,
             starts_at=event.begin,
-            ends_at=event.end,
+            ends_at=max(event.end or default_ends_at, default_ends_at),
             location=event.location,
             source_url=source_url,
             series_name="Pyvo",
