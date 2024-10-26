@@ -9,6 +9,9 @@
                     "description",
                     "ends_at",
                     "location",
+                    "series_name",
+                    "series_org",
+                    "series_url",
                     "source_url",
                     "starts_at",
                     "title",
@@ -27,6 +30,16 @@
                     },
                     "location": {
                         "label": "location"
+                    },
+                    "series_name": {
+                        "label": "series_name"
+                    },
+                    "series_org": {
+                        "label": "series_org"
+                    },
+                    "series_url": {
+                        "label": "series_url",
+                        "format": "link"
                     },
                     "source_url": {
                         "label": "source_url",

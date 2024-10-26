@@ -112,7 +112,7 @@ class Spider(BaseSpider):
         group: GroupSpec,
     ) -> Meetup | None:
         if venue := event["venue"]:
-            skip_keywords = [keyword.lower() for keyword in group.get("skip")]
+            skip_keywords = [keyword.lower() for keyword in group.get("skip", [])]
             skip = any(keyword in event["title"].lower() for keyword in skip_keywords)
             if skip:
                 self.logger.warning(f"Skipping {event['title']!r}, matches: {skip}")
