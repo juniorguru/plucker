@@ -136,7 +136,7 @@ class Spider(BaseSpider):
                 source_url=source_url,
                 series_name=group.get("name", event["group_name"]),
                 series_org=group["description"],
-                series_url=group.get("url", series_url),
+                series_url=group.get("homepage_url", series_url),
             )
         self.logger.warning(f"Skipping {event['title']!r}, has no venue")
         return None
