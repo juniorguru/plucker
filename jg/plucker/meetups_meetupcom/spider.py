@@ -11,6 +11,7 @@ class GroupSpec(TypedDict):
     name: NotRequired[str]
     description: str
     homepage_url: NotRequired[str]
+    skip: list[str]
 
 
 GROUPS = {
@@ -21,6 +22,7 @@ GROUPS = {
     "https://www.meetup.com/reactgirls/": {
         "description": "komunita (nejen) žen kolem Reactu a frontendu",
         "homepage_url": "https://reactgirls.com/",
+        "skip": ["workshop", "canvas:"],
     },
     "https://www.meetup.com/frontendisti/": {
         "description": "komunita kolem frontendu",
@@ -47,6 +49,7 @@ GROUPS = {
     "https://www.meetup.com/techmeetupostrava/": {
         "description": "místní IT komunita",
         "homepage_url": "https://www.techmeetup.cz/",
+        "skip": ["agile circle"],
     },
     "https://www.meetup.com/prague-gen-ai/": {
         "description": "komunita kolem AI",
@@ -109,6 +112,11 @@ class Spider(BaseSpider):
         group: GroupSpec,
     ) -> Meetup | None:
         if venue := event["venue"]:
+            skip_keywords = [keyword.lower() for keyword in group.get("skip")]
+            skip = any(keyword in event["title"].lower() for keyword in skip_keywords)
+            if skip:
+                self.logger.warning(f"Skipping {event['title']!r}, matches: {skip}")
+                return None
             venue_parts = [
                 venue["name"],
                 venue["address"],
@@ -117,7 +125,7 @@ class Spider(BaseSpider):
                 venue["country"].upper() if venue["country"] else None,
             ]
             location = ", ".join(filter(None, venue_parts))
-            self.logger.info(f"Event: {event['title']} {event['starts_at']}")
+            self.logger.info(f"Event: {event['title']!r} {event['starts_at']}")
             return Meetup(
                 title=event["title"],
                 url=event["url"],
@@ -130,4 +138,5 @@ class Spider(BaseSpider):
                 series_org=group["description"],
                 series_url=group.get("url", series_url),
             )
-        self.logger.debug(f"Event without venue: {event['title']} {event['starts_at']}")
+        self.logger.warning(f"Skipping {event['title']!r}, has no venue")
+        return None
