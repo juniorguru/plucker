@@ -26,7 +26,7 @@ MULTIPLE_LOCATIONS_RE = re.compile(
         \s+
         \d+  # number of additional locations
         \s+
-        (další(ch)?\s+lokal\w+|other\+local\w+)  # Czech or English
+        (další(ch)?\s+lokal\w+|other\+loca\w+)  # Czech or English
         $
     """,
     re.VERBOSE,

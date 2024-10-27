@@ -1,3 +1,4 @@
+import itertools
 import json
 from datetime import date
 from pathlib import Path
@@ -80,10 +81,14 @@ def test_spider_parse_multiple_locations():
         "https://beta.www.jobs.cz/prace/...",
         body=Path(FIXTURES_DIR / "listing_location.html").read_bytes(),
     )
-    requests = list(Spider().parse(response))
-    job = requests[8].cb_kwargs["item"]
+    jobs = [request.cb_kwargs["item"] for request in Spider().parse(response)]
+    locations = set(itertools.chain.from_iterable(job["locations_raw"] for job in jobs))
 
-    assert job["locations_raw"] == ["Zlín"]
+    assert locations == {
+        "Hradec Králové – Kukleny",
+        "Praha – Prosek",
+        "Ústí nad Labem – Klíše",
+    }
 
 
 def test_spider_parse_job_standard():
