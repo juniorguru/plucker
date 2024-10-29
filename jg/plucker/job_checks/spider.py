@@ -103,12 +103,18 @@ class Spider(BaseSpider):
         self, api_response: TextResponse, job_url: str
     ) -> JobCheck | Request:
         self.logger.info(f"Checking {job_url} (LinkedIn)")
+        if api_response.status == 404:
+            return JobCheck(url=job_url, ok=False, reason="HTTP 404")
         if api_response.css(".closed-job").get(None):
             return JobCheck(url=job_url, ok=False, reason="LINKEDIN")
         if api_response.css(".top-card-layout__cta-container").get(None):
             return JobCheck(url=job_url, ok=True, reason="LINKEDIN")
-
-        self.logger.error(f"Failed to parse {api_response.url}\n\n{api_response.text}")
+        self.logger.error(
+            f"Failed to parse {api_response.url}, "
+            f"status {api_response.status}, "
+            f"content length {len(api_response.text)}"
+            f"\n\n{api_response.text}"
+        )
         raise NotImplementedError("Failed to parse LinkedIn API response")
 
     def check_startupjobs(
