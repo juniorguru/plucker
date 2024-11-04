@@ -13,7 +13,7 @@ class Spider(BaseSpider):
 
     start_urls = ["https://pyvo.cz/api/pyvo.ics"]
 
-    min_items = 1
+    min_items = 0
 
     def parse(
         self, response: TextResponse, today: date | None = None
