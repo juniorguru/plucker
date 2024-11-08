@@ -28,14 +28,6 @@ GROUPS = {
         "description": "komunita kolem frontendu",
         "homepage_url": "https://www.frontendisti.cz/",
     },
-    "https://www.meetup.com/pehapkari/": {
-        "description": "komunita kolem PHP",
-        "homepage_url": "https://pehapkari.cz/",
-    },
-    "https://www.meetup.com/pehapkari-brno/": {
-        "description": "komunita kolem PHP",
-        "homepage_url": "https://pehapkari.cz/",
-    },
     "https://www.meetup.com/professionaltesting/": {
         "description": "komunita kolem testování",
     },
