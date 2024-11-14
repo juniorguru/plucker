@@ -96,7 +96,7 @@ class Spider(BaseSpider):
             headers=LINKEDIN_HEADERS,
             callback=self.check_linkedin,
             cb_kwargs={"job_url": url},
-            meta={"impersonate": "edge101"},
+            meta={"impersonate": "chrome124"},
         )
 
     def check_linkedin(
