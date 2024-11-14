@@ -45,7 +45,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
         "RETRY_TIMES": 15,
-        "DOWNLOAD_DELAY": 1.8,
+        "DOWNLOAD_DELAY": 2,
         "DEFAULT_REQUEST_HEADERS": HEADERS,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
