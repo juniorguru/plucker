@@ -47,7 +47,9 @@ class Spider(BaseSpider):
         error_count = stats.get("log_count/ERROR", 0)
 
         # tolerate up to 3 errors (lost job checks) caused by max retries
-        if error_count and max_retries <= 3:
+        # if error_count and max_retries <= 3:
+        # FIXME! see https://github.com/juniorguru/plucker/issues/95
+        if error_count and max_retries <= 100:
             stats_copy = stats.copy()
             stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
             return evaluate_stats(stats_copy, min_items)
