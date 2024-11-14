@@ -164,7 +164,7 @@ class Spider(BaseSpider):
             cookies=self.lang_cookies,
             callback=callback,
             cb_kwargs=cb_kwargs or {},
-            meta={"impersonate": "edge101"},
+            meta={"impersonate": "chrome124"},
         )
 
 
