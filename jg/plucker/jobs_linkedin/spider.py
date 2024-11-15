@@ -114,7 +114,7 @@ def linkedin_task(
     logging.basicConfig = lambda *args, **kwargs: None
     logger = logging.getLogger(logger_name)
 
-    proxies = {p.split("://", 1): p for p in [proxy] if p}
+    proxies = {p.split("://", 1)[0]: p for p in [proxy] if p}
     logger.info(f"Proxies: {proxies}")
     api = LinkedIn(
         username,
