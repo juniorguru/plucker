@@ -52,7 +52,7 @@ class Spider(BaseSpider):
 
     start_urls = ["https://example.com"]
 
-    def run(self, response: HtmlResponse) -> Generator[Job | Request, None, None]:
+    def parse(self, response: HtmlResponse) -> Generator[Job | Request, None, None]:
         queue = Queue()
         scrape_proc = Process(
             target=linkedin_task,
