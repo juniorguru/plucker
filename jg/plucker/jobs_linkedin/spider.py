@@ -1,61 +1,47 @@
+import json
+import logging
 import re
-from typing import Callable, Generator
-from urllib.parse import urlencode, urlparse
+import socketserver
+from datetime import datetime
+from http.server import SimpleHTTPRequestHandler
+from multiprocessing import Process, Queue
+from pathlib import Path
+from typing import Generator, cast
+from urllib.parse import urlparse
 
-from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
+from apify.log import ActorLogFormatter
+from diskcache import Cache
+from linkedin_api import Linkedin as BaseLinkedIn
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse
-from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
-from jg.plucker.processors import first, last, parse_relative_date, split
 from jg.plucker.url_params import (
     get_param,
-    increment_param,
     replace_in_params,
     strip_params,
     strip_utm_params,
 )
 
 
-HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
-    "Host": "www.linkedin.com",
-    "Referer": (
-        "https://www.linkedin.com/jobs/search"
-        "?original_referer=https%3A%2F%2Fwww.linkedin.com%2F"
-        "&currentJobId=3864058898"
-        "&position=2"
-        "&pageNum=0"
-    ),
-    "Accept-Language": "en-us",
-    "DNT": "1",
-}
-
-SEARCH_BASE_URL = (
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-)
-
-JOB_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting"
+class LinkedIn(BaseLinkedIn):
+    def _fetch(self, uri: str, *args, **kwargs):
+        # Patch which gives us more job data
+        if uri.startswith("/jobs/jobPostings/"):
+            kwargs["params"] = {
+                "decorationId": "com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-64",
+            }
+        return super()._fetch(uri, *args, **kwargs)
 
 
 class Spider(BaseSpider):
     name = "jobs-linkedin"
 
-    custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-        "RETRY_TIMES": 15,
-        "DOWNLOAD_DELAY": 2,
-        "DEFAULT_REQUEST_HEADERS": HEADERS,
-        "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
-        "METAREFRESH_ENABLED": False,
-    }
+    cache_dir = Path.cwd() / ".linkedin_cache"
 
-    search_params = {
-        "f_TPR": "r2592000",  # past month
-    }
+    cache_expire = 60 * 60 * 24
 
-    search_terms = [
+    search_queries = [
         "junior software engineer",
         "junior developer",
         "junior vyvojar",
@@ -66,106 +52,185 @@ class Spider(BaseSpider):
 
     locations = ["Czechia", "Slovakia"]
 
-    lang_cookies = {"lang": "v=2&lang=en-us"}
-
-    results_per_request = 25
-
     def start_requests(self) -> Generator[Request, None, None]:
-        for location in self.locations:
-            for search_term in self.search_terms:
-                self.logger.info(f"Starting with {search_term!r} ({location})")
-                params = dict(
-                    keywords=search_term,
-                    location=location,
-                    **self.search_params,
-                )
-                url = f"{SEARCH_BASE_URL}?{urlencode(params)}"
-                yield self._request(url, self.parse_search)
+        start_url = "http://localhost:8038"
+        server_proc = Process(target=server, args=(start_url,))
+        server_proc.start()
+        yield Request(
+            start_url, callback=self.run, cb_kwargs={"server_proc": server_proc}
+        )
 
-    def parse_search(self, response: HtmlResponse) -> Generator[Request, None, None]:
-        urls = [
-            f"{JOB_BASE_URL}/{get_job_id(url)}"
-            for url in response.css(
-                'a[href*="linkedin.com/jobs/view/"]::attr(href)'
-            ).getall()
-        ]
-        self.logger.info(f"Found {len(urls)} job URLs: {response.url}")
-        for url in urls:
-            yield self._request(
-                url, self.parse_job, cb_kwargs={"source_url": response.url}
-            )
-
-        if len(urls) >= self.results_per_request:
-            url = increment_param(response.url, "start", self.results_per_request)
-            self.logger.info(f"Paginating: {url}")
-            yield self._request(url, self.parse_search)
-
-    def parse_job(
-        self, response: HtmlResponse, source_url: str
+    def run(
+        self, _: HtmlResponse, server_proc: Process
     ) -> Generator[Job | Request, None, None]:
-        loader = Loader(item=Job(), response=response)
-        loader.add_value("source", self.name)
-        loader.add_value("source_urls", source_url)
-        loader.add_value("source_urls", response.url)
-        loader.add_css("title", "h2::text")
-        loader.add_css("remote", "h2::text")
-        loader.add_css("url", ".top-card-layout__entity-info > a::attr(href)")
-        loader.add_css("apply_url", ".apply-button::attr(href)")
-        loader.add_css("company_name", ".topcard__org-name-link::text")
-        loader.add_css(
-            "company_name", ".top-card-layout .topcard__flavor:nth-child(1)::text"
-        )
-        loader.add_css(
-            "locations_raw", ".top-card-layout .topcard__flavor:nth-child(2)::text"
-        )
-        loader.add_xpath(
-            "employment_types",
-            "//h3[contains(., 'Employment type')]/following-sibling::span/text()",
-        )
-        loader.add_css("posted_on", ".posted-time-ago__text::text")
-        loader.add_css("description_html", ".description__text")
-        loader.add_css(
-            "company_logo_urls",
-            'img.artdeco-entity-image[src*="company-logo"]::attr(src)',
-        )
-        loader.add_css(
-            "company_logo_urls",
-            'img.artdeco-entity-image[data-delayed-url*="company-logo"]::attr(data-delayed-url)',
-        )
-        item = loader.load_item()
+        server_proc.terminate()
+        server_proc.join()
 
-        if item.get("apply_url"):
-            yield response.follow(
-                item["apply_url"],
-                callback=self.verify_job,
-                cb_kwargs=dict(item=item),
-            )
+        queue = Queue()
+        scrape_proc = Process(
+            target=linkedin_task,
+            args=(
+                self.settings["LINKEDIN_USERNAME"],
+                self.settings["LINKEDIN_PASSWORD"],
+                queue,
+                self.search_queries,
+                self.locations,
+                self.cache_dir,
+                self.cache_expire,
+                self.logger.name,
+                self.logger.getEffectiveLevel(),
+            ),
+        )
+        try:
+            scrape_proc.start()
+            while True:
+                if job_data := queue.get(timeout=10):
+                    try:
+                        yield create_job(job_data)
+                    except NotImplementedError as e:
+                        self.logger.warning(f"Failed to create job: {e}")
+                    except Exception:
+                        self.logger.error(
+                            f"Failed to create job:\n\n"
+                            f"{json.dumps(job_data, indent=2, ensure_ascii=False)}"
+                        )
+                        raise
+                else:
+                    break
+        except Exception:
+            self.logger.error("Terminating task")
+            scrape_proc.terminate()
+            raise
+        finally:
+            scrape_proc.join()
+
+
+def linkedin_task(
+    username: str,
+    password: str,
+    queue: Queue,
+    search_queries: list[str],
+    locations: list[str],
+    cache_dir: str | Path,
+    cache_expire: int,
+    logger_name: str,
+    logger_level: int,
+):
+    if not username or not password:
+        raise ValueError("Missing LinkedIn credentials")
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(ActorLogFormatter(include_logger_name=True))
+    logging.basicConfig(level=logger_level, handlers=[handler])
+    logging.basicConfig = lambda *args, **kwargs: None
+    logger = logging.getLogger(logger_name)
+
+    api = LinkedIn(username, password, cookies_dir=f"{cache_dir}/", authenticate=True)
+    cache = Cache(Path(cache_dir) / "jobs")
+
+    jobs = cast(list, cache.get("job-ids"))
+    if not jobs:
+        jobs = set()
+        for search_query in search_queries:
+            for location in locations:
+                logger.info(f"Searching for {search_query!r} @ {location}")
+                results = api.search_jobs(
+                    search_query,
+                    experience=["1", "2", "3"],
+                    location_name=location,
+                    listed_at=60 * 60 * 24 * 7 * 4,
+                    distance=200,
+                )
+                jobs.update(result["entityUrn"].split(":")[-1] for result in results)
+        jobs = sorted(jobs)
+        cache.set("job-ids", jobs, expire=cache_expire)
+
+    jobs_count = len(jobs)
+    logger.info(f"Loaded {jobs_count} job IDs")
+
+    for i, job_id in enumerate(jobs):
+        logger.info(f"Job {get_job_url(job_id)} ({i + 1}/{jobs_count})")
+        cache_key = f"job-{job_id}"
+        job_data = cast(dict, cache.get(cache_key))
+        if not job_data:
+            logger.info("Fetching…")
+            job_data = api.get_job(job_id)
+            cache.set(cache_key, job_data, expire=cache_expire)
+        queue.put(job_data)
+    queue.put(None)
+
+
+def create_job(data: dict) -> Job:
+    company_details = data["companyDetails"]
+    try:
+        company_wrapper = (
+            company_details
+            ["com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany"]
+        )  # fmt: skip
+    except KeyError:
+        company_name = (
+            company_details
+            ["com.linkedin.voyager.jobs.JobPostingCompanyName"]
+            ["companyName"]
+        )  # fmt: skip
+        logo_urls = []
+    else:
+        if "companyResolutionResult" not in company_wrapper:
+            raise NotImplementedError("Company doesn't exist (anymore?)")
+        company = company_wrapper["companyResolutionResult"]
+        company_name = company["name"]
+        try:
+            logo = company["logo"]["image"]["com.linkedin.common.VectorImage"]
+        except KeyError:
+            logo_urls = []
         else:
-            yield item
+            logo_urls = [
+                logo["rootUrl"] + artifact["fileIdentifyingUrlPathSegment"]
+                for artifact in logo["artifacts"]
+            ]
 
-    def verify_job(
-        self, response: HtmlResponse, item: Job
-    ) -> Generator[Job, None, None]:
-        """
-        Verify apply URL
+    offsite_apply = data["applyMethod"].get("com.linkedin.voyager.jobs.OffsiteApply")
+    if offsite_apply:
+        apply_url = offsite_apply["companyApplyUrl"]
+        apply_url = clean_url(clean_validated_url(clean_proxied_url(apply_url)))
+    else:
+        apply_url = None
 
-        Filters out URLs to broken external URLs and cuts redirects, if any.
-        """
-        loader = Loader(item=item)
-        loader.add_value("source_urls", response.url)
-        loader.replace_value("apply_url", response.url)
-        yield loader.load_item()
+    return Job(
+        title=data["title"],
+        posted_on=datetime.fromtimestamp(data["originalListedAt"] / 1e3),
+        url=get_job_url(data["jobPostingId"]),
+        apply_url=apply_url,
+        company_name=company_name,
+        company_logo_urls=logo_urls,
+        locations_raw=data["formattedLocation"],
+        remote=data["workRemoteAllowed"],
+        employment_types=[data["employmentStatus"].split(":")[-1]],
+        description_html=data["description"]["text"],
+        source="linkedin",
+        source_urls=[data["dashEntityUrn"]],
+    )
 
-    def _request(
-        self, url: str, callback: Callable, cb_kwargs: dict | None = None
-    ) -> Request:
-        return Request(
-            url,
-            cookies=self.lang_cookies,
-            callback=callback,
-            cb_kwargs=cb_kwargs or {},
-            meta={"impersonate": "chrome124"},
-        )
+
+class HTTPRequestHandler(SimpleHTTPRequestHandler):
+    start_dir = Path(__file__).parent / "start"
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("directory", self.start_dir)
+        super().__init__(*args, **kwargs)
+
+
+def server(start_url: str):
+    parts = urlparse(start_url)
+    if not parts.hostname or not parts.port:
+        raise ValueError(f"Missing hostname or port: {start_url}")
+    server_address = (parts.hostname, parts.port)
+    with socketserver.TCPServer(server_address, HTTPRequestHandler) as httpd:
+        httpd.serve_forever()
+
+
+def get_job_url(job_id: str) -> str:
+    return f"https://www.linkedin.com/jobs/view/{job_id}"
 
 
 def get_job_id(url: str) -> str:
@@ -204,22 +269,3 @@ def clean_url(url: str) -> str:
     url = strip_utm_params(url)
     url = replace_in_params(url, "linkedin", "juniorguru", case_insensitive=True)
     return url
-
-
-def parse_remote(text: str) -> bool:
-    return bool(re.search(r"\bremote(ly)?\b", text, re.IGNORECASE))
-
-
-class Loader(ItemLoader):
-    default_input_processor = MapCompose(str.strip)
-    default_output_processor = TakeFirst()
-    url_in = Compose(first, clean_url)
-    apply_url_in = Compose(last, clean_proxied_url, clean_validated_url, clean_url)
-    company_url_in = Compose(first, clean_url)
-    employment_types_in = MapCompose(str.lower, split)
-    employment_types_out = Identity()
-    posted_on_in = Compose(first, parse_relative_date)
-    company_logo_urls_out = Compose(set, list)
-    remote_in = MapCompose(parse_remote)
-    locations_raw_out = Identity()
-    source_urls_out = Identity()

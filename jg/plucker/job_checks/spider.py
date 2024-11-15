@@ -8,10 +8,10 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse, XmlResponse
 
 from jg.plucker.items import JobCheck
-from jg.plucker.jobs_linkedin.spider import (
-    HEADERS as LINKEDIN_HEADERS,
-    get_job_id as parse_linkedin_id,
-)
+# from jg.plucker.jobs_linkedin.spider import (
+#     HEADERS as LINKEDIN_HEADERS,
+#     get_job_id as parse_linkedin_id,
+# )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import evaluate_stats
 
@@ -70,9 +70,10 @@ class Spider(BaseSpider):
         startupjobs_urls = []
 
         for url in urls:
-            if is_linkedin_url(url):
-                yield self._linkedin_request(url)
-            elif is_startupjobs_url(url):
+            # if is_linkedin_url(url):
+            #     yield self._linkedin_request(url)
+            # el
+            if is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
                 yield Request(url, callback=self.check_http)
@@ -91,15 +92,15 @@ class Spider(BaseSpider):
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
 
-    def _linkedin_request(self, url: str) -> Request:
-        api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
-        return Request(
-            api_url,
-            headers=LINKEDIN_HEADERS,
-            callback=self.check_linkedin,
-            cb_kwargs={"job_url": url},
-            meta={"impersonate": "chrome124"},
-        )
+    # def _linkedin_request(self, url: str) -> Request:
+    #     api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
+    #     return Request(
+    #         api_url,
+    #         headers=LINKEDIN_HEADERS,
+    #         callback=self.check_linkedin,
+    #         cb_kwargs={"job_url": url},
+    #         meta={"impersonate": "chrome124"},
+    #     )
 
     def check_linkedin(
         self, api_response: TextResponse, job_url: str

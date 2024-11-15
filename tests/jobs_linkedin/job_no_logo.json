@@ -1,0 +1,233 @@
+{
+  "standardizedTitle": "urn:li:fs_title:1366",
+  "companyDetails": {
+    "com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany": {
+      "companyResolutionResult": {
+        "followingInfo": {
+          "entityUrn": "urn:li:fs_followingInfo:urn:li:company:7265552",
+          "dashFollowingStateUrn": "urn:li:fsd_followingState:urn:li:fsd_company:7265552",
+          "following": false,
+          "followingType": "DEFAULT",
+          "followerCount": 63
+        },
+        "description": "Sinop a.s. is a marketing and advertising company based out of Czechia.",
+        "url": "https://www.linkedin.com/company/sinop-a-s-",
+        "staffCount": 4,
+        "lcpTreatment": false,
+        "viewerFollowingJobsUpdates": false,
+        "entityUrn": "urn:li:fs_normalized_company:7265552",
+        "headquarter": {
+          "country": "CZ"
+        },
+        "industries": [
+          "Advertising Services"
+        ],
+        "name": "Sinop a.s.",
+        "$recipeType": "com.linkedin.voyager.deco.organization.shared.WebJobCompany",
+        "universalName": "sinop-a-s-",
+        "specialities": []
+      },
+      "company": "urn:li:fs_normalized_company:7265552",
+      "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany"
+    }
+  },
+  "employmentStatusResolutionResult": {
+    "localizedName": "Full-time",
+    "$recipeType": "com.linkedin.voyager.deco.jobs.shared.WebFullEmploymentStatus",
+    "entityUrn": "urn:li:fs_employmentStatus:FULL_TIME"
+  },
+  "employmentStatus": "urn:li:fs_employmentStatus:FULL_TIME",
+  "ownerViewEnabled": false,
+  "hiringDashboardViewEnabled": false,
+  "talentHubJob": false,
+  "formattedLocation": "Litvínovice, South Bohemia, Czechia",
+  "companyDescription": {
+    "attributes": [],
+    "text": "Sinop a.s. is a marketing and advertising company based out of Czechia."
+  },
+  "jobPostingUrl": "https://www.linkedin.com/jobs/view/4065215764/?trk=jobs_biz_prem_srch",
+  "applies": 0,
+  "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting",
+  "applyingInfo": {
+    "closed": false,
+    "entityUrn": "urn:li:fs_jobApplyingInfo:4065215764",
+    "applied": false
+  },
+  "workplaceTypesResolutionResults": {
+    "urn:li:fs_workplaceType:3": {
+      "localizedName": "Hybrid",
+      "$recipeType": "com.linkedin.voyager.deco.jobs.shared.WebJobDetailsWorkplaceType",
+      "entityUrn": "urn:li:fs_workplaceType:3"
+    }
+  },
+  "dashEntityUrn": "urn:li:fsd_jobPosting:4065215764",
+  "eligibleForLearningCourseRecsUpsell": true,
+  "eligibleForSharingProfileWithPoster": false,
+  "originalListedAt": 1730332800000,
+  "entityUrn": "urn:li:fs_normalized_jobPosting:4065215764",
+  "workRemoteAllowed": false,
+  "applyMethod": {
+    "com.linkedin.voyager.jobs.OffsiteApply": {
+      "applyStartersPreferenceVoid": false,
+      "companyApplyUrl": "https://www.jobsik.cz/nabidka-28520373/",
+      "inPageOffsiteApply": false
+    }
+  },
+  "benefitsDataSource": "JOB_POSTER",
+  "savingInfo": {
+    "saved": false,
+    "entityUrn": "urn:li:fs_jobSavingInfo:4065215764",
+    "dashSaveStateUrn": "urn:li:fsd_saveState:(SAVE,urn:li:fsd_jobPosting:4065215764)"
+  },
+  "formattedJobFunctions": [
+    "Design",
+    "Art/Creative",
+    "Information Technology"
+  ],
+  "dashJobPostingCardUrn": "urn:li:fsd_jobPostingCard:(4065215764,JOB_DETAILS)",
+  "locationVisibility": "ADDRESS",
+  "expireAt": 1733022974000,
+  "claimableByViewer": false,
+  "formattedIndustries": [
+    "Advertising Services"
+  ],
+  "industries": [
+    80
+  ],
+  "salaryInsights": {
+    "lockModuleShown": false,
+    "salaryExplorerUrl": "https://www.linkedin.com/salary/",
+    "insightExists": false,
+    "jobCompensationAvailable": true
+  },
+  "country": "urn:li:fs_country:cz",
+  "jobPosterEntitlements": {
+    "entitledToViewFreeJobInfo": false,
+    "entitledToPromoteJob": false,
+    "entitledToEditJob": false,
+    "entitledToCopyJob": false,
+    "entitledToAccessJobDashboard": false,
+    "entitledToViewBillingInfo": false
+  },
+  "standardizedTitleResolutionResult": {
+    "localizedName": "Drafter",
+    "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebFullTitle",
+    "entityUrn": "urn:li:fs_title:1366"
+  },
+  "locationUrn": "urn:li:fs_geo:104382514",
+  "jobApplicationLimitReached": false,
+  "new": false,
+  "workplaceTypes": [
+    "urn:li:fs_workplaceType:3"
+  ],
+  "contentSource": "JOBS_CREATE",
+  "formattedExperienceLevel": "Entry level",
+  "jobFunctions": [
+    "DSGN",
+    "ART",
+    "IT"
+  ],
+  "benefits": [],
+  "encryptedPricingParams": "CwIAAAGTMYD2iQYleO09Tflcl2aHllV-jYSjTiDek3GJGCpWJGG5Ay2rPjG3Vgazpjw1zaoLOjlVWZ-jCBoRgBbRyvwpxzlrG3Nm_rYz3PYgzYeZQT6k7Ubrk2SKMu-0WT_S3beFyI24pUCXAedUwasoPZIhiSqkDC5K-H0ISwjvpIdODT5GkhABJ094Ipr1uRUA-YB8lI4p",
+  "jobState": "LISTED",
+  "trackingUrn": "urn:li:jobPosting:4065215764",
+  "description": {
+    "attributes": [
+      {
+        "start": 11,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 12,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 146,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 147,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 230,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 231,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 361,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 362,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      }
+    ],
+    "text": "Náplň práce\n\nNáplň práce: tvorba projektů řídících rozvaděčů chladírenských technologií, příprava výrobní dokumentace, oživování řídících systémů.\n\nPožadujeme: SŠ nebo VŠ obor elektrotechnika, znalost AJ, znalost práce v SW ELCAD.\n\nNabízíme: dovolená 5 týdnů, příspěvek na stravování, kurzy AJ, NJ, FJ, vyhrazené parkoviště, sleva na firemní výrobky, kafetérie.\n\nPokud Vás tato nabídka práce zaujala, pošlete životopis na e-mail: volnamista@sinop.cz."
+  },
+  "formattedEmploymentStatus": "Full-time",
+  "title": "Projektant/ka elektro- junior",
+  "thirdPartySourced": true,
+  "views": 1,
+  "eligibleForReferrals": false,
+  "allJobHiringTeamMembersInjectionResult": {
+    "hiringTeamMembers": [],
+    "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebAllJobHiringTeamMembers",
+    "entityUrn": "urn:li:fs_jobHiringTeam:4065215764"
+  },
+  "listedAt": 1730332800000,
+  "jobPostingId": 4065215764,
+  "allowedToEdit": false,
+  "sourceDomain": "www.jobsik.cz"
+}

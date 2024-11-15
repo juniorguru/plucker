@@ -38,3 +38,6 @@ jg/plucker/jobs_actor
 # ad-hoc spider input and output
 params.json
 items.json
+
+# LI
+.linkedin_cache/

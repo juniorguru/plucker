@@ -1,0 +1,230 @@
+{
+  "standardizedTitle": "urn:li:fs_title:409",
+  "companyDetails": {
+    "com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany": {
+      "company": "urn:li:fs_normalized_company:1991171",
+      "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany"
+    }
+  },
+  "employmentStatusResolutionResult": {
+    "localizedName": "Full-time",
+    "$recipeType": "com.linkedin.voyager.deco.jobs.shared.WebFullEmploymentStatus",
+    "entityUrn": "urn:li:fs_employmentStatus:FULL_TIME"
+  },
+  "employmentStatus": "urn:li:fs_employmentStatus:FULL_TIME",
+  "ownerViewEnabled": false,
+  "hiringDashboardViewEnabled": false,
+  "talentHubJob": false,
+  "formattedLocation": "Czechia",
+  "jobPostingUrl": "https://www.linkedin.com/jobs/view/4071482528/?trk=jobs_biz_prem_srch",
+  "applies": 48,
+  "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting",
+  "applyingInfo": {
+    "closed": false,
+    "entityUrn": "urn:li:fs_jobApplyingInfo:4071482528",
+    "applied": false
+  },
+  "workplaceTypesResolutionResults": {
+    "urn:li:fs_workplaceType:2": {
+      "localizedName": "Remote",
+      "$recipeType": "com.linkedin.voyager.deco.jobs.shared.WebJobDetailsWorkplaceType",
+      "entityUrn": "urn:li:fs_workplaceType:2"
+    }
+  },
+  "dashEntityUrn": "urn:li:fsd_jobPosting:4071482528",
+  "eligibleForLearningCourseRecsUpsell": true,
+  "eligibleForSharingProfileWithPoster": false,
+  "originalListedAt": 1731319055000,
+  "entityUrn": "urn:li:fs_normalized_jobPosting:4071482528",
+  "workRemoteAllowed": true,
+  "applyMethod": {
+    "com.linkedin.voyager.jobs.ComplexOnsiteApply": {
+      "unifyApplyEnabled": true,
+      "easyApplyUrl": "https://www.linkedin.com/job-apply/4071482528"
+    }
+  },
+  "benefitsDataSource": "JOB_POSTER",
+  "savingInfo": {
+    "saved": false,
+    "entityUrn": "urn:li:fs_jobSavingInfo:4071482528",
+    "dashSaveStateUrn": "urn:li:fsd_saveState:(SAVE,urn:li:fsd_jobPosting:4071482528)"
+  },
+  "formattedJobFunctions": [],
+  "dashJobPostingCardUrn": "urn:li:fsd_jobPostingCard:(4071482528,JOB_DETAILS)",
+  "locationVisibility": "ADDRESS",
+  "expireAt": 1733911055000,
+  "claimableByViewer": false,
+  "formattedIndustries": [],
+  "industries": [
+    4
+  ],
+  "salaryInsights": {
+    "lockModuleShown": false,
+    "salaryExplorerUrl": "https://www.linkedin.com/salary/",
+    "insightExists": false,
+    "jobCompensationAvailable": true
+  },
+  "country": "urn:li:fs_country:cz",
+  "jobPosterEntitlements": {
+    "entitledToViewFreeJobInfo": true,
+    "entitledToPromoteJob": true,
+    "entitledToEditJob": true,
+    "entitledToCopyJob": true,
+    "entitledToAccessJobDashboard": true,
+    "entitledToViewBillingInfo": false
+  },
+  "standardizedTitleResolutionResult": {
+    "localizedName": "Accounts Payable Specialist",
+    "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebFullTitle",
+    "entityUrn": "urn:li:fs_title:409"
+  },
+  "locationUrn": "urn:li:fs_geo:104508036",
+  "jobApplicationLimitReached": false,
+  "new": false,
+  "applicantTrackingSystem": "LinkedIn",
+  "workplaceTypes": [
+    "urn:li:fs_workplaceType:2"
+  ],
+  "contentSource": "JOBS_PREMIUM",
+  "formattedExperienceLevel": "",
+  "jobFunctions": [
+    "ACCT",
+    "FIN"
+  ],
+  "benefits": [],
+  "encryptedPricingParams": "CwIAAAGTMYWGkTNkmxk9JAznbfrh4rsIqAJaQ6FUzQ6U03InzjHDxKtBqLQRzQufSYmdOGDZhHkRhY25FPCWEb2Vjf87xXjv8m15Xod1_ojT2fG1mYxCXR7ooNknthyIM_IK0ryY9RlkMb0059k5a4zO0IKfxmzNHRMPSbhzpb_EGbpi7bQqS-Pi7OLZdK4DSQ2zLVKGR1xw",
+  "jobState": "LISTED",
+  "trackingUrn": "urn:li:jobPosting:4071482528",
+  "description": {
+    "attributes": [
+      {
+        "start": 0,
+        "length": 27,
+        "type": {
+          "com.linkedin.pemberly.text.Paragraph": {}
+        },
+        "attributeKindUnion": {
+          "paragraph": {}
+        }
+      },
+      {
+        "start": 27,
+        "length": 60,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 87,
+        "length": 34,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 121,
+        "length": 73,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 194,
+        "length": 35,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 229,
+        "length": 33,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 262,
+        "length": 72,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 334,
+        "length": 53,
+        "type": {
+          "com.linkedin.pemberly.text.ListItem": {}
+        },
+        "attributeKindUnion": {
+          "listItem": {}
+        }
+      },
+      {
+        "start": 27,
+        "length": 360,
+        "type": {
+          "com.linkedin.pemberly.text.List": {
+            "ordered": false
+          }
+        },
+        "attributeKindUnion": {
+          "list": {
+            "ordered": false
+          }
+        }
+      },
+      {
+        "start": 387,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.LineBreak": {}
+        },
+        "attributeKindUnion": {
+          "lineBreak": {}
+        }
+      },
+      {
+        "start": 387,
+        "length": 1,
+        "type": {
+          "com.linkedin.pemberly.text.Paragraph": {}
+        },
+        "attributeKindUnion": {
+          "paragraph": {}
+        }
+      }
+    ],
+    "text": "Your skills and experience:Bachelor's degree in accounting, finance, or a related fieldKnowledge of accounting principlesAccounting experience, especially in accounts payable and/or procurement.Knowledge of Microsoft Office toolsAdvanced Czech and English skillsAbility to handle complex data accurately with a detail-oriented mindsetAbility to meet deadlines in a fast-paced environment\n"
+  },
+  "formattedEmploymentStatus": "Full-time",
+  "title": "Junior Accounts Payable",
+  "thirdPartySourced": false,
+  "views": 360,
+  "eligibleForReferrals": false,
+  "allJobHiringTeamMembersInjectionResult": {
+    "hiringTeamMembers": [],
+    "$recipeType": "com.linkedin.voyager.deco.jobs.web.shared.WebAllJobHiringTeamMembers",
+    "entityUrn": "urn:li:fs_jobHiringTeam:4071482528"
+  },
+  "listedAt": 1731319055000,
+  "jobPostingId": 4071482528,
+  "allowedToEdit": false
+}

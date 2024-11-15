@@ -1,5 +1,8 @@
 # Documentation: http://doc.scrapy.org/en/latest/topics/settings.html
 
+import os
+
+
 BOT_NAME = "Plucker"
 
 LOG_LEVEL = "INFO"
@@ -44,6 +47,10 @@ AUTOTHROTTLE_ENABLED = True
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 EXTENSIONS = {"scrapy.extensions.memusage.MemoryUsage": None}
+
+LINKEDIN_USERNAME = os.getenv("LINKEDIN_USERNAME")
+
+LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
 FEEDS = {
     "items.json": {
