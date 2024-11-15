@@ -1,9 +1,7 @@
 import json
 import logging
 import re
-import socketserver
 from datetime import datetime
-from http.server import SimpleHTTPRequestHandler
 from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import Generator, cast
@@ -52,20 +50,9 @@ class Spider(BaseSpider):
 
     locations = ["Czechia", "Slovakia"]
 
-    def start_requests(self) -> Generator[Request, None, None]:
-        start_url = "http://localhost:8038"
-        server_proc = Process(target=server, args=(start_url,))
-        server_proc.start()
-        yield Request(
-            start_url, callback=self.run, cb_kwargs={"server_proc": server_proc}
-        )
+    start_urls = ["https://example.com"]
 
-    def run(
-        self, _: HtmlResponse, server_proc: Process
-    ) -> Generator[Job | Request, None, None]:
-        server_proc.terminate()
-        server_proc.join()
-
+    def run(self, response: HtmlResponse) -> Generator[Job | Request, None, None]:
         queue = Queue()
         scrape_proc = Process(
             target=linkedin_task,
@@ -75,6 +62,7 @@ class Spider(BaseSpider):
                 queue,
                 self.search_queries,
                 self.locations,
+                response.request.meta.get("proxy") if response.request else None,
                 self.cache_dir,
                 self.cache_expire,
                 self.logger.name,
@@ -111,6 +99,7 @@ def linkedin_task(
     queue: Queue,
     search_queries: list[str],
     locations: list[str],
+    proxy: str | None,
     cache_dir: str | Path,
     cache_expire: int,
     logger_name: str,
@@ -125,6 +114,7 @@ def linkedin_task(
     logging.basicConfig = lambda *args, **kwargs: None
     logger = logging.getLogger(logger_name)
 
+    logger.info(f"Proxy: {proxy}")
     api = LinkedIn(username, password, cookies_dir=f"{cache_dir}/", authenticate=True)
     cache = Cache(Path(cache_dir) / "jobs")
 
@@ -210,23 +200,6 @@ def create_job(data: dict) -> Job:
         source="linkedin",
         source_urls=[data["dashEntityUrn"]],
     )
-
-
-class HTTPRequestHandler(SimpleHTTPRequestHandler):
-    start_dir = Path(__file__).parent / "start"
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("directory", self.start_dir)
-        super().__init__(*args, **kwargs)
-
-
-def server(start_url: str):
-    parts = urlparse(start_url)
-    if not parts.hostname or not parts.port:
-        raise ValueError(f"Missing hostname or port: {start_url}")
-    server_address = (parts.hostname, parts.port)
-    with socketserver.TCPServer(server_address, HTTPRequestHandler) as httpd:
-        httpd.serve_forever()
 
 
 def get_job_url(job_id: str) -> str:
