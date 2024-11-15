@@ -114,8 +114,15 @@ def linkedin_task(
     logging.basicConfig = lambda *args, **kwargs: None
     logger = logging.getLogger(logger_name)
 
-    logger.info(f"Proxy: {proxy}")
-    api = LinkedIn(username, password, cookies_dir=f"{cache_dir}/", authenticate=True)
+    proxies = {p.split("://", 1): p for p in [proxy] if p}
+    logger.info(f"Proxies: {proxies}")
+    api = LinkedIn(
+        username,
+        password,
+        cookies_dir=f"{cache_dir}/",
+        proxies=proxies,
+        authenticate=True,
+    )
     cache = Cache(Path(cache_dir) / "jobs")
 
     jobs = cast(list, cache.get("job-ids"))
