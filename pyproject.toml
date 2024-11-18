@@ -22,7 +22,7 @@ extruct = "0.18.0"
 feedparser = "6.0.11"
 lxml = "5.3.0"
 nest-asyncio = "1.6.0"
-scrapy = "2.11.2"
+scrapy = "2.12.0"
 ics = {version = "0.8.0.dev0", allow-prereleases = true}
 teemup = "1.2.1"
 pydantic = "2.9.2"
