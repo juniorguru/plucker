@@ -7,8 +7,6 @@ BOT_NAME = "Plucker"
 
 LOG_LEVEL = "INFO"
 
-REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
-
 DEFAULT_REQUEST_HEADERS = {
     "Accept": "*/*",
     "Accept-Language": "cs;q=0.8,en;q=0.6",
