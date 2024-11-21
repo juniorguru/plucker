@@ -184,19 +184,49 @@ def build(
 @click.option("--token", envvar="APIFY_TOKEN", required=True)
 def check(token: str):
     client = ApifyClient(token=token)
-    for actor_info in client.actors().list().items:
-        logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
-        actor_client = client.actor(actor_info["id"])
+    schedules = [
+        schedule
+        for schedule in client.schedules().list().items
+        if schedule["isEnabled"]
+    ]
+    logger.info(f"Found {len(schedules)} enabled schedules")
 
-        last_run = actor_client.last_run()
-        run_info = last_run.get()
-        if run_info is None:
-            logger.warning("No runs found")
-        elif run_info["status"] == ActorJobStatus.SUCCEEDED:
-            logger.info(f"Status: {run_info['status']}, {run_info['startedAt']}")
+    actor_ids = set()
+    for schedule in client.schedules().list().items:
+        schedule_actor_ids = [
+            action["actorId"]
+            for action in schedule["actions"]
+            if action["type"] == "RUN_ACTOR"
+        ]
+        logger.info(
+            f"{schedule['title']}\n"
+            f"· actors: {len(schedule_actor_ids)}\n"
+            f"· cron: {schedule['cronExpression']}\n"
+            f"· last: {schedule['lastRunAt']:%Y-%m-%d %H:%I} UTC\n"
+            f"· next: {schedule['nextRunAt']:%Y-%m-%d %H:%I} UTC"
+        )
+        actor_ids.update(schedule_actor_ids)
+    logger.info(f"Found {len(actor_ids)} scheduled actors")
+
+    failed = False
+    for actor_id in actor_ids:
+        actor_client = client.actor(actor_id)
+        if actor_info := actor_client.get():
+            logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
+            last_run = actor_client.last_run()
+            run_info = last_run.get()
+            if run_info is None:
+                logger.warning("No runs found")
+            elif run_info["status"] == ActorJobStatus.SUCCEEDED:
+                logger.info(f"Status: {run_info['status']}, {run_info['startedAt']}")
+            else:
+                logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
+                failed = True
         else:
-            logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
+            logger.error(f"Actor {actor_id!r} not found")
             raise click.Abort()
+    if failed:
+        raise click.Abort()
 
 
 @main.command()
