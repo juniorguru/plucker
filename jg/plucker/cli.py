@@ -208,7 +208,7 @@ def check(token: str):
         actor_ids.update(schedule_actor_ids)
     logger.info(f"Found {len(actor_ids)} scheduled actors")
 
-    failed = False
+    logs_urls = []
     for actor_id in actor_ids:
         actor_client = client.actor(actor_id)
         if actor_info := actor_client.get():
@@ -221,12 +221,21 @@ def check(token: str):
                 logger.info(f"Status: {run_info['status']}, {run_info['startedAt']}")
             else:
                 logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
-                failed = True
+                logs_urls.append(
+                    f"https://console.apify.com/actors/{actor_id}/runs/{run_info['id']}#log"
+                )
         else:
             logger.error(f"Actor {actor_id!r} not found")
             raise click.Abort()
-    if failed:
+
+    if logs_urls:
+        logger.error(
+            f"Found {len(logs_urls)} actors which didn't succeed:\n"
+            + "\n".join([f"· {logs_url}" for logs_url in logs_urls])
+        )
         raise click.Abort()
+    else:
+        logger.info("All good!")
 
 
 @main.command()
