@@ -8,10 +8,6 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse, XmlResponse
 
 from jg.plucker.items import JobCheck
-# from jg.plucker.jobs_linkedin.spider import (
-#     HEADERS as LINKEDIN_HEADERS,
-#     get_job_id as parse_linkedin_id,
-# )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import evaluate_stats
 
@@ -43,13 +39,11 @@ class Spider(BaseSpider):
 
     @classmethod
     def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
+        # TODO is this still needed?
         max_retries = stats.get("retry/max_reached", 0)
         error_count = stats.get("log_count/ERROR", 0)
 
-        # tolerate up to 3 errors (lost job checks) caused by max retries
-        # if error_count and max_retries <= 3:
-        # FIXME! see https://github.com/juniorguru/plucker/issues/95
-        if error_count and max_retries <= 100:
+        if error_count and max_retries <= 3:
             stats_copy = stats.copy()
             stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
             return evaluate_stats(stats_copy, min_items)
@@ -59,21 +53,15 @@ class Spider(BaseSpider):
     def start_requests(self) -> Iterable[Request]:
         params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
         self.logger.info(f"Loaded {len(params.links)} links")
-
-        # Sort LinkedIn URLs first as they are usually the slowest
-        urls = sorted(
-            (str(link.url) for link in params.links),
-            key=lambda url: 0 if is_linkedin_url(url) else 1,
-        )
+        urls = [str(link.url) for link in params.links]
 
         # StartupJobs URLs are checked in bulk
         startupjobs_urls = []
 
         for url in urls:
-            # if is_linkedin_url(url):
-            #     yield self._linkedin_request(url)
-            # el
-            if is_startupjobs_url(url):
+            if is_linkedin_url(url):
+                yield self._linkedin_request(url)
+            elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
                 yield Request(url, callback=self.check_http)
@@ -92,15 +80,8 @@ class Spider(BaseSpider):
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
 
-    # def _linkedin_request(self, url: str) -> Request:
-    #     api_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{parse_linkedin_id(url)}"
-    #     return Request(
-    #         api_url,
-    #         headers=LINKEDIN_HEADERS,
-    #         callback=self.check_linkedin,
-    #         cb_kwargs={"job_url": url},
-    #         meta={"impersonate": "chrome124"},
-    #     )
+    def _linkedin_request(self, url: str) -> Request:
+        raise NotImplementedError("LinkedIn not supported")
 
     def check_linkedin(
         self, api_response: TextResponse, job_url: str
