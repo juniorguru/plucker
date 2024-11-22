@@ -35,6 +35,11 @@ class LinkedIn(BaseLinkedIn):
 
 
 class Spider(BaseSpider):
+    # https://github.com/everping/Linkedin-Authentication-Challenge/tree/master
+    # https://github.com/tomquirk/linkedin-api/issues/331
+    # https://github.com/tomquirk/linkedin-api/issues/392
+    # https://github.com/tomquirk/linkedin-api/issues/78
+
     name = "jobs-linkedin"
 
     cache_dir = Path.cwd() / ".linkedin_cache"
@@ -57,6 +62,7 @@ class Spider(BaseSpider):
     def start_requests(self) -> Generator[Request, None, None]:
         yield Request(self.start_url, self.parse, errback=self.handle_error)
 
+    # This doesn't seem to work
     def handle_error(self, failure: Failure) -> Generator[Request, None, None]:
         self.logger.error(repr(failure))
         if "CHALLENGE" in failure.getErrorMessage():
