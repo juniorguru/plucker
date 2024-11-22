@@ -10,8 +10,10 @@ from urllib.parse import urlparse
 from apify.log import ActorLogFormatter
 from diskcache import Cache
 from linkedin_api import Linkedin as BaseLinkedIn
+from linkedin_api.client import ChallengeException
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import HtmlResponse
+from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.url_params import (
@@ -50,7 +52,17 @@ class Spider(BaseSpider):
 
     locations = ["Czechia", "Slovakia"]
 
-    start_urls = ["https://example.com"]
+    start_url = "https://junior.guru"
+
+    def start_requests(self) -> Generator[Request, None, None]:
+        yield Request(self.start_url, self.parse, errback=self.handle_error)
+
+    def handle_error(self, failure: Failure) -> Generator[Request, None, None]:
+        self.logger.error(repr(failure))
+        if "CHALLENGE" in failure.getErrorMessage():
+            yield Request(
+                self.start_url, self.parse, errback=self.handle_error, dont_filter=True
+            )
 
     def parse(self, response: HtmlResponse) -> Generator[Job | Request, None, None]:
         queue = Queue()
@@ -72,7 +84,9 @@ class Spider(BaseSpider):
         try:
             scrape_proc.start()
             while True:
-                if job_data := queue.get(timeout=10):
+                if job_data := queue.get():
+                    if error := job_data.get("error"):
+                        raise RuntimeError(error)
                     try:
                         yield create_job(job_data)
                     except NotImplementedError as e:
@@ -86,7 +100,7 @@ class Spider(BaseSpider):
                 else:
                     break
         except Exception:
-            self.logger.error("Terminating task")
+            self.logger.debug("Got exception, terminating task")
             scrape_proc.terminate()
             raise
         finally:
@@ -114,47 +128,53 @@ def linkedin_task(
     logging.basicConfig = lambda *args, **kwargs: None
     logger = logging.getLogger(logger_name)
 
-    proxies = {p.split("://", 1)[0]: p for p in [proxy] if p}
-    logger.info(f"Proxies: {proxies}")
-    api = LinkedIn(
-        username,
-        password,
-        cookies_dir=f"{cache_dir}/",
-        proxies=proxies,
-        authenticate=True,
-    )
-    cache = Cache(Path(cache_dir) / "jobs")
+    try:
+        logger.info(f"Proxy: {proxy}")
+        api = LinkedIn(
+            username,
+            password,
+            cookies_dir=f"{cache_dir}/",
+            proxies={"http": proxy, "https": proxy},
+            authenticate=True,
+        )
+        cache = Cache(Path(cache_dir) / "jobs")
 
-    jobs = cast(list, cache.get("job-ids"))
-    if not jobs:
-        jobs = set()
-        for search_query in search_queries:
-            for location in locations:
-                logger.info(f"Searching for {search_query!r} @ {location}")
-                results = api.search_jobs(
-                    search_query,
-                    experience=["1", "2", "3"],
-                    location_name=location,
-                    listed_at=60 * 60 * 24 * 7 * 4,
-                    distance=200,
-                )
-                jobs.update(result["entityUrn"].split(":")[-1] for result in results)
-        jobs = sorted(jobs)
-        cache.set("job-ids", jobs, expire=cache_expire)
+        jobs = cast(list, cache.get("job-ids"))
+        if not jobs:
+            jobs = set()
+            for search_query in search_queries:
+                for location in locations:
+                    logger.info(f"Searching for {search_query!r} @ {location}")
+                    results = api.search_jobs(
+                        search_query,
+                        experience=["1", "2", "3"],
+                        location_name=location,
+                        listed_at=60 * 60 * 24 * 7 * 4,
+                        distance=200,
+                    )
+                    jobs.update(
+                        result["entityUrn"].split(":")[-1] for result in results
+                    )
+            jobs = sorted(jobs)
+            cache.set("job-ids", jobs, expire=cache_expire)
 
-    jobs_count = len(jobs)
-    logger.info(f"Loaded {jobs_count} job IDs")
+        jobs_count = len(jobs)
+        logger.info(f"Loaded {jobs_count} job IDs")
 
-    for i, job_id in enumerate(jobs):
-        logger.info(f"Job {get_job_url(job_id)} ({i + 1}/{jobs_count})")
-        cache_key = f"job-{job_id}"
-        job_data = cast(dict, cache.get(cache_key))
-        if not job_data:
-            logger.info("Fetching…")
-            job_data = api.get_job(job_id)
-            cache.set(cache_key, job_data, expire=cache_expire)
-        queue.put(job_data)
-    queue.put(None)
+        for i, job_id in enumerate(jobs):
+            logger.info(f"Job {get_job_url(job_id)} ({i + 1}/{jobs_count})")
+            cache_key = f"job-{job_id}"
+            job_data = cast(dict, cache.get(cache_key))
+            if not job_data:
+                logger.info("Fetching…")
+                job_data = api.get_job(job_id)
+                cache.set(cache_key, job_data, expire=cache_expire)
+            queue.put(job_data)
+    except BaseException as e:
+        logger.exception(e)
+        queue.put({"error": f"{e.__class__.__name__} / {e or '(no message)'}"})
+    finally:
+        queue.put(None)
 
 
 def create_job(data: dict) -> Job:
