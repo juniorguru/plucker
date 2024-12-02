@@ -72,6 +72,9 @@ GROUPS = {
     "https://www.meetup.com/junior-dev-support-group/": {
         "description": "komunita juniorů",
     },
+    "https://www.meetup.com/wordpress-ostrava/": {
+        "description": "komunita kolem WordPressu",
+    },
 }
 
 
