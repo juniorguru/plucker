@@ -17,7 +17,7 @@ python = "3.12.*"
 apify = {version = "1.7.3b1", extras = ["scrapy"], allow-prereleases = true}
 apify-client = {version = "1.6.5b2", allow-prereleases = true}
 apify-shared = {version = "1.1.2", allow-prereleases = true}
-click = "8.1.7"
+click = "8.1.8"
 extruct = "0.18.0"
 feedparser = "6.0.11"
 lxml = "5.3.0"
@@ -25,7 +25,7 @@ nest-asyncio = "1.6.0"
 scrapy = "2.12.0"
 ics = {version = "0.8.0.dev0", allow-prereleases = true}
 teemup = "1.2.1"
-pydantic = "2.10.3"
+pydantic = "2.10.4"
 scrapy-impersonate = "1.4.1"
 linkedin-api = "2.3.1"
 diskcache = "5.6.3"
