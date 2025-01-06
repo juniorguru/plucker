@@ -11,7 +11,7 @@ from apify.log import ActorLogFormatter
 from diskcache import Cache
 from linkedin_api import Linkedin as BaseLinkedIn
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import HtmlResponse
+from scrapy.http.response.html import HtmlResponse
 from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
