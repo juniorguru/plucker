@@ -11,7 +11,7 @@ RUN echo "Python version:" \
  && echo "Pip version:" \
  && pip --version \
  && echo "Installing Poetry:" \
- && pip install --no-cache-dir poetry~=1.7.1 \
+ && pip install --no-cache-dir poetry==1.8.5 \
  && echo "Installing dependencies:" \
  && poetry config cache-dir /tmp/.poetry-cache \
  && poetry config virtualenvs.in-project true \
