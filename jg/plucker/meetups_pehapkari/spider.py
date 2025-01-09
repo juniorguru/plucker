@@ -43,7 +43,7 @@ class Spider(BaseSpider):
 
         self.logger.info(f"Event: {event.summary} {event.begin}")
         try:
-            url = html.fromstring(event.description).xpath("//a/@href")[-1]
+            url = fix_url(html.fromstring(event.description).xpath("//a/@href")[-1])
         except IndexError:
             url = self.default_event_url
         return Meetup(
@@ -58,3 +58,11 @@ class Spider(BaseSpider):
             series_org="komunita kolem PHP",
             series_url="https://www.pehapkari.cz/",
         )
+
+
+def fix_url(url: str) -> str:
+    if url.startswith("http"):
+        return url
+    if url.startswith("www."):
+        return f"https://{url}"
+    raise ValueError(f"Invalid URL: {url}")
