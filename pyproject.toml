@@ -25,7 +25,7 @@ nest-asyncio = "1.6.0"
 scrapy = "2.12.0"
 ics = {version = "0.8.0.dev0", allow-prereleases = true}
 teemup = "1.2.1"
-pydantic = "2.10.4"
+pydantic = "2.10.5"
 scrapy-impersonate = "1.4.1"
 linkedin-api = "2.3.1"
 diskcache = "5.6.3"
@@ -34,7 +34,7 @@ diskcache = "5.6.3"
 cookiecutter = "2.6.0"
 pytest = "8.3.4"
 pytest-ruff = "0.4.1"
-ruff = "0.8.*"
+ruff = "0.9.*"
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"
