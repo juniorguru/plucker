@@ -4,7 +4,7 @@ from typing import cast
 from scrapy import Request
 from scrapy.http import TextResponse
 
-from jg.plucker.courses_up.spider import Spider
+from jg.plucker.courses_up.spider import CourseCategory, CourseType, Spider
 from jg.plucker.items import CourseProvider
 
 
@@ -14,10 +14,17 @@ FIXTURES_DIR = Path(__file__).parent
 def test_parse_courses():
     spider = Spider()
     response = TextResponse(
-        "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query",
+        "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex",
         body=Path(FIXTURES_DIR / "courses.json").read_bytes(),
     )
-    results = list(spider.parse_courses(response, 100))
+    results = list(
+        spider.parse_courses(
+            response,
+            CourseType.COURSE,
+            CourseCategory.COMPUTER_COURSES,
+            100,
+        )
+    )
 
     assert len(results) == 101
     assert all(isinstance(result, CourseProvider) for result in results[:100])
