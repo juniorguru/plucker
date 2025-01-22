@@ -38,7 +38,10 @@ class CourseType(IntEnum):
 class Spider(BaseSpider):
     name = "courses-up"
     start_urls = ["https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"]
-    custom_settings = {"AUTOTHROTTLE_ENABLED": False}
+    custom_settings = {
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
+    }
 
     def parse(self, response: TextResponse) -> Generator[Request, None, None]:
         self.logger.info("Acquired cookies")
