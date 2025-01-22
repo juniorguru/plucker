@@ -38,61 +38,80 @@ class CourseType(IntEnum):
 class Spider(BaseSpider):
     name = "courses-up"
     start_urls = ["https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"]
-    course_types = sorted(map(int, CourseType))
-    course_categories = sorted(map(int, CourseCategory))
+    custom_settings = {"AUTOTHROTTLE_ENABLED": False}
 
-    def parse(self, response: TextResponse) -> Request:
+    def parse(self, response: TextResponse) -> Generator[Request, None, None]:
         self.logger.info("Acquired cookies")
         self.logger.info(
-            f"Querying courses of {len(self.course_types)} types "
-            f"which are in {len(self.course_categories)} categories"
+            f"Querying courses of {len(CourseType)} types "
+            f"which are in {len(CourseCategory)} categories"
         )
-        return self.fetch_courses()
+        for course_type in sorted(CourseType):
+            for course_category in sorted(CourseCategory):
+                yield self.fetch_courses(course_type, course_category)
 
-    def fetch_courses(self, start: int = 0, step: int = 100) -> Request:
-        self.logger.info(f"Fetching courses from {start} to {start + step}")
+    def fetch_courses(
+        self,
+        course_type: CourseType,
+        course_category: CourseCategory,
+        start: int = 0,
+        step: int = 120,
+    ) -> Request:
+        self.logger.info(
+            f"Fetching courses from {start} to {start + step} ({course_type}/{course_category})"
+        )
         return Request(
-            "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query",
+            "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex",
             method="POST",
             headers={
                 "Accept": "application/json",
                 "Accept-Language": "cs",
-                "DNT": "1",
                 "Content-Type": "application/json",
             },
             body=json.dumps(
                 {
-                    "index": ["rekvalifikace"],
+                    "optKurzIds": False,
+                    "optDruhKurzu": False,
+                    "optNazevKurzu": False,
+                    "optKodKurzu": False,
+                    "optStavKurzu": False,
+                    "optStavZajmu": False,
+                    "optNazevVzdelavatele": False,
+                    "optIcoVzdelavatele": False,
+                    "optKategorie": True,
+                    "kategorieId": int(course_category),
+                    "optAkreditace": False,
                     "pagination": {"start": start, "count": step, "order": ["-id"]},
-                    "query": {
-                        "must": [
-                            {
-                                "matchAny": {
-                                    "field": "typRekvalifikaceId",
-                                    "query": self.course_types,
-                                }
-                            },
-                            {
-                                "matchAny": {
-                                    "field": "kategorie.kategorieId",
-                                    "query": self.course_categories,
-                                }
-                            },
-                        ]
-                    },
+                    "optFormaVzdelavaniIds": False,
+                    "optTermin": False,
+                    "optCena": False,
+                    "optJazykIds": False,
+                    "optMistoKonani": False,
+                    "optTypKurzuIds": True,
+                    "typKurzuIds": [int(course_type)],
                 }
             ),
             dont_filter=True,
             callback=self.parse_courses,
-            cb_kwargs={"next_start": start + step},
+            cb_kwargs={
+                "course_type": course_type,
+                "course_category": course_category,
+                "next_start": start + step,
+            },
         )
 
     def parse_courses(
-        self, response: TextResponse, next_start: int
+        self,
+        response: TextResponse,
+        course_type: CourseType,
+        course_category: CourseCategory,
+        next_start: int,
     ) -> Generator[CourseProvider | Request, None, None]:
         data = json.loads(response.body)
         if count := len(data["list"]):
-            self.logger.info(f"Processing {count} courses")
+            self.logger.info(
+                f"Processing {count} courses of {data['count']} ({course_type}/{course_category})"
+            )
             for course in data["list"]:
                 try:
                     yield CourseProvider(
@@ -109,6 +128,8 @@ class Spider(BaseSpider):
                 except KeyError:
                     self.logger.error(f"Failed to parse:\n{pformat(course)}")
                     raise
-            yield self.fetch_courses(next_start)
+            yield self.fetch_courses(course_type, course_category, next_start)
         else:
-            self.logger.info(f'Seems like all {data["count"]} courses are done')
+            self.logger.info(
+                f"Seems like all {data['count']} courses are done ({course_type}/{course_category})"
+            )
