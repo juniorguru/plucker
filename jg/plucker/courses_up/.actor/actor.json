@@ -3,6 +3,26 @@
   "name": "courses-up",
   "title": "courses-up",
   "version": "0.0",
+  "input": {
+        "title": "Input",
+        "type": "object",
+        "schemaVersion": 1,
+        "properties": {
+            "proxyConfig": {
+                "title": "Proxy config",
+                "type": "object",
+                "editor": "proxy",
+                "prefill": {
+                    "useApifyProxy": true,
+                    "apifyProxyGroups": ["RESIDENTIAL"]
+                },
+                "default": {
+                    "useApifyProxy": true,
+                    "apifyProxyGroups": ["RESIDENTIAL"]
+                }
+            }
+        }
+    },
   "dockerfile": "../../../../Dockerfile",
   "dockerContextDir": "../../../../",
   "storages": {

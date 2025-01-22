@@ -4,7 +4,7 @@ from pprint import pformat
 from typing import Generator
 
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import TextResponse
+from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import CourseProvider
 
