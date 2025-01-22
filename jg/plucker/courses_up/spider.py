@@ -128,7 +128,12 @@ class Spider(BaseSpider):
                 except KeyError:
                     self.logger.error(f"Failed to parse:\n{pformat(course)}")
                     raise
-            yield self.fetch_courses(course_type, course_category, next_start)
+            if count == data["count"]:
+                self.logger.info(
+                    f"Seems like all {data['count']} courses are done ({course_type}/{course_category})"
+                )
+            else:
+                yield self.fetch_courses(course_type, course_category, next_start)
         else:
             self.logger.info(
                 f"Seems like all {data['count']} courses are done ({course_type}/{course_category})"
