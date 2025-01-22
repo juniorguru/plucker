@@ -49,19 +49,17 @@ class Spider(BaseSpider):
             f"Querying courses of {len(CourseType)} types "
             f"which are in {len(CourseCategory)} categories"
         )
-        for course_type in sorted(CourseType):
-            for course_category in sorted(CourseCategory):
-                yield self.fetch_courses(course_type, course_category)
+        for course_category in sorted(CourseCategory):
+            yield self.fetch_courses(course_category)
 
     def fetch_courses(
         self,
-        course_type: CourseType,
         course_category: CourseCategory,
         start: int = 0,
         step: int = 120,
     ) -> Request:
         self.logger.info(
-            f"Fetching courses from {start} to {start + step} ({course_type}/{course_category})"
+            f"Fetching courses from {start} to {start + step} (category {course_category})"
         )
         return Request(
             "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex",
@@ -91,13 +89,12 @@ class Spider(BaseSpider):
                     "optJazykIds": False,
                     "optMistoKonani": False,
                     "optTypKurzuIds": True,
-                    "typKurzuIds": [int(course_type)],
+                    "typKurzuIds": sorted(map(int, CourseType)),
                 }
             ),
             dont_filter=True,
             callback=self.parse_courses,
             cb_kwargs={
-                "course_type": course_type,
                 "course_category": course_category,
                 "next_start": start + step,
             },
@@ -106,14 +103,13 @@ class Spider(BaseSpider):
     def parse_courses(
         self,
         response: TextResponse,
-        course_type: CourseType,
         course_category: CourseCategory,
         next_start: int,
     ) -> Generator[CourseProvider | Request, None, None]:
         data = json.loads(response.body)
         if count := len(data["list"]):
             self.logger.info(
-                f"Processing {count} courses of {data['count']} ({course_type}/{course_category})"
+                f"Processing {count} courses of {data['count']} (category {course_category})"
             )
             for course in data["list"]:
                 try:
@@ -133,11 +129,11 @@ class Spider(BaseSpider):
                     raise
             if count == data["count"]:
                 self.logger.info(
-                    f"Seems like all {data['count']} courses are done ({course_type}/{course_category})"
+                    f"Seems like all {data['count']} courses are done (category {course_category})"
                 )
             else:
-                yield self.fetch_courses(course_type, course_category, next_start)
+                yield self.fetch_courses(course_category, next_start)
         else:
             self.logger.info(
-                f"Seems like all {data['count']} courses are done ({course_type}/{course_category})"
+                f"Seems like all {data['count']} courses are done (category {course_category})"
             )
