@@ -11,7 +11,8 @@ from urllib.parse import urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import HtmlResponse, TextResponse
+from scrapy.http.response.html import HtmlResponse
+from scrapy.http.response.text import TextResponse
 from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
