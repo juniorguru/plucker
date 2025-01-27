@@ -88,7 +88,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
         "DOWNLOAD_DELAY": 0.5,
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
     }
 
     start_urls = [
