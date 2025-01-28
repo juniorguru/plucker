@@ -22,6 +22,10 @@ HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501
 
 RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 403, 408, 429, 999]
 
+HTTPCACHE_ENABLED = True
+
+# HTTPCACHE_STORAGE = "jg.plucker.scrapers.KeyValueCacheStorage"
+
 SPIDER_LOADER_CLASS = "jg.plucker.scrapers.SpiderLoader"
 
 SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"

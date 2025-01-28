@@ -1,15 +1,23 @@
 import logging
+import traceback
 from pathlib import Path
 from typing import Any, Generator, Type
 
 import nest_asyncio
 from apify import Actor, Configuration
-from apify.scrapy.utils import apply_apify_settings
-from scrapy import Item, Spider
+from apify.apify_storage_client import ApifyStorageClient
+from apify.scrapy.utils import apply_apify_settings, nested_event_loop
+from apify.storages import KeyValueStore
+from scrapy import Item, Request, Spider
 from scrapy.crawler import CrawlerProcess
+from scrapy.http.headers import Headers
+from scrapy.http.response import Response
+from scrapy.responsetypes import responsetypes
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
+from scrapy.utils.reactor import is_asyncio_reactor_installed
+from scrapy.utils.request import RequestFingerprinterProtocol
 
 
 logger = logging.getLogger("jg.plucker")
@@ -126,3 +134,73 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
+
+
+class KeyValueCacheStorage:
+    # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
+    # TODO implement gzipping
+
+    def __init__(self, settings: BaseSettings):
+        if not is_asyncio_reactor_installed():
+            raise ValueError(
+                f"{self.__class__.__qualname__} requires the asyncio Twisted reactor. "
+                "Make sure you have it configured in the TWISTED_REACTOR setting. See the asyncio "
+                "documentation of Scrapy for more information.",
+            )
+        self.spider: Spider | None = None
+        self._kv: KeyValueStore | None = None
+        self._fingerprinter: RequestFingerprinterProtocol | None = None
+
+    def open_spider(self, spider: Spider) -> None:
+        logger.debug("Using Apify key value cache storage", extra={"spider": spider})
+        self.spider = spider
+        self._fingerprinter = spider.crawler.request_fingerprinter
+
+        async def open_kv() -> KeyValueStore:
+            custom_loop_apify_client = ApifyStorageClient(
+                configuration=Configuration.get_global_configuration()
+            )
+            return await KeyValueStore.open(
+                configuration=Configuration.get_global_configuration(),
+                storage_client=custom_loop_apify_client,
+            )
+
+        try:
+            self._kv = nested_event_loop.run_until_complete(open_kv())
+        except BaseException:
+            traceback.print_exc()
+            raise
+
+    def close_spider(self, spider: Spider) -> None:
+        pass
+
+    def retrieve_response(self, spider: Spider, request: Request) -> Response | None:
+        assert self._kv is not None, "Key value store not initialized"
+        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
+
+        key = self._fingerprinter.fingerprint(request).hex()
+        data = nested_event_loop.run_until_complete(self._kv.get_value(key))
+        if data is None:
+            return None  # not cached
+
+        url = data["url"]
+        status = data["status"]
+        headers = Headers(data["headers"])
+        body = data["body"]
+        respcls = responsetypes.from_args(headers=headers, url=url, body=body)
+        return respcls(url=url, headers=headers, status=status, body=body)
+
+    def store_response(
+        self, spider: Spider, request: Request, response: Response
+    ) -> None:
+        assert self._kv is not None, "Key value store not initialized"
+        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
+
+        key = self._fingerprinter.fingerprint(request).hex()
+        data = {
+            "status": response.status,
+            "url": response.url,
+            "headers": dict(response.headers),
+            "body": response.body,
+        }
+        nested_event_loop.run_until_complete(self._kv.set_value(key, data))
