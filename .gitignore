@@ -41,3 +41,6 @@ items.json
 
 # LI
 .linkedin_cache/
+
+# Scrapy
+.scrapy/

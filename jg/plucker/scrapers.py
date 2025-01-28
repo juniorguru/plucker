@@ -53,6 +53,7 @@ async def run_actor(
         spider_params = dict(spider_params or (await Actor.get_input()) or {})
         proxy_config = spider_params.pop("proxyConfig", None)
         settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
+        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.KeyValueCacheStorage"
         run_spider(settings, spider_class, spider_params)
 
 
