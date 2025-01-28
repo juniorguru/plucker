@@ -1,4 +1,5 @@
 import logging
+import pickle
 import traceback
 from pathlib import Path
 from typing import Any, Generator, Type
@@ -179,10 +180,11 @@ class KeyValueCacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        data = nested_event_loop.run_until_complete(self._kv.get_value(key))
-        if data is None:
+        value = nested_event_loop.run_until_complete(self._kv.get_value(key))
+        if value is None:
             return None  # not cached
 
+        data = pickle.loads(value)
         url = data["url"]
         status = data["status"]
         headers = Headers(data["headers"])
@@ -203,4 +205,5 @@ class KeyValueCacheStorage:
             "headers": dict(response.headers),
             "body": response.body,
         }
-        nested_event_loop.run_until_complete(self._kv.set_value(key, data))
+        value = pickle.dumps(data, protocol=4)
+        nested_event_loop.run_until_complete(self._kv.set_value(key, value))
