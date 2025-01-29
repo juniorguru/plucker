@@ -1,10 +1,9 @@
 import asyncio
 import logging
 import pickle
-from threading import Thread
-import traceback
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Generator, Type
+from threading import Thread
+from typing import Any, Coroutine, Generator, Type
 
 import nest_asyncio
 from apify import Actor, Configuration
@@ -139,35 +138,6 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
-
-
-# class NestedLoopThread(Thread):
-#     def __init__(self, func, *args, **kwargs):
-#         self.func = func
-#         self.args = args
-#         self.kwargs = kwargs
-#         super().__init__()
-
-#     def run(self):
-#         return asyncio.run(self.func(*self.args, **self.kwargs))
-
-
-class AsyncThread(Thread):
-    def __init__(self, *args, **kwargs):
-        self._target: Callable | None
-        self._args: tuple
-        self._kwargs: dict
-        super().__init__(*args, **kwargs)  # sets the above attributes
-        self.result = None
-
-    def run(self) -> Any:
-        try:
-            if self._target is not None:
-                self.result = asyncio.run(self._target(*self._args, **self._kwargs))
-        finally:
-            # Avoid a refcycle if the thread is running a function with
-            # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs
 
 
 class KeyValueCacheStorage:
