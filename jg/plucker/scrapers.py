@@ -9,6 +9,7 @@ from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
 from apify.scrapy.utils import apply_apify_settings, nested_event_loop
 from apify.storages import KeyValueStore
+from crawlee.storage_clients import MemoryStorageClient
 from scrapy import Item, Request, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.http.headers import Headers
@@ -159,12 +160,14 @@ class KeyValueCacheStorage:
         self._fingerprinter = spider.crawler.request_fingerprinter
 
         async def open_kv() -> KeyValueStore:
-            custom_loop_apify_client = ApifyStorageClient(
-                configuration=Configuration.get_global_configuration()
+            config = Configuration.get_global_configuration()
+            storage_client = (
+                ApifyStorageClient.from_config(config)
+                if config.is_at_home
+                else MemoryStorageClient.from_config(config)
             )
             return await KeyValueStore.open(
-                configuration=Configuration.get_global_configuration(),
-                storage_client=custom_loop_apify_client,
+                configuration=config, storage_client=storage_client
             )
 
         try:
