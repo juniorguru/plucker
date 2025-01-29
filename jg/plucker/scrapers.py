@@ -20,6 +20,7 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
+from itemadapter.adapter import ItemAdapter
 
 
 logger = logging.getLogger("jg.plucker")
@@ -55,6 +56,15 @@ async def run_actor(
         proxy_config = spider_params.pop("proxyConfig", None)
         settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
         settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.KeyValueCacheStorage"
+
+        # TODO this is just experimenting
+        del settings["ITEM_PIPELINES"][
+            "apify.scrapy.pipelines.ActorDatasetPushPipeline"
+        ]
+        settings["ITEM_PIPELINES"]["jg.plucker.scrapers.ActorDatasetPushPipeline"] = (
+            1000
+        )
+
         run_spider(settings, spider_class, spider_params)
 
 
@@ -211,3 +221,22 @@ class KeyValueCacheStorage:
         }
         value = pickle.dumps(data, protocol=4)
         nested_event_loop.run_until_complete(self._kv.set_value(key, value))
+
+
+class ActorDatasetPushPipeline:
+    def process_item(
+        self,
+        item: Item,
+        spider: Spider,
+    ) -> Item:
+        """Pushes the provided Scrapy item to the Actor's default dataset."""
+        item_dict = ItemAdapter(item).asdict()
+        Actor.log.debug(
+            f"Pushing item={item_dict} produced by spider={spider} to the dataset."
+        )
+        try:
+            nested_event_loop.run_until_complete(Actor.push_data(item_dict))
+        except BaseException:
+            traceback.print_exc()
+            raise
+        return item
