@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import pickle
 import traceback
@@ -181,7 +182,7 @@ class KeyValueCacheStorage:
             )
 
         try:
-            self._kv = nested_event_loop.run_until_complete(open_kv())
+            self._kv = asyncio.get_running_loop().run_until_complete(open_kv())
         except BaseException:
             traceback.print_exc()
             raise
@@ -194,7 +195,7 @@ class KeyValueCacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = nested_event_loop.run_until_complete(self._kv.get_value(key))
+        value = asyncio.get_running_loop().run_until_complete(self._kv.get_value(key))
         if value is None:
             return None  # not cached
 
@@ -220,7 +221,7 @@ class KeyValueCacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        nested_event_loop.run_until_complete(self._kv.set_value(key, value))
+        asyncio.get_running_loop().run_until_complete(self._kv.set_value(key, value))
 
 
 class ActorDatasetPushPipeline:
@@ -235,7 +236,7 @@ class ActorDatasetPushPipeline:
             f"Pushing item={item_dict} produced by spider={spider} to the dataset."
         )
         try:
-            nested_event_loop.run_until_complete(Actor.push_data(item_dict))
+            asyncio.get_running_loop().run_until_complete(Actor.push_data(item_dict))
         except BaseException:
             traceback.print_exc()
             raise
