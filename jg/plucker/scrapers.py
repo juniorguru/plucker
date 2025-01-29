@@ -1,18 +1,22 @@
 import asyncio
 import logging
 import pickle
-from threading import Thread
-import traceback
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Generator, Type
+from threading import Thread
+from typing import Any, Coroutine, Generator, Type, cast
 
 import nest_asyncio
+from crawlee import Request as ApifyRequest
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
+from apify.scrapy.requests import to_apify_request, to_scrapy_request
 from apify.scrapy.utils import apply_apify_settings
-from apify.storages import KeyValueStore
+from apify.storages import KeyValueStore, RequestQueue
+from crawlee._utils.crypto import crypto_random_object_id
 from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
+from itemadapter import ItemAdapter  # pyright: ignore
 from scrapy import Item, Request, Spider
+from scrapy.core.scheduler import BaseScheduler
 from scrapy.crawler import CrawlerProcess
 from scrapy.http.headers import Headers
 from scrapy.http.response import Response
@@ -22,6 +26,7 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
+from crawlee.storage_clients.models import ProcessedRequest
 
 
 logger = logging.getLogger("jg.plucker")
@@ -55,13 +60,22 @@ async def run_actor(
         Actor.log.info(f"Spider {spider_class.name}")
         spider_params = dict(spider_params or (await Actor.get_input()) or {})
         proxy_config = spider_params.pop("proxyConfig", None)
-        settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.KeyValueCacheStorage"
+        # settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
+
+        # TODO experimenting
+        # settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
+        # del settings["ITEM_PIPELINES"][
+        #     "apify.scrapy.pipelines.ActorDatasetPushPipeline"
+        # ]
+        # settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
+        # settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
+
         run_spider(settings, spider_class, spider_params)
 
 
 def configure_async():
-    nest_asyncio.apply()
+    # nest_asyncio.apply()
+    pass
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
@@ -141,36 +155,20 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
         raise StatsError(f"Items missing required fields: {item_count}")
 
 
-# class NestedLoopThread(Thread):
-#     def __init__(self, func, *args, **kwargs):
-#         self.func = func
-#         self.args = args
-#         self.kwargs = kwargs
-#         super().__init__()
+def run_async(coroutine: Coroutine) -> Any:
+    result = None
 
-#     def run(self):
-#         return asyncio.run(self.func(*self.args, **self.kwargs))
+    def run():
+        nonlocal result
+        result = asyncio.run(coroutine)
 
-
-class AsyncThread(Thread):
-    def __init__(self, *args, **kwargs):
-        self._target: Callable | None
-        self._args: tuple
-        self._kwargs: dict
-        super().__init__(*args, **kwargs)  # sets the above attributes
-        self.result = None
-
-    def run(self) -> Any:
-        try:
-            if self._target is not None:
-                self.result = asyncio.run(self._target(*self._args, **self._kwargs))
-        finally:
-            # Avoid a refcycle if the thread is running a function with
-            # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs
+    t = Thread(target=run)
+    t.start()
+    t.join()
+    return result
 
 
-class KeyValueCacheStorage:
+class CacheStorage:
     # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
     # TODO implement gzipping
 
@@ -189,16 +187,7 @@ class KeyValueCacheStorage:
         logger.debug("Using Apify key value cache storage", extra={"spider": spider})
         self.spider = spider
         self._fingerprinter = spider.crawler.request_fingerprinter
-
-        config = Configuration.get_global_configuration()
-        storage_client = (
-            ApifyStorageClient.from_config(config)
-            if config.is_at_home
-            else MemoryStorageClient.from_config(config)
-        )
-        self._kv = self._run_async(
-            KeyValueStore.open(configuration=config, storage_client=storage_client)
-        )
+        self._kv = run_async(Actor.open_key_value_store())
 
     def close_spider(self, spider: Spider) -> None:
         pass
@@ -208,7 +197,7 @@ class KeyValueCacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = self._run_async(self._kv.get_value(key))
+        value = run_async(self._kv.get_value(key))
         if value is None:
             return None  # not cached
 
@@ -234,16 +223,79 @@ class KeyValueCacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        self._run_async(self._kv.set_value(key, value))
+        run_async(self._kv.set_value(key, value))
 
-    def _run_async(self, coroutine: Coroutine) -> Any:
-        result = None
 
-        def run():
-            nonlocal result
-            result = asyncio.run(coroutine)
+class Pipeline:
+    async def process_item(
+        self,
+        item: Item,
+        spider: Spider,
+    ) -> Item:
+        item_dict = ItemAdapter(item).asdict()
+        Actor.log.debug(
+            f"Pushing item={item_dict} produced by spider={spider} to the dataset."
+        )
+        run_async(Actor.push_data(item_dict))
+        return item
 
-        t = Thread(target=run)
-        t.start()
-        t.join()
-        return result
+
+class Scheduler(BaseScheduler):
+    def __init__(self) -> None:
+        self._rq: RequestQueue | None = None
+        self.spider: Spider | None = None
+
+    def open(self, spider: Spider) -> None:  # this has to be named "open"
+        self.spider = spider
+        self._rq = run_async(Actor.open_request_queue())
+
+    def has_pending_requests(self) -> bool:
+        assert self._rq is not None, "Request queue not initialized"
+
+        is_finished = cast(bool, run_async(self._rq.is_finished()))
+        return not is_finished
+
+    def enqueue_request(self, request: Request) -> bool:
+        assert self.spider is not None, "Spider not initialized"
+        assert self._rq is not None, "Request queue not initialized"
+
+        call_id = crypto_random_object_id(8)
+        Actor.log.debug(
+            f"[{call_id}]: ApifyScheduler.enqueue_request was called (scrapy_request={request})..."
+        )
+        apify_request = to_apify_request(request, spider=self.spider)
+        if apify_request is None:
+            Actor.log.error(
+                f"Request {request} was not enqueued because it could not be converted to Apify request."
+            )
+            return False
+        Actor.log.debug(
+            f"[{call_id}]: scrapy_request was transformed to apify_request (apify_request={apify_request})"
+        )
+        result = cast(ProcessedRequest, run_async(self._rq.add_request(apify_request)))
+        Actor.log.debug(f"[{call_id}]: rq.add_request.result={result}...")
+        return bool(result.was_already_present)
+
+    def next_request(self) -> Request | None:
+        assert self._rq is not None, "Request queue not initialized"
+        assert self.spider is not None, "Spider not initialized"
+
+        call_id = crypto_random_object_id(8)
+        Actor.log.debug(f"[{call_id}]: ApifyScheduler.next_request was called...")
+        apify_request = cast(ApifyRequest, run_async(self._rq.fetch_next_request()))
+        Actor.log.debug(
+            f"[{call_id}]: a new apify_request from the scheduler was fetched (apify_request={apify_request})"
+        )
+        if apify_request is None:
+            return None
+
+        # Let the Request Queue know that the request is being handled. Every request should be marked as handled,
+        # retrying is handled by the Scrapy's RetryMiddleware.
+        run_async(self._rq.mark_request_as_handled(apify_request))
+
+        scrapy_request = to_scrapy_request(apify_request, spider=self.spider)
+        Actor.log.debug(
+            f"[{call_id}]: apify_request was transformed to the scrapy_request which is gonna be returned "
+            f"(scrapy_request={scrapy_request})",
+        )
+        return scrapy_request
