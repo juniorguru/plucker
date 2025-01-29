@@ -107,7 +107,7 @@ Maybe there is now, but the monitoring is already implemented, so…
 
 -   _scraper_ - Generic name for a program which downloads data from web pages (or APIs). This repository uses the word scraper to refer to a spider & actor combo.
 -   _spider_ - This is how [Scrapy](https://scrapy.org/) framework calls implementation of a scraper.
--   _actor_ - This is how the [Apify](https://apify.com) platform calls implementation of a scraper.
+-   _actor_ - This is how the [Apify](https://apify.com) platform calls implementation and deployment of a scraper.
 -   _plucker_ - Repository of Junior Guru scrapers. In English, a plucker is one who or that which plucks. Naming in Junior Guru is usually poultry-themed, and Honza felt that plucking is a nice analogy to web scraping.
 
 ## License
