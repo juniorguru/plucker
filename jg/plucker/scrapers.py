@@ -8,7 +8,7 @@ from typing import Any, Generator, Type
 import nest_asyncio
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
-from apify.scrapy.utils import apply_apify_settings, nested_event_loop
+from apify.scrapy.utils import apply_apify_settings
 from apify.storages import KeyValueStore
 from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
 from scrapy import Item, Request, Spider
@@ -21,7 +21,6 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
-from itemadapter.adapter import ItemAdapter
 
 
 logger = logging.getLogger("jg.plucker")
@@ -57,15 +56,6 @@ async def run_actor(
         proxy_config = spider_params.pop("proxyConfig", None)
         settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
         settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.KeyValueCacheStorage"
-
-        # TODO this is just experimenting
-        del settings["ITEM_PIPELINES"][
-            "apify.scrapy.pipelines.ActorDatasetPushPipeline"
-        ]
-        settings["ITEM_PIPELINES"]["jg.plucker.scrapers.ActorDatasetPushPipeline"] = (
-            1000
-        )
-
         run_spider(settings, spider_class, spider_params)
 
 
@@ -150,6 +140,17 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
         raise StatsError(f"Items missing required fields: {item_count}")
 
 
+# class NestedLoopThread(Thread):
+#     def __init__(self, func, *args, **kwargs):
+#         self.func = func
+#         self.args = args
+#         self.kwargs = kwargs
+#         super().__init__()
+
+#     def run(self):
+#         return asyncio.run(self.func(*self.args, **self.kwargs))
+
+
 class KeyValueCacheStorage:
     # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
     # TODO implement gzipping
@@ -162,6 +163,7 @@ class KeyValueCacheStorage:
                 "documentation of Scrapy for more information.",
             )
         self.spider: Spider | None = None
+        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         self._kv: KeyValueStore | None = None
         self._fingerprinter: RequestFingerprinterProtocol | None = None
 
@@ -182,7 +184,7 @@ class KeyValueCacheStorage:
             )
 
         try:
-            self._kv = asyncio.get_running_loop().run_until_complete(open_kv())
+            self._kv = self._loop.run_until_complete(open_kv())
         except BaseException:
             traceback.print_exc()
             raise
@@ -195,7 +197,7 @@ class KeyValueCacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = asyncio.get_running_loop().run_until_complete(self._kv.get_value(key))
+        value = self._loop.run_until_complete(self._kv.get_value(key))
         if value is None:
             return None  # not cached
 
@@ -221,23 +223,4 @@ class KeyValueCacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        asyncio.get_running_loop().run_until_complete(self._kv.set_value(key, value))
-
-
-class ActorDatasetPushPipeline:
-    def process_item(
-        self,
-        item: Item,
-        spider: Spider,
-    ) -> Item:
-        """Pushes the provided Scrapy item to the Actor's default dataset."""
-        item_dict = ItemAdapter(item).asdict()
-        Actor.log.debug(
-            f"Pushing item={item_dict} produced by spider={spider} to the dataset."
-        )
-        try:
-            asyncio.get_running_loop().run_until_complete(Actor.push_data(item_dict))
-        except BaseException:
-            traceback.print_exc()
-            raise
-        return item
+        self._loop.run_until_complete(self._kv.set_value(key, value))
