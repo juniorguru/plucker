@@ -140,15 +140,15 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
         raise StatsError(f"Items missing required fields: {item_count}")
 
 
-# class NestedLoopThread(Thread):
-#     def __init__(self, func, *args, **kwargs):
-#         self.func = func
-#         self.args = args
-#         self.kwargs = kwargs
-#         super().__init__()
+class NestedLoopThread(Thread):
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        super().__init__()
 
-#     def run(self):
-#         return asyncio.run(self.func(*self.args, **self.kwargs))
+    def run(self):
+        return asyncio.run(self.func(*self.args, **self.kwargs))
 
 
 class KeyValueCacheStorage:
@@ -172,13 +172,14 @@ class KeyValueCacheStorage:
         self.spider = spider
         self._fingerprinter = spider.crawler.request_fingerprinter
 
+        config = Configuration.get_global_configuration()
+        storage_client = (
+            ApifyStorageClient.from_config(config)
+            if config.is_at_home
+            else MemoryStorageClient.from_config(config)
+        )
+
         async def open_kv() -> KeyValueStore:
-            config = Configuration.get_global_configuration()
-            storage_client = (
-                ApifyStorageClient.from_config(config)
-                if config.is_at_home
-                else MemoryStorageClient.from_config(config)
-            )
             return await KeyValueStore.open(
                 configuration=config, storage_client=storage_client
             )
