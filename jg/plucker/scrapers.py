@@ -9,7 +9,7 @@ from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
 from apify.scrapy.utils import apply_apify_settings, nested_event_loop
 from apify.storages import KeyValueStore
-from crawlee.storage_clients import MemoryStorageClient
+from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
 from scrapy import Item, Request, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.http.headers import Headers
