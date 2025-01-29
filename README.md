@@ -15,6 +15,19 @@ Deploying new scraper to Apify is a manual process and it is documented below.
 Code in this repository is executed by Apify, on their infrastructure.
 The [main Junior Guru codebase](https://github.com/juniorguru/junior.guru) then gets the scraped data in form of [datasets](https://docs.apify.com/platform/storage/dataset) available through the Apify API.
 
+## Installation
+
+Have [Poetry](https://python-poetry.org/), run `poetry install`.
+Use the `exchange-rates` scraper to test out whether everything works.
+It's a minimal scraper performing just one request.
+Try all of the following:
+
+-   Run `scrapy crawl exchange-rates` to run it by the **Scrapy CLI** as a pure **Scrapy spider**.
+-   Run `plucker crawl exchange-rates` to run it by the **CLI of this project** as a pure **Scrapy spider**.
+-   Run `plucker crawl exchange-rates --apify` to run it by the **CLI of this project** as a local **Apify actor**.
+
+If you get no errors, you have the project correctly set up.
+
 ## Running scrapers
 
 Use Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
@@ -28,7 +41,7 @@ Sometimes scrapers need input data.
 Plucker's `crawl` CLI command can pass parameters to your scraper through the `--params` option. Use shell to pass ad-hoc data:
 
 ```
-$ echo '{"links": [{"url": "https://junior.guru"}]}' | plucker crawl job-links --params
+$ echo '{"links": [{"url": "https://junior.guru"}]}' | plucker crawl job-checks --params
 ```
 
 Use file for more complex input:
@@ -85,8 +98,6 @@ Maybe there is now, but the monitoring is already implemented, so…
 
 ## Notes on development
 
--   Use [Poetry](https://python-poetry.org/) for dependency management.
-    Run `poetry install`.
 -   It is preferred to pin exact versions of dependencies, without `^`, and let GitHub's Dependabot to upgrade dependencies in Pull Requests.
     Unfortunately there is no setting in pyproject.toml, which would force this behavior, so once new dependencies are added, one needs to go and manually remove the `^` characters.
 -   Run `pytest` to see if your code has any issues.
