@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import pickle
+from threading import Thread
 import traceback
 from pathlib import Path
-from typing import Any, Generator, Type
+from typing import Any, Callable, Coroutine, Generator, Type
 
 import nest_asyncio
 from apify import Actor, Configuration
@@ -151,6 +152,24 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
 #         return asyncio.run(self.func(*self.args, **self.kwargs))
 
 
+class AsyncThread(Thread):
+    def __init__(self, *args, **kwargs):
+        self._target: Callable | None
+        self._args: tuple
+        self._kwargs: dict
+        super().__init__(*args, **kwargs)  # sets the above attributes
+        self.result = None
+
+    def run(self) -> Any:
+        try:
+            if self._target is not None:
+                self.result = asyncio.run(self._target(*self._args, **self._kwargs))
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+
+
 class KeyValueCacheStorage:
     # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
     # TODO implement gzipping
@@ -163,7 +182,6 @@ class KeyValueCacheStorage:
                 "documentation of Scrapy for more information.",
             )
         self.spider: Spider | None = None
-        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         self._kv: KeyValueStore | None = None
         self._fingerprinter: RequestFingerprinterProtocol | None = None
 
@@ -178,17 +196,9 @@ class KeyValueCacheStorage:
             if config.is_at_home
             else MemoryStorageClient.from_config(config)
         )
-
-        async def open_kv() -> KeyValueStore:
-            return await KeyValueStore.open(
-                configuration=config, storage_client=storage_client
-            )
-
-        try:
-            self._kv = self._loop.run_until_complete(open_kv())
-        except BaseException:
-            traceback.print_exc()
-            raise
+        self._kv = self._run_async(
+            KeyValueStore.open(configuration=config, storage_client=storage_client)
+        )
 
     def close_spider(self, spider: Spider) -> None:
         pass
@@ -198,7 +208,7 @@ class KeyValueCacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = self._loop.run_until_complete(self._kv.get_value(key))
+        value = self._run_async(self._kv.get_value(key))
         if value is None:
             return None  # not cached
 
@@ -224,4 +234,16 @@ class KeyValueCacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        self._loop.run_until_complete(self._kv.set_value(key, value))
+        self._run_async(self._kv.set_value(key, value))
+
+    def _run_async(self, coroutine: Coroutine) -> Any:
+        result = None
+
+        def run():
+            nonlocal result
+            result = asyncio.run(coroutine)
+
+        t = Thread(target=run)
+        t.start()
+        t.join()
+        return result
