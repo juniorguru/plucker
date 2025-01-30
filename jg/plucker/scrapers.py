@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import pickle
-from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 from pathlib import Path
 from typing import Any, Coroutine, Generator, Type, cast
 
@@ -30,9 +30,6 @@ from scrapy.utils.request import RequestFingerprinterProtocol
 
 
 logger = logging.getLogger("jg.plucker")
-
-
-thread_pool = ThreadPoolExecutor()
 
 
 def run_spider(
@@ -174,8 +171,16 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
 
 
 def run_async(coroutine: Coroutine) -> Any:
-    future = thread_pool.submit(asyncio.run, coroutine)
-    return future.result()
+    result = None
+
+    def run() -> None:
+        nonlocal result
+        result = asyncio.run(coroutine)
+
+    t = Thread(target=run)
+    t.start()
+    t.join()
+    return result
 
 
 class CacheStorage:
