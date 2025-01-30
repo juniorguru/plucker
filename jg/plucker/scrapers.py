@@ -56,7 +56,7 @@ def run_actor(
     settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
     run_async(Actor.init())
-    Actor._apify_client.http_client.httpx_client.headers["Connection"] = "close"
+    Actor._apify_client.http_client.httpx_client._headers["Connection"] = "close"
     try:
         Actor.log.info(f"Spider {spider_class.name}")
         Actor.log.info("Reading input")
