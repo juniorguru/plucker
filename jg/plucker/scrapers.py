@@ -187,12 +187,18 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
 def run_async(coroutine: Coroutine) -> Any:
     result = None
 
+    async def pokus():
+        await (
+            Actor._apify_client.http_client.httpx_async_client._transport._pool.aclose()
+        )
+        return await coroutine
+
     def run() -> None:
         nonlocal result
         print(
             f"Thread {threading.current_thread().name} executing {coroutine.__name__}"
         )
-        result = asyncio.run(coroutine)
+        result = asyncio.run(pokus())
 
     t = Thread(target=run)
     t.start()
