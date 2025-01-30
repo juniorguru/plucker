@@ -175,6 +175,7 @@ def run_async(coroutine: Coroutine) -> Any:
 
     def run() -> None:
         nonlocal result
+        asyncio.set_event_loop(asyncio.new_event_loop())
         result = asyncio.run(coroutine)
 
     t = Thread(target=run)
