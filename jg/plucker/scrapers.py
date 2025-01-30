@@ -87,6 +87,7 @@ def run_actor(
         run_spider(settings, spider_class, spider_params)
     except Exception as e:
         run_async(Actor.fail(exception=e))
+        raise
     else:
         run_async(Actor.exit())
 
