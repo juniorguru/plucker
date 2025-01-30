@@ -57,6 +57,7 @@ def run_actor(
 ) -> None:
     run_async(Actor.init())
     Actor._apify_client.http_client.httpx_client._headers["Connection"] = "close"
+    Actor._apify_client.http_client.httpx_async_client._headers["Connection"] = "close"
     try:
         Actor.log.info(f"Spider {spider_class.name}")
         Actor.log.info("Reading input")
