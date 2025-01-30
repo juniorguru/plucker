@@ -182,6 +182,7 @@ def run_async(coroutine: Coroutine) -> Any:
         print(
             f"Thread {threading.current_thread().name} has event loop: {asyncio.get_event_loop()}, executing {coroutine.__name__}"
         )
+        print(f"Headers: {Actor._apify_client.http_client.httpx_async_client._headers}")
         result = asyncio.run(coroutine)
 
     t = Thread(target=run)
