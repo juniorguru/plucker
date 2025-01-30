@@ -64,7 +64,9 @@ def run_actor(
         headers=headers,
         follow_redirects=True,
         timeout=Actor._apify_client.http_client.httpx_async_client.timeout,
-        limits=httpx.Limits(max_keepalive_connections=0, max_connections=1),
+        limits=httpx.Limits(
+            max_keepalive_connections=0, max_connections=1, keepalive_expiry=0
+        ),
     )
     try:
         Actor.log.info(f"Spider {spider_class.name}")
