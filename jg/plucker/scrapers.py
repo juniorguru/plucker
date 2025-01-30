@@ -1,19 +1,20 @@
 import asyncio
 import logging
 import pickle
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Thread
 from typing import Any, Coroutine, Generator, Type, cast
 
 import nest_asyncio
-from crawlee import Request as ApifyRequest
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
 from apify.scrapy.requests import to_apify_request, to_scrapy_request
 from apify.scrapy.utils import apply_apify_settings
-from apify.storages import KeyValueStore, RequestQueue
+from apify.storages import Dataset, KeyValueStore, RequestQueue
+from crawlee import Request as ApifyRequest
 from crawlee._utils.crypto import crypto_random_object_id
 from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
+from crawlee.storage_clients.models import ProcessedRequest
 from itemadapter import ItemAdapter  # pyright: ignore
 from scrapy import Item, Request, Spider
 from scrapy.core.scheduler import BaseScheduler
@@ -26,10 +27,12 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
-from crawlee.storage_clients.models import ProcessedRequest
 
 
 logger = logging.getLogger("jg.plucker")
+
+
+thread_pool = ThreadPoolExecutor()
 
 
 def run_spider(
@@ -51,26 +54,41 @@ def run_spider(
     evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
 
 
-async def run_actor(
+def run_actor(
     settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    config = Configuration.get_global_configuration()
-    config.purge_on_start = True
-    async with Actor:
+    run_async(Actor.init())
+    try:
         Actor.log.info(f"Spider {spider_class.name}")
-        spider_params = dict(spider_params or (await Actor.get_input()) or {})
+        Actor.log.info("Reading input")
+        spider_params = dict(spider_params or (run_async(Actor.get_input())) or {})
         proxy_config = spider_params.pop("proxyConfig", None)
-        # settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
 
-        # TODO experimenting
-        # settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
-        # del settings["ITEM_PIPELINES"][
-        #     "apify.scrapy.pipelines.ActorDatasetPushPipeline"
-        # ]
-        # settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
-        # settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
+        Actor.log.info("Applying Apify settings")
+        settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
 
+        Actor.log.info("Overriding Apify settings with custom ones")
+        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
+        del settings["ITEM_PIPELINES"][
+            "apify.scrapy.pipelines.ActorDatasetPushPipeline"
+        ]
+        settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
+        settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
+
+        Actor.log.info("Purging the default dataset")
+        dataset = cast(Dataset, run_async(Actor.open_dataset()))
+        run_async(dataset.drop())
+
+        Actor.log.info("Purging the default request queue")
+        request_queue = cast(RequestQueue, run_async(Actor.open_request_queue()))
+        run_async(request_queue.drop())
+
+        Actor.log.info("Starting the spider")
         run_spider(settings, spider_class, spider_params)
+    except Exception as e:
+        run_async(Actor.fail(exception=e))
+    else:
+        run_async(Actor.exit())
 
 
 def configure_async():
@@ -156,16 +174,8 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
 
 
 def run_async(coroutine: Coroutine) -> Any:
-    result = None
-
-    def run():
-        nonlocal result
-        result = asyncio.run(coroutine)
-
-    t = Thread(target=run)
-    t.start()
-    t.join()
-    return result
+    future = thread_pool.submit(asyncio.run, coroutine)
+    return future.result()
 
 
 class CacheStorage:
@@ -187,7 +197,9 @@ class CacheStorage:
         logger.debug("Using Apify key value cache storage", extra={"spider": spider})
         self.spider = spider
         self._fingerprinter = spider.crawler.request_fingerprinter
-        self._kv = run_async(Actor.open_key_value_store())
+        self._kv = run_async(
+            Actor.open_key_value_store(name=f"httpcache-{spider.name}")
+        )
 
     def close_spider(self, spider: Spider) -> None:
         pass

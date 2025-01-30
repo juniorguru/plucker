@@ -94,7 +94,7 @@ def crawl(
                 raise click.BadParameter(
                     f"Actor {actor_path} not found! Valid actors: {actors}"
                 )
-            asyncio.run(run_actor(settings, spider_class, spider_params))
+            run_actor(settings, spider_class, spider_params)
         else:
             logger.info(f"Crawling as Scrapy spider {spider_name!r}")
             run_spider(settings, spider_class, spider_params)
