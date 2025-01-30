@@ -3,6 +3,7 @@ import logging
 import pickle
 from threading import Thread
 from pathlib import Path
+import threading
 from typing import Any, Coroutine, Generator, Type, cast
 
 import nest_asyncio
@@ -176,6 +177,9 @@ def run_async(coroutine: Coroutine) -> Any:
     def run() -> None:
         nonlocal result
         asyncio.set_event_loop(asyncio.new_event_loop())
+        print(
+            f"Thread {threading.current_thread().name} has event loop: {asyncio.get_event_loop()}, executing {coroutine.__name__}"
+        )
         result = asyncio.run(coroutine)
 
     t = Thread(target=run)
