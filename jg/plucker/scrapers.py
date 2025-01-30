@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 from typing import Any, Coroutine, Generator, Type, cast
 
+import httpx
 import nest_asyncio
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
@@ -56,8 +57,15 @@ def run_actor(
     settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
     run_async(Actor.init())
-    Actor._apify_client.http_client.httpx_client._headers["Connection"] = "close"
-    Actor._apify_client.http_client.httpx_async_client._headers["Connection"] = "close"
+    Actor._apify_client.http_client.httpx_client = None
+    headers = Actor._apify_client.http_client.httpx_async_client.headers
+    headers["Connection"] = "close"
+    Actor._apify_client.http_client.httpx_async_client = httpx.AsyncClient(
+        headers=headers,
+        follow_redirects=True,
+        timeout=Actor._apify_client.http_client.httpx_async_client.timeout,
+        limits=httpx.Limits(max_keepalive_connections=0, max_connections=1),
+    )
     try:
         Actor.log.info(f"Spider {spider_class.name}")
         Actor.log.info("Reading input")
