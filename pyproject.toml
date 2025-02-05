@@ -14,7 +14,7 @@ plucker = "jg.plucker.cli:main"
 
 [tool.poetry.dependencies]
 python = "3.12.*"
-apify = {version = "2.2.1", extras = ["scrapy"]}
+apify = { git = "https://github.com/apify/apify-sdk-python.git", branch = "fixing-scrapy", extras = ["scrapy"] }
 apify-client = "1.8.1"  # deployment of actors, monitoring, automation
 apify-shared = "*"  # importing a few enums
 click = "8.1.8"
