@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import json
 import logging
@@ -26,7 +25,6 @@ from scrapy import Item
 
 from jg.plucker.scrapers import (
     StatsError,
-    configure_async,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
@@ -85,7 +83,6 @@ def crawl(
         logger.info("Reading spider params from stdin")
         spider_params = json.load(spider_params_f)
 
-    configure_async()
     try:
         if apify:
             logger.info(f"Crawling as Apify actor {actor_path}")

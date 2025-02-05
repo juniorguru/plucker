@@ -1,110 +1,165 @@
 import asyncio
+import builtins
 import logging
 import pickle
-from threading import Thread
-from pathlib import Path
 import threading
+from pathlib import Path
+from threading import Thread
 from typing import Any, Coroutine, Generator, Type, cast
 
-import httpx
-import nest_asyncio
-from apify import Actor, Configuration
-from apify.apify_storage_client import ApifyStorageClient
+from apify import Actor
 from apify.scrapy.requests import to_apify_request, to_scrapy_request
 from apify.scrapy.utils import apply_apify_settings
 from apify.storages import Dataset, KeyValueStore, RequestQueue
 from crawlee import Request as ApifyRequest
 from crawlee._utils.crypto import crypto_random_object_id
-from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
 from crawlee.storage_clients.models import ProcessedRequest
 from itemadapter import ItemAdapter  # pyright: ignore
 from scrapy import Item, Request, Spider
 from scrapy.core.scheduler import BaseScheduler
-from scrapy.crawler import CrawlerProcess
+from scrapy.crawler import CrawlerProcess, CrawlerRunner
 from scrapy.http.headers import Headers
 from scrapy.http.response import Response
 from scrapy.responsetypes import responsetypes
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
+from scrapy.utils.defer import deferred_from_coro
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
+from twisted.internet import asyncioreactor, defer
+from twisted.internet.task import react
 
 
 logger = logging.getLogger("jg.plucker")
 
 
+# new_client_original = _ActorType.new_client
+
+
+# def new_client_patch(self, **kwargs) -> ApifyClientAsync:
+#     print(f"PATCH thread {threading.current_thread().name}")
+#     client = new_client_original(self, **kwargs)
+#     # client.http_client.httpx_async_client._headers["Connection"] = "close"
+#     # client.http_client = HTTPClientAsync(
+#     #     token=token,
+#     #     max_retries=client.max_retries,
+#     #     min_delay_between_retries_millis=client.min_delay_between_retries_millis,
+#     #     timeout_secs=client.timeout_secs,
+#     # )
+#     http_client = client.http_client
+#     http_client.httpx_async_client = httpx.AsyncClient(
+#         headers={"Fuck": "you"},
+#         follow_redirects=True,
+#         timeout=http_client.timeout_secs,
+#     )
+#     return client
+
+
+# _ActorType.new_client = new_client_patch
+
+
 def run_spider(
     settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    logger.debug(f"Spider params: {spider_params!r}")
-    settings.set("SPIDER_PARAMS", spider_params)
+    raise NotImplementedError()
+    # logger.debug(f"Spider params: {spider_params!r}")
+    # settings.set("SPIDER_PARAMS", spider_params)
 
-    crawler_process = CrawlerProcess(settings, install_root_handler=False)
-    crawler_process.crawl(spider_class)
-    stats_collector = get_stats_collector(crawler_process)
-    crawler_process.start()
+    # crawler_process = CrawlerProcess(settings, install_root_handler=False)
+    # crawler_process.crawl(spider_class)
+    # stats_collector = get_stats_collector(crawler_process)
+    # crawler_process.start()
 
-    min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
-    logger.debug(f"Min items required: {min_items}")
+    # min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
+    # logger.debug(f"Min items required: {min_items}")
 
-    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
-    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
-    evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
+    # logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
+    # evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
+    # evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
 
 
 def run_actor(
-    settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
+    base_settings: Settings,
+    spider_class: Type[Spider],
+    spider_params: dict[str, Any] | None,
 ) -> None:
-    run_async(Actor.init())
-    Actor._apify_client.http_client.httpx_client = None
-    headers = Actor._apify_client.http_client.httpx_async_client.headers
-    headers["Connection"] = "close"
-    Actor._apify_client.http_client.httpx_async_client = httpx.AsyncClient(
-        headers=headers,
-        follow_redirects=True,
-        timeout=Actor._apify_client.http_client.httpx_async_client.timeout,
-        limits=httpx.Limits(
-            max_keepalive_connections=0, max_connections=1, keepalive_expiry=0
-        ),
-    )
-    try:
+    asyncioreactor.install()
+
+    @defer.inlineCallbacks
+    def crawl(reactor):
+        Actor.log.info("Starting actor")
+        yield deferred_from_coro(Actor.init())
+
         Actor.log.info(f"Spider {spider_class.name}")
         Actor.log.info("Reading input")
-        spider_params = dict(spider_params or (run_async(Actor.get_input())) or {})
-        proxy_config = spider_params.pop("proxyConfig", None)
+        params = spider_params or (yield deferred_from_coro(Actor.get_input())) or {}
+        proxy_config = params.pop("proxyConfig", None)
 
         Actor.log.info("Applying Apify settings")
-        settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-
-        Actor.log.info("Overriding Apify settings with custom ones")
-        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
-        del settings["ITEM_PIPELINES"][
-            "apify.scrapy.pipelines.ActorDatasetPushPipeline"
-        ]
-        settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
-        settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
+        settings = apply_apify_settings(
+            settings=base_settings, proxy_config=proxy_config
+        )
+        runner = CrawlerRunner(settings)
 
         Actor.log.info("Purging the default dataset")
-        dataset = cast(Dataset, run_async(Actor.open_dataset()))
-        run_async(dataset.drop())
+        dataset = cast(Dataset, (yield deferred_from_coro(Actor.open_dataset())))
+        yield deferred_from_coro(dataset.drop())
 
         Actor.log.info("Purging the default request queue")
-        request_queue = cast(RequestQueue, run_async(Actor.open_request_queue()))
-        run_async(request_queue.drop())
+        request_queue = cast(
+            RequestQueue, (yield deferred_from_coro(Actor.open_request_queue()))
+        )
+        yield deferred_from_coro(request_queue.drop())
 
         Actor.log.info("Starting the spider")
-        run_spider(settings, spider_class, spider_params)
-    except Exception as e:
-        run_async(Actor.fail(exception=e))
-        raise
-    else:
-        run_async(Actor.exit())
+        yield runner.crawl(spider_class)
 
+        Actor.log.info("Exiting actor")
+        builtins.__IPYTHON__ = True  # deception, Actor.exit() won't call sys.exit()
+        yield deferred_from_coro(Actor.exit())
+        del builtins.__IPYTHON__
 
-def configure_async():
-    # nest_asyncio.apply()
-    pass
+        Actor.log.info("Done!")
+
+    react(crawl, [])
+
+    # # httpx_client = Actor._apify_client.http_client.httpx_async_client
+    # # httpx_client._headers["Connection"] = "close"
+    # # print(f"HTTPX setting connection {httpx_client._headers} (id: {id(httpx_client)})")
+    # try:
+    #     Actor.log.info(f"Spider {spider_class.name}")
+    #     Actor.log.info("Reading input")
+    #     spider_params = dict(spider_params or (run_async(Actor.get_input())) or {})
+    #     proxy_config = spider_params.pop("proxyConfig", None)
+
+    #     Actor.log.info("Applying Apify settings")
+    #     settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
+
+    #     Actor.log.info("Overriding Apify settings with custom ones")
+    #     settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
+    #     del settings["ITEM_PIPELINES"][
+    #         "apify.scrapy.pipelines.ActorDatasetPushPipeline"
+    #     ]
+    #     settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
+    #     settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
+
+    #     Actor.log.info("Purging the default dataset")
+    #     dataset = cast(Dataset, run_async(Actor.open_dataset()))
+    #     run_async(dataset.drop())
+
+    #     Actor.log.info("Purging the default request queue")
+    #     request_queue = cast(RequestQueue, run_async(Actor.open_request_queue()))
+    #     run_async(request_queue.drop())
+
+    #     Actor.log.info("Starting the spider")
+    #     # run_spider(settings, spider_class, spider_params)
+
+    # except Exception as e:
+    #     run_async(Actor.fail(exception=e))
+    #     raise
+    # else:
+    #     run_async(Actor.exit())
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
@@ -187,18 +242,12 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
 def run_async(coroutine: Coroutine) -> Any:
     result = None
 
-    async def pokus():
-        await (
-            Actor._apify_client.http_client.httpx_async_client._transport._pool.aclose()
-        )
-        return await coroutine
-
     def run() -> None:
         nonlocal result
         print(
-            f"Thread {threading.current_thread().name} executing {coroutine.__name__}"
+            f"Thread {threading.current_thread().name}, executing {coroutine.__name__}"
         )
-        result = asyncio.run(pokus())
+        result = asyncio.run(coroutine)
 
     t = Thread(target=run)
     t.start()
