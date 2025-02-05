@@ -1,5 +1,6 @@
 import asyncio
 import builtins
+import contextlib
 import logging
 import pickle
 import threading
@@ -116,9 +117,8 @@ def run_actor(
         yield runner.crawl(spider_class)
 
         Actor.log.info("Exiting actor")
-        builtins.__IPYTHON__ = True  # deception, Actor.exit() won't call sys.exit()
-        yield deferred_from_coro(Actor.exit())
-        del builtins.__IPYTHON__
+        with prevent_sys_exit():
+            yield deferred_from_coro(Actor.exit())
 
         Actor.log.info("Done!")
 
@@ -160,6 +160,16 @@ def run_actor(
     #     raise
     # else:
     #     run_async(Actor.exit())
+
+
+@contextlib.contextmanager
+def prevent_sys_exit():
+    """Deception, Actor.exit() won't call sys.exit(), see also https://github.com/apify/apify-sdk-python/pull/389"""
+    builtins.__IPYTHON__ = True
+    try:
+        yield
+    finally:
+        builtins.__IPYTHON__ = False
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
