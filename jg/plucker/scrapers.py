@@ -8,7 +8,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Coroutine, Generator, Type, cast
 
-from apify import Actor
+from apify import Actor, Configuration
 from apify.scrapy.requests import to_apify_request, to_scrapy_request
 from apify.scrapy.utils import apply_apify_settings
 from apify.storages import Dataset, KeyValueStore, RequestQueue
@@ -29,6 +29,15 @@ from scrapy.statscollectors import StatsCollector
 from scrapy.utils.defer import deferred_to_future
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
+from apify.scrapy.scheduler import (
+    _start_event_loop,
+    _run_async_coro,
+    _TIMEOUT,
+    _shutdown_async_tasks,
+    _force_exit_event_loop,
+)
+from apify.apify_storage_client import ApifyStorageClient
+import traceback
 
 
 logger = logging.getLogger("jg.plucker")
@@ -101,16 +110,12 @@ def run_spider(
 async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] | None):
     async with Actor:
         Actor.log.info(f"Starting actor for spider {spider_class.name}")
-        # Actor.apify_client.http_client.httpx_async_client = httpx.AsyncClient(
-        #     headers={"Connection": "close"},
-        #     follow_redirects=True,
-        #     timeout=Actor.apify_client.http_client.timeout_secs,
-        # )
 
         params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
 
         settings = apply_apify_settings(proxy_config=proxy_config)
+        settings.set("HTTPCACHE_STORAGE", "jg.plucker.scrapers.CacheStorage")
         settings.set("SPIDER_PARAMS", spider_params)
 
         Actor.log.info("Starting the spider")
@@ -226,25 +231,59 @@ class CacheStorage:
         self._kv: KeyValueStore | None = None
         self._fingerprinter: RequestFingerprinterProtocol | None = None
 
+        logger.debug("Starting background thread for cache storage's event loop")
+        self._eventloop = asyncio.new_event_loop()
+        self._thread = threading.Thread(
+            target=lambda: _start_event_loop(self._eventloop), daemon=True
+        )
+        self._thread.start()
+
     def open_spider(self, spider: Spider) -> None:
         logger.debug("Using Apify key value cache storage", extra={"spider": spider})
         self.spider = spider
         self._fingerprinter = spider.crawler.request_fingerprinter
-        self._kv = run_async(
-            Actor.open_key_value_store(name=f"httpcache-{spider.name}")
-        )
+        kv_name = f"httpcache-{spider.name}"
+
+        async def open_kv() -> KeyValueStore:
+            config = Configuration.get_global_configuration()
+            if config.is_at_home:
+                storage_client = ApifyStorageClient.from_config(config)
+                return await KeyValueStore.open(
+                    name=kv_name, storage_client=storage_client
+                )
+            return await KeyValueStore.open(name=kv_name)
+
+        logger.debug(f"Opening cache storage's {kv_name!r} key value store")
+        self._kv = _run_async_coro(self._eventloop, open_kv())
 
     def close_spider(self, spider: Spider) -> None:
-        pass
+        logger.debug("Closing cache storage...")
+        try:
+            if self._eventloop.is_running():
+                _run_async_coro(self._eventloop, _shutdown_async_tasks(self._eventloop))
+            self._eventloop.call_soon_threadsafe(self._eventloop.stop)
+            self._thread.join(timeout=_TIMEOUT)
+            if self._thread.is_alive():
+                logger.warning(
+                    "Background thread for cache storage didn't exit cleanly! Forcing shutdown..."
+                )
+                _force_exit_event_loop(self._eventloop, self._thread)
+        except KeyboardInterrupt:
+            logger.warning("Shutdown interrupted by KeyboardInterrupt!")
+        except Exception:
+            logger.exception("Exception occurred while shutting down cache storage")
+        finally:
+            logger.debug("Cache storage closed")
 
     def retrieve_response(self, spider: Spider, request: Request) -> Response | None:
         assert self._kv is not None, "Key value store not initialized"
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = run_async(self._kv.get_value(key))
+        value = _run_async_coro(self._eventloop, self._kv.get_value(key))
         if value is None:
-            return None  # not cached
+            logger.debug("Cache miss", extra={"request": request})
+            return None
 
         data = pickle.loads(value)
         url = data["url"]
@@ -252,6 +291,8 @@ class CacheStorage:
         headers = Headers(data["headers"])
         body = data["body"]
         respcls = responsetypes.from_args(headers=headers, url=url, body=body)
+
+        logger.debug("Cache hit", extra={"request": request})
         return respcls(url=url, headers=headers, status=status, body=body)
 
     def store_response(
@@ -268,4 +309,4 @@ class CacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        run_async(self._kv.set_value(key, value))
+        _run_async_coro(self._eventloop, self._kv.set_value(key, value))

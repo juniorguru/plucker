@@ -51,7 +51,8 @@ logger = logging.getLogger("jg.plucker")
 @click.group()
 @click.option("-d", "--debug", default=False, is_flag=True)
 def main(debug: bool = False):
-    setup_logging()  # TODO process --debug
+    setup_logging()
+    logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
 
 
 @main.command(context_settings={"ignore_unknown_options": True})
