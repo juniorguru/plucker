@@ -71,7 +71,7 @@ scrapy = ["scrapy (>=2.11.0)"]
 type = "git"
 url = "https://github.com/apify/apify-sdk-python.git"
 reference = "fixing-scrapy"
-resolved_reference = "bf284319ec576143155b5ee3e1cf572fcd5d03a6"
+resolved_reference = "cc1af3d763621b5d46fe467fc41d413d102bbf8a"
 
 [[package]]
 name = "apify-client"
