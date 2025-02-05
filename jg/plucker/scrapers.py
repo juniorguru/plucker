@@ -101,12 +101,15 @@ async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] |
     async with Actor:
         Actor.log.info(f"Starting actor for spider {spider_class.name}")
 
-        params = spider_params or (await Actor.get_input()) or {}
+        params = spider_params or {}  # TODO or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
 
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings.set("SPIDER_PARAMS", spider_params)
 
+        # await Actor.open_request_queue(name="default")
+
+        Actor.log.info("Starting the spider")
         crawler_runner = CrawlerRunner(settings)
         await deferred_to_future(crawler_runner.crawl(spider_class))
 
