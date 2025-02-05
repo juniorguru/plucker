@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import json
 import logging
@@ -12,11 +13,12 @@ from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
 from scrapy.utils.project import get_project_settings
 
-from jg.plucker.loggers import configure_logging
+from apify.scrapy import run_scrapy_actor, setup_logging
+from twisted.internet import asyncioreactor
 
 
-settings = get_project_settings()
-configure_logging(settings, sys.argv)
+# settings = get_project_settings()
+# configure_logging(settings, sys.argv)
 
 
 # ruff: noqa: E402
@@ -25,11 +27,12 @@ from scrapy import Item
 
 from jg.plucker.scrapers import (
     StatsError,
+    actor_main,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
-    run_actor,
-    run_spider,
+    # run_actor,
+    # run_spider,
 )
 
 
@@ -48,7 +51,7 @@ logger = logging.getLogger("jg.plucker")
 @click.group()
 @click.option("-d", "--debug", default=False, is_flag=True)
 def main(debug: bool = False):
-    pass  # --debug is processed in configure_logging()
+    setup_logging()  # TODO process --debug
 
 
 @main.command(context_settings={"ignore_unknown_options": True})
@@ -91,10 +94,12 @@ def crawl(
                 raise click.BadParameter(
                     f"Actor {actor_path} not found! Valid actors: {actors}"
                 )
-            run_actor(settings, spider_class, spider_params)
+            asyncioreactor.install(asyncio.get_event_loop())
+            run_scrapy_actor(actor_main(spider_class, spider_params))
         else:
             logger.info(f"Crawling as Scrapy spider {spider_name!r}")
-            run_spider(settings, spider_class, spider_params)
+            raise NotImplementedError()
+            # TODO run_spider(settings, spider_class, spider_params)
     except StatsError as e:
         logger.error(e)
         raise click.Abort()

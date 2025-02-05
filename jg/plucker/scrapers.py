@@ -25,11 +25,9 @@ from scrapy.responsetypes import responsetypes
 from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsCollector
-from scrapy.utils.defer import deferred_from_coro
+from scrapy.utils.defer import deferred_to_future
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
-from twisted.internet import asyncioreactor, defer
-from twisted.internet.task import react
 
 
 logger = logging.getLogger("jg.plucker")
@@ -67,6 +65,17 @@ logger = logging.getLogger("jg.plucker")
 #     settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
 #     settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
 
+# TODO purge on start
+# Actor.log.info("Purging the default dataset")
+# dataset = cast(Dataset, (yield deferred_from_coro(Actor.open_dataset())))
+# yield deferred_from_coro(dataset.drop())
+
+# Actor.log.info("Purging the default request queue")
+# request_queue = cast(
+#     RequestQueue, (yield deferred_from_coro(Actor.open_request_queue()))
+# )
+# yield deferred_from_coro(request_queue.drop())
+
 
 def run_spider(
     settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
@@ -88,66 +97,18 @@ def run_spider(
     evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
 
 
-def run_actor(
-    base_settings: Settings,
-    spider_class: Type[Spider],
-    spider_params: dict[str, Any] | None,
-) -> None:
-    logger.debug("Installing asyncio reactor")
-    asyncioreactor.install()
+async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] | None):
+    async with Actor:
+        Actor.log.info(f"Starting actor for spider {spider_class.name}")
 
-    @defer.inlineCallbacks
-    def crawl(reactor):
-        Actor.log.info("Starting actor")
-        yield deferred_from_coro(Actor.init())
-
-        Actor.log.info(f"Spider {spider_class.name}")
-        Actor.log.info("Reading input")
-        params = spider_params or (yield deferred_from_coro(Actor.get_input())) or {}
+        params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
 
-        logger.debug(f"Spider params: {spider_params!r}")
-        base_settings.set("SPIDER_PARAMS", spider_params)
+        settings = apply_apify_settings(proxy_config=proxy_config)
+        settings.set("SPIDER_PARAMS", spider_params)
 
-        Actor.log.info("Applying Apify settings")
-        settings = apply_apify_settings(
-            settings=base_settings, proxy_config=proxy_config
-        )
-        runner = CrawlerRunner(settings)
-
-        # TODO purge on start
-        # Actor.log.info("Purging the default dataset")
-        # dataset = cast(Dataset, (yield deferred_from_coro(Actor.open_dataset())))
-        # yield deferred_from_coro(dataset.drop())
-
-        # Actor.log.info("Purging the default request queue")
-        # request_queue = cast(
-        #     RequestQueue, (yield deferred_from_coro(Actor.open_request_queue()))
-        # )
-        # yield deferred_from_coro(request_queue.drop())
-
-        Actor.log.info("Starting the spider")
-        yield runner.crawl(spider_class)
-
-        # TODO evaluate stats
-
-        Actor.log.info("Exiting actor")
-        with prevent_sys_exit():
-            yield deferred_from_coro(Actor.exit())
-
-        Actor.log.info("Done!")
-
-    react(crawl, [])
-
-
-@contextlib.contextmanager
-def prevent_sys_exit():
-    """Deception, Actor.exit() won't call sys.exit(), see also https://github.com/apify/apify-sdk-python/pull/389"""
-    builtins.__IPYTHON__ = True
-    try:
-        yield
-    finally:
-        builtins.__IPYTHON__ = False
+        crawler_runner = CrawlerRunner(settings)
+        await deferred_to_future(crawler_runner.crawl(spider_class))
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
@@ -301,78 +262,3 @@ class CacheStorage:
         }
         value = pickle.dumps(data, protocol=4)
         run_async(self._kv.set_value(key, value))
-
-
-class Pipeline:
-    async def process_item(
-        self,
-        item: Item,
-        spider: Spider,
-    ) -> Item:
-        item_dict = ItemAdapter(item).asdict()
-        Actor.log.debug(
-            f"Pushing item={item_dict} produced by spider={spider} to the dataset."
-        )
-        run_async(Actor.push_data(item_dict))
-        return item
-
-
-class Scheduler(BaseScheduler):
-    def __init__(self) -> None:
-        self._rq: RequestQueue | None = None
-        self.spider: Spider | None = None
-
-    def open(self, spider: Spider) -> None:  # this has to be named "open"
-        self.spider = spider
-        self._rq = run_async(Actor.open_request_queue())
-
-    def has_pending_requests(self) -> bool:
-        assert self._rq is not None, "Request queue not initialized"
-
-        is_finished = cast(bool, run_async(self._rq.is_finished()))
-        return not is_finished
-
-    def enqueue_request(self, request: Request) -> bool:
-        assert self.spider is not None, "Spider not initialized"
-        assert self._rq is not None, "Request queue not initialized"
-
-        call_id = crypto_random_object_id(8)
-        Actor.log.debug(
-            f"[{call_id}]: ApifyScheduler.enqueue_request was called (scrapy_request={request})..."
-        )
-        apify_request = to_apify_request(request, spider=self.spider)
-        if apify_request is None:
-            Actor.log.error(
-                f"Request {request} was not enqueued because it could not be converted to Apify request."
-            )
-            return False
-        Actor.log.debug(
-            f"[{call_id}]: scrapy_request was transformed to apify_request (apify_request={apify_request})"
-        )
-        result = cast(ProcessedRequest, run_async(self._rq.add_request(apify_request)))
-        Actor.log.debug(f"[{call_id}]: rq.add_request.result={result}...")
-        return bool(result.was_already_present)
-
-    def next_request(self) -> Request | None:
-        assert self._rq is not None, "Request queue not initialized"
-        assert self.spider is not None, "Spider not initialized"
-
-        call_id = crypto_random_object_id(8)
-        Actor.log.debug(f"[{call_id}]: ApifyScheduler.next_request was called...")
-        apify_request = cast(ApifyRequest, run_async(self._rq.fetch_next_request()))
-        Actor.log.debug(
-            f"[{call_id}]: a new apify_request from the scheduler was fetched (apify_request={apify_request})"
-        )
-        if apify_request is None:
-            return None
-
-        # Let the Request Queue know that the request is being handled. Every request should be marked as handled,
-        # retrying is handled by the Scrapy's RetryMiddleware.
-        run_async(self._rq.mark_request_as_handled(apify_request))
-
-        scrapy_request = to_scrapy_request(apify_request, spider=self.spider)
-        Actor.log.debug(
-            f"[{call_id}]: apify_request was transformed to the scrapy_request which is gonna be returned "
-            f"(scrapy_request={scrapy_request})",
-        )
-        return scrapy_request

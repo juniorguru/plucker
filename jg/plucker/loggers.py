@@ -4,7 +4,7 @@ from typing import Callable
 
 from apify.log import ActorLogFormatter
 from scrapy.settings import Settings
-from scrapy.utils import log as scrapy_logging
+from scrapy.utils import log as scrapy_log
 
 
 CUSTOM_LOGGER_NAMES = ["jg.plucker", "apify", "apify_client"]
@@ -26,16 +26,16 @@ def configure_logging(settings: Settings, argv: list[str]):
         configure_logger(logger_name, logging_level, handler)
 
     # We can't attach our log handler to the loggers normally, because Scrapy would remove them in the `configure_logging`
-    # call here: https://github.com/scrapy/scrapy/blob/2.11.0/scrapy/utils/log.py#L113 (even though
+    # call here: https://github.com/scrapy/scrapy/blob/2.12.0/scrapy/utils/log.py#L117 (even though
     # `disable_existing_loggers` is set to False :facepalm:). We need to monkeypatch Scrapy's `configure_logging` method
     # like this, so that our handler is attached right after Scrapy calls the `configure_logging` method, because
     # otherwise we would lose some log messages.
-    scrapy_logging.configure_logging = reconfigure_scrapy_logging(
-        logging_level, handler
-    )(scrapy_logging.configure_logging)
+    scrapy_log.configure_logging = reconfigure_scrapy_log(logging_level, handler)(
+        scrapy_log.configure_logging
+    )
 
 
-def reconfigure_scrapy_logging(
+def reconfigure_scrapy_log(
     logging_level: str, *handlers: logging.StreamHandler
 ) -> Callable:
     def decorator(configure_logging: Callable) -> Callable:
