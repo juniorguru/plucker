@@ -36,8 +36,6 @@ logger = logging.getLogger("jg.plucker")
 
 
 # new_client_original = _ActorType.new_client
-
-
 # def new_client_patch(self, **kwargs) -> ApifyClientAsync:
 #     print(f"PATCH thread {threading.current_thread().name}")
 #     client = new_client_original(self, **kwargs)
@@ -55,29 +53,39 @@ logger = logging.getLogger("jg.plucker")
 #         timeout=http_client.timeout_secs,
 #     )
 #     return client
-
-
 # _ActorType.new_client = new_client_patch
+
+# httpx_client = Actor._apify_client.http_client.httpx_async_client
+# httpx_client._headers["Connection"] = "close"
+# print(f"HTTPX setting connection {httpx_client._headers} (id: {id(httpx_client)})")
+
+#     Actor.log.info("Overriding Apify settings with custom ones")
+#     settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
+#     del settings["ITEM_PIPELINES"][
+#         "apify.scrapy.pipelines.ActorDatasetPushPipeline"
+#     ]
+#     settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
+#     settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
 
 
 def run_spider(
     settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    raise NotImplementedError()
-    # logger.debug(f"Spider params: {spider_params!r}")
-    # settings.set("SPIDER_PARAMS", spider_params)
+    # TODO use crawler runner instead? make run_spider() and run_actor() DRY?
+    logger.debug(f"Spider params: {spider_params!r}")
+    settings.set("SPIDER_PARAMS", spider_params)
 
-    # crawler_process = CrawlerProcess(settings, install_root_handler=False)
-    # crawler_process.crawl(spider_class)
-    # stats_collector = get_stats_collector(crawler_process)
-    # crawler_process.start()
+    crawler_process = CrawlerProcess(settings, install_root_handler=False)
+    crawler_process.crawl(spider_class)
+    stats_collector = get_stats_collector(crawler_process)
+    crawler_process.start()
 
-    # min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
-    # logger.debug(f"Min items required: {min_items}")
+    min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
+    logger.debug(f"Min items required: {min_items}")
 
-    # logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
-    # evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
-    # evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
+    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
+    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
+    evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
 
 
 def run_actor(
@@ -85,6 +93,7 @@ def run_actor(
     spider_class: Type[Spider],
     spider_params: dict[str, Any] | None,
 ) -> None:
+    logger.debug("Installing asyncio reactor")
     asyncioreactor.install()
 
     @defer.inlineCallbacks
@@ -97,24 +106,30 @@ def run_actor(
         params = spider_params or (yield deferred_from_coro(Actor.get_input())) or {}
         proxy_config = params.pop("proxyConfig", None)
 
+        logger.debug(f"Spider params: {spider_params!r}")
+        base_settings.set("SPIDER_PARAMS", spider_params)
+
         Actor.log.info("Applying Apify settings")
         settings = apply_apify_settings(
             settings=base_settings, proxy_config=proxy_config
         )
         runner = CrawlerRunner(settings)
 
-        Actor.log.info("Purging the default dataset")
-        dataset = cast(Dataset, (yield deferred_from_coro(Actor.open_dataset())))
-        yield deferred_from_coro(dataset.drop())
+        # TODO purge on start
+        # Actor.log.info("Purging the default dataset")
+        # dataset = cast(Dataset, (yield deferred_from_coro(Actor.open_dataset())))
+        # yield deferred_from_coro(dataset.drop())
 
-        Actor.log.info("Purging the default request queue")
-        request_queue = cast(
-            RequestQueue, (yield deferred_from_coro(Actor.open_request_queue()))
-        )
-        yield deferred_from_coro(request_queue.drop())
+        # Actor.log.info("Purging the default request queue")
+        # request_queue = cast(
+        #     RequestQueue, (yield deferred_from_coro(Actor.open_request_queue()))
+        # )
+        # yield deferred_from_coro(request_queue.drop())
 
         Actor.log.info("Starting the spider")
         yield runner.crawl(spider_class)
+
+        # TODO evaluate stats
 
         Actor.log.info("Exiting actor")
         with prevent_sys_exit():
@@ -123,43 +138,6 @@ def run_actor(
         Actor.log.info("Done!")
 
     react(crawl, [])
-
-    # # httpx_client = Actor._apify_client.http_client.httpx_async_client
-    # # httpx_client._headers["Connection"] = "close"
-    # # print(f"HTTPX setting connection {httpx_client._headers} (id: {id(httpx_client)})")
-    # try:
-    #     Actor.log.info(f"Spider {spider_class.name}")
-    #     Actor.log.info("Reading input")
-    #     spider_params = dict(spider_params or (run_async(Actor.get_input())) or {})
-    #     proxy_config = spider_params.pop("proxyConfig", None)
-
-    #     Actor.log.info("Applying Apify settings")
-    #     settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-
-    #     Actor.log.info("Overriding Apify settings with custom ones")
-    #     settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.CacheStorage"
-    #     del settings["ITEM_PIPELINES"][
-    #         "apify.scrapy.pipelines.ActorDatasetPushPipeline"
-    #     ]
-    #     settings["ITEM_PIPELINES"]["jg.plucker.scrapers.Pipeline"] = 1000
-    #     settings["SCHEDULER"] = "jg.plucker.scrapers.Scheduler"
-
-    #     Actor.log.info("Purging the default dataset")
-    #     dataset = cast(Dataset, run_async(Actor.open_dataset()))
-    #     run_async(dataset.drop())
-
-    #     Actor.log.info("Purging the default request queue")
-    #     request_queue = cast(RequestQueue, run_async(Actor.open_request_queue()))
-    #     run_async(request_queue.drop())
-
-    #     Actor.log.info("Starting the spider")
-    #     # run_spider(settings, spider_class, spider_params)
-
-    # except Exception as e:
-    #     run_async(Actor.fail(exception=e))
-    #     raise
-    # else:
-    #     run_async(Actor.exit())
 
 
 @contextlib.contextmanager
