@@ -113,8 +113,6 @@ async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] |
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings.set("SPIDER_PARAMS", spider_params)
 
-        # await Actor.open_request_queue(name="default")
-
         Actor.log.info("Starting the spider")
         crawler_runner = CrawlerRunner(settings)
         await deferred_to_future(crawler_runner.crawl(spider_class))
