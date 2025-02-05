@@ -15,6 +15,7 @@ from apify.storages import Dataset, KeyValueStore, RequestQueue
 from crawlee import Request as ApifyRequest
 from crawlee._utils.crypto import crypto_random_object_id
 from crawlee.storage_clients.models import ProcessedRequest
+import httpx
 from itemadapter import ItemAdapter  # pyright: ignore
 from scrapy import Item, Request, Spider
 from scrapy.core.scheduler import BaseScheduler
@@ -100,6 +101,11 @@ def run_spider(
 async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] | None):
     async with Actor:
         Actor.log.info(f"Starting actor for spider {spider_class.name}")
+        # Actor.apify_client.http_client.httpx_async_client = httpx.AsyncClient(
+        #     headers={"Connection": "close"},
+        #     follow_redirects=True,
+        #     timeout=Actor.apify_client.http_client.timeout_secs,
+        # )
 
         params = spider_params or {}  # TODO or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
