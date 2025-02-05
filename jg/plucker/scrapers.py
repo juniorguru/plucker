@@ -67,10 +67,12 @@ async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] |
         Actor.log.info("Purging the default dataset")
         dataset = await Actor.open_dataset()
         await dataset.drop()
+        await Actor.open_dataset()
 
         Actor.log.info("Purging the default request queue")
         request_queue = await Actor.open_request_queue()
         await request_queue.drop()
+        await Actor.open_request_queue()
 
         Actor.log.info("Starting the spider")
         crawler_runner = CrawlerRunner(settings)
