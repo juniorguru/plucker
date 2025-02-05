@@ -107,7 +107,7 @@ async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] |
         #     timeout=Actor.apify_client.http_client.timeout_secs,
         # )
 
-        params = spider_params or {}  # TODO or (await Actor.get_input()) or {}
+        params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
 
         settings = apply_apify_settings(proxy_config=proxy_config)
