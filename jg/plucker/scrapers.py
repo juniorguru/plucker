@@ -6,6 +6,7 @@ import pickle
 import threading
 from pathlib import Path
 from threading import Thread
+from time import time
 from typing import Any, Coroutine, Generator, Type, cast
 
 from apify import Actor, Configuration
@@ -217,7 +218,6 @@ def run_async(coroutine: Coroutine) -> Any:
 
 
 class CacheStorage:
-    # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
     # TODO implement gzipping
 
     def __init__(self, settings: BaseSettings):
@@ -227,6 +227,7 @@ class CacheStorage:
                 "Make sure you have it configured in the TWISTED_REACTOR setting. See the asyncio "
                 "documentation of Scrapy for more information.",
             )
+        self.expiration_secs: int = settings.getint("HTTPCACHE_EXPIRATION_SECS")
         self.spider: Spider | None = None
         self._kv: KeyValueStore | None = None
         self._fingerprinter: RequestFingerprinterProtocol | None = None
@@ -280,7 +281,17 @@ class CacheStorage:
         assert self._fingerprinter is not None, "Request fingerprinter not initialized"
 
         key = self._fingerprinter.fingerprint(request).hex()
-        value = _run_async_coro(self._eventloop, self._kv.get_value(key))
+
+        seconds = _run_async_coro(self._eventloop, self._kv.get_value(f"{key}_time"))
+        if seconds is None:
+            logger.debug("Cache miss", extra={"request": request})
+            return None
+
+        if 0 < self.expiration_secs < time() - seconds:
+            logger.debug("Cache expired", extra={"request": request})
+            return None
+
+        value = _run_async_coro(self._eventloop, self._kv.get_value(f"{key}_data"))
         if value is None:
             logger.debug("Cache miss", extra={"request": request})
             return None
@@ -309,4 +320,5 @@ class CacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        _run_async_coro(self._eventloop, self._kv.set_value(key, value))
+        _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_data", value))
+        _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_time", time()))

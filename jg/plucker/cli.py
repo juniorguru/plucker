@@ -8,22 +8,13 @@ import time
 from pathlib import Path
 from typing import IO, Callable, Generator, Type
 
+import click
+from apify.scrapy import run_scrapy_actor, setup_logging
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
-from scrapy.utils.project import get_project_settings
-
-from apify.scrapy import run_scrapy_actor, setup_logging
-from twisted.internet import asyncioreactor
-
-
-# settings = get_project_settings()
-# configure_logging(settings, sys.argv)
-
-
-# ruff: noqa: E402
-import click
 from scrapy import Item
+from twisted.internet import asyncioreactor
 
 from jg.plucker.scrapers import (
     StatsError,
@@ -31,8 +22,6 @@ from jg.plucker.scrapers import (
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
-    # run_actor,
-    # run_spider,
 )
 
 
