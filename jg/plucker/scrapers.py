@@ -218,6 +218,8 @@ class CacheStorage:
 
         if 0 < self.expiration_secs < time() - seconds:
             logger.debug("Cache expired", extra={"request": request})
+            _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_data", None))
+            _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_time", None))
             return None
 
         value = _run_async_coro(self._eventloop, self._kv.get_value(f"{key}_data"))
