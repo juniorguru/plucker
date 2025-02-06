@@ -85,11 +85,11 @@ WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 class Spider(BaseSpider):
     name = "jobs-jobscz"
 
-    custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_DELAY": 0.5,
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
-    }
+    # custom_settings = {
+    #     "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
+    #     "DOWNLOAD_DELAY": 0.5,
+    #     "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
+    # }
 
     start_urls = [
         "https://www.jobs.cz/prace/programator/",
