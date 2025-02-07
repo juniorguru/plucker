@@ -4,10 +4,11 @@ import pickle
 import threading
 from pathlib import Path
 from time import time
-from typing import Any, Generator, Type
+from typing import Any, Coroutine, Generator, Type
 
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
+from apify.scrapy import run_scrapy_actor
 from apify.scrapy.scheduler import (
     _TIMEOUT,
     _force_exit_event_loop,
@@ -18,55 +19,66 @@ from apify.scrapy.scheduler import (
 from apify.scrapy.utils import apply_apify_settings
 from apify.storages import KeyValueStore
 from scrapy import Item, Request, Spider
-from scrapy.crawler import CrawlerProcess, CrawlerRunner
+from scrapy.crawler import Crawler, CrawlerRunner
 from scrapy.http.headers import Headers
 from scrapy.http.response import Response
 from scrapy.responsetypes import responsetypes
-from scrapy.settings import BaseSettings, Settings
+from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
-from scrapy.statscollectors import StatsCollector
+from scrapy.statscollectors import StatsT
 from scrapy.utils.defer import deferred_to_future
+from scrapy.utils.project import get_project_settings
 from scrapy.utils.reactor import is_asyncio_reactor_installed
 from scrapy.utils.request import RequestFingerprinterProtocol
+from twisted.internet import asyncioreactor
 
 
 logger = logging.getLogger("jg.plucker")
 
 
-def run_spider(
-    settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
+def start_reactor(coroutine: Coroutine) -> None:
+    asyncioreactor.install(asyncio.get_event_loop())
+    run_scrapy_actor(coroutine)
+
+
+async def run_as_spider(
+    spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    # TODO use crawler runner instead? make run_spider() and run_actor() DRY?
-    logger.debug(f"Spider params: {spider_params!r}")
+    settings = get_project_settings()
     settings.set("SPIDER_PARAMS", spider_params)
+    logger.debug(f"Spider params: {spider_params!r}")
 
-    crawler_process = CrawlerProcess(settings, install_root_handler=False)
-    crawler_process.crawl(spider_class)
-    stats_collector = get_stats_collector(crawler_process)
-    crawler_process.start()
+    logger.info("Starting the spider")
+    runner = CrawlerRunner(settings)
+    crawler = runner.create_crawler(spider_class)
 
-    min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
-    logger.debug(f"Min items required: {min_items}")
+    await deferred_to_future(runner.crawl(crawler))
 
-    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
-    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
-    evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
+    check_crawl_results(crawler)
 
 
-async def actor_main(spider_class: Type[Spider], spider_params: dict[str, Any] | None):
+async def run_as_actor(
+    spider_class: Type[Spider], spider_params: dict[str, Any] | None
+):
     async with Actor:
         Actor.log.info(f"Starting actor for spider {spider_class.name}")
 
         params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
+        Actor.log.debug(f"Proxy config: {proxy_config!r}")
 
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings.set("HTTPCACHE_STORAGE", "jg.plucker.scrapers.CacheStorage")
         settings.set("SPIDER_PARAMS", spider_params)
+        Actor.log.debug(f"Spider params: {spider_params!r}")
 
         Actor.log.info("Starting the spider")
-        crawler_runner = CrawlerRunner(settings)
-        await deferred_to_future(crawler_runner.crawl(spider_class))
+        runner = CrawlerRunner(settings)
+        crawler = runner.create_crawler(spider_class)
+
+        await deferred_to_future(runner.crawl(crawler))
+
+        check_crawl_results(crawler)
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
@@ -119,17 +131,27 @@ def generate_schema(item_class: Type[Item]) -> dict:
     }
 
 
-def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
-    assert len(crawler_process.crawlers) == 1, "Exactly one crawler expected"
-    crawler = crawler_process.crawlers.pop()
-    return crawler.stats
+def check_crawl_results(crawler: Crawler) -> None:
+    spider_class = crawler.spidercls
+
+    assert crawler.stats is not None, "Stats collector not initialized"
+    stats = crawler.stats.get_stats()
+    assert stats, "Stats not collected"
+
+    default_min_items = crawler.settings.getint("SPIDER_MIN_ITEMS")
+    min_items = getattr(spider_class, "min_items", default_min_items)
+    logger.debug(f"Min items required: {min_items}")
+
+    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
+    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
+    evaluate_stats_fn(stats, min_items)
 
 
 class StatsError(RuntimeError):
     pass
 
 
-def evaluate_stats(stats: dict[str, Any], min_items: int):
+def evaluate_stats(stats: StatsT, min_items: int):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions"):
         raise StatsError(f"Exceptions raised: {exc_count}")

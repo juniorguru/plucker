@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import json
 import logging
@@ -9,19 +8,20 @@ from pathlib import Path
 from typing import IO, Callable, Generator, Type
 
 import click
-from apify.scrapy import run_scrapy_actor, setup_logging
+from apify.scrapy import setup_logging
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
 from scrapy import Item
-from twisted.internet import asyncioreactor
 
 from jg.plucker.scrapers import (
     StatsError,
-    actor_main,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
+    run_as_actor,
+    run_as_spider,
+    start_reactor,
 )
 
 
@@ -84,12 +84,11 @@ def crawl(
                 raise click.BadParameter(
                     f"Actor {actor_path} not found! Valid actors: {actors}"
                 )
-            asyncioreactor.install(asyncio.get_event_loop())
-            run_scrapy_actor(actor_main(spider_class, spider_params))
+            run = run_as_actor(spider_class, spider_params)
         else:
             logger.info(f"Crawling as Scrapy spider {spider_name!r}")
-            raise NotImplementedError()
-            # TODO run_spider(settings, spider_class, spider_params)
+            run = run_as_spider(spider_class, spider_params)
+        start_reactor(run)
     except StatsError as e:
         logger.error(e)
         raise click.Abort()
