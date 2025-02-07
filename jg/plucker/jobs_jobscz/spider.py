@@ -1,7 +1,7 @@
 import hashlib
 import json
-import logging
 import re
+from logging import Logger, LoggerAdapter
 import uuid
 from datetime import date, datetime
 from functools import lru_cache
@@ -98,7 +98,11 @@ class Spider(BaseSpider):
         "Employment form",
     ]
 
+    def logger_trk(self, trk: str) -> Logger:
+        return self.logger.logger.getChild(trk)
+
     def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
+        self.logger.debug(f"Parsing listing {response.url}")
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         for n, card in enumerate(response.xpath(card_xpath), start=1):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
@@ -120,7 +124,7 @@ class Spider(BaseSpider):
             card_loader.add_value("source_urls", url)
             item = loader.load_item()
 
-            self.logger.debug(f"Parsing card for {url}", extra={"trk": trk})
+            self.logger_trk(trk).debug(f"Parsing card for {url}")
             yield response.follow(
                 url,
                 callback=self.parse_job,
@@ -139,7 +143,7 @@ class Spider(BaseSpider):
     def parse_job(
         self, response: HtmlResponse, item: Job, trk: str
     ) -> Generator[Job | Request, None, None]:
-        self.logger.debug(f"Parsing job page {response.url}", extra={"trk": trk})
+        self.logger_trk(trk).debug(f"Parsing job page {response.url}")
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
@@ -147,7 +151,7 @@ class Spider(BaseSpider):
         if "www.jobs.cz" not in response.url:
             yield from self.parse_job_widget_data(response, item, trk)
         else:
-            self.logger.debug("Parsing as standard job page", extra={"trk": trk})
+            self.logger_trk(trk).debug("Parsing as standard job page")
             for label in self.employment_types_labels:
                 loader.add_xpath(
                     "employment_types",
@@ -157,7 +161,7 @@ class Spider(BaseSpider):
             loader.add_css("description_html", '[data-jobad="body"]')
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
-                self.logger.debug("Parsing as company job page", extra={"trk": trk})
+                self.logger_trk(trk).debug("Parsing as company job page")
                 loader.add_css(
                     "company_logo_urls",
                     ".CompanyProfileNavigation__logo img::attr(src)",
@@ -175,13 +179,10 @@ class Spider(BaseSpider):
         self, response: HtmlResponse, item: Job, trk: str
     ) -> Generator[Request, None, None]:
         try:
-            self.logger.debug("Looking for widget data in the HTML", extra={"trk": trk})
+            self.logger_trk(trk).debug("Looking for widget data in the HTML")
             widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
         except IndexError:
-            self.logger.debug(
-                "Looking for widget data in attached JavaScript",
-                extra={"trk": trk},
-            )
+            self.logger_trk(trk).debug("Looking for widget data in attached JavaScript")
             script_urls = sorted(
                 map(
                     response.urljoin,
@@ -191,7 +192,7 @@ class Spider(BaseSpider):
                 ),
                 key=get_script_relevance,
             )
-            self.logger.debug(f"Script URLs: {script_urls!r}", extra={"trk": trk})
+            self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             yield response.follow(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -245,7 +246,7 @@ class Spider(BaseSpider):
             chunk_urls = [
                 url.replace("react.min.js", chunk_name) for chunk_name in chunk_names
             ]
-            self.logger.debug(f"Chunk URLs: {chunk_urls!r}", extra={"trk": trk})
+            self.logger_trk(trk).debug(f"Chunk URLs: {chunk_urls!r}")
             yield Request(
                 chunk_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -258,7 +259,7 @@ class Spider(BaseSpider):
                 meta={"impersonate": "edge101"},
             )
         elif script_urls:
-            self.logger.debug(f"Script URLs: {script_urls!r}", extra={"trk": trk})
+            self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             yield Request(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -287,7 +288,7 @@ class Spider(BaseSpider):
         loader.add_value("company_url", f"https://{widget_host}")
         loader.add_value("source_urls", url)
 
-        self.logger.debug("Requesting data from job widget API", extra={"trk": trk})
+        self.logger_trk(trk).debug("Requesting data from job widget API")
         params = get_params(url)
         yield Request(
             "https://api.capybara.lmc.cz/api/graphql/widget",
@@ -326,7 +327,7 @@ class Spider(BaseSpider):
     def parse_job_widget_api(
         self, response: TextResponse, item: Job, trk: str
     ) -> Generator[Job, None, None]:
-        self.logger.debug("Parsing job widget API response", extra={"trk": trk})
+        self.logger_trk(trk).debug("Parsing job widget API response")
         try:
             payload = cast(dict, response.json())
         except json.JSONDecodeError as e:
