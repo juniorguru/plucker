@@ -11,6 +11,7 @@ from urllib.parse import urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
+from scrapy.http.response import Response
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 from scrapy.loader import ItemLoader
@@ -101,8 +102,10 @@ class Spider(BaseSpider):
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
 
-    def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
+    def parse(self, response: Response) -> Generator[Request, None, None]:
+        response = cast(HtmlResponse, response)
         self.logger.debug(f"Parsing listing {response.url}")
+
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         for n, card in enumerate(response.xpath(card_xpath), start=1):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
@@ -141,9 +144,11 @@ class Spider(BaseSpider):
         )
 
     def parse_job(
-        self, response: HtmlResponse, item: Job, trk: str
+        self, response: Response, item: Job, trk: str
     ) -> Generator[Job | Request, None, None]:
+        response = cast(HtmlResponse, response)
         self.logger_trk(trk).debug(f"Parsing job page {response.url}")
+
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
@@ -216,12 +221,14 @@ class Spider(BaseSpider):
 
     def parse_job_widget_script(
         self,
-        script_response: TextResponse,
+        script_response: Response,
         url: str,
         item: Job,
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request, None, None]:
+        script_response = cast(TextResponse, script_response)
+
         if data := parse_widget_script_json(script_response.text):
             widget_name = select_widget(list(data["widgets"].keys()))
             widget_data = data["widgets"][widget_name]
@@ -325,9 +332,11 @@ class Spider(BaseSpider):
         )
 
     def parse_job_widget_api(
-        self, response: TextResponse, item: Job, trk: str
+        self, response: Response, item: Job, trk: str
     ) -> Generator[Job, None, None]:
+        response = cast(TextResponse, response)
         self.logger_trk(trk).debug("Parsing job widget API response")
+
         try:
             payload = cast(dict, response.json())
         except json.JSONDecodeError as e:
