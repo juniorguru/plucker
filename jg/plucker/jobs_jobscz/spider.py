@@ -372,7 +372,9 @@ def select_widget(names: list[str]) -> str:
 
 def parse_widget_script_json(text: str) -> dict[str, Any] | None:
     for match in re.finditer(WIDGET_DATA_SCRIPT_JSON_RE, text):
-        data_text = re.sub(r"\'", r"\\'", match.group("data"))
+        data_text = match.group("data")
+        data_text = re.sub(r"\'", r"\\'", data_text)
+        data_text = re.sub(r'\\\\"', r"\"", data_text)
         data = json.loads(data_text)
         if "widgets" in data:
             return data
