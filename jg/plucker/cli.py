@@ -42,6 +42,8 @@ logger = logging.getLogger("jg.plucker")
 def main(debug: bool = False):
     setup_logging()
     logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
+    for name in ["asyncio", "filelock", "crawlee"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 @main.command(context_settings={"ignore_unknown_options": True})

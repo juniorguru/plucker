@@ -139,7 +139,7 @@ class Spider(BaseSpider):
     def parse_job(
         self, response: HtmlResponse, item: Job, track_id: str
     ) -> Generator[Job | Request, None, None]:
-        self.track_logger(track_id).debug("Parsing job page")
+        self.track_logger(track_id).debug(f"Parsing job page {response.url}")
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
