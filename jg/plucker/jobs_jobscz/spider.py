@@ -1,10 +1,10 @@
 import hashlib
 import json
 import re
-from logging import Logger, LoggerAdapter
 import uuid
 from datetime import date, datetime
 from functools import lru_cache
+from logging import Logger
 from pathlib import Path
 from typing import Any, Generator, Iterable, cast
 from urllib.parse import urljoin, urlparse
