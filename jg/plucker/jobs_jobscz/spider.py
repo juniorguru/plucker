@@ -92,12 +92,8 @@ class Spider(BaseSpider):
         # "https://www.jobs.cz/prace/datovy-analytik/",
         "https://www.jobs.cz/prace/kuchar/",
     ]
-    min_items = 5  # TODO DEBUG !
 
-    employment_types_labels = [
-        "Typ pracovního poměru",
-        "Employment form",
-    ]
+    employment_types_labels = ["Typ pracovního poměru", "Employment form"]
 
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
