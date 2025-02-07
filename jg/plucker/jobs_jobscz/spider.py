@@ -86,10 +86,12 @@ class Spider(BaseSpider):
     name = "jobs-jobscz"
 
     start_urls = [
-        "https://www.jobs.cz/prace/programator/",
-        "https://www.jobs.cz/prace/tester/",
-        "https://www.jobs.cz/prace/datovy-analytik/",
+        # "https://www.jobs.cz/prace/programator/",
+        # "https://www.jobs.cz/prace/tester/",
+        # "https://www.jobs.cz/prace/datovy-analytik/",
+        "https://www.jobs.cz/prace/truhlar/",
     ]
+    min_items = 5  # TODO DEBUG !
 
     employment_types_labels = [
         "Typ pracovního poměru",
