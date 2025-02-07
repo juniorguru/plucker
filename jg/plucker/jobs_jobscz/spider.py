@@ -89,7 +89,7 @@ class Spider(BaseSpider):
         # "https://www.jobs.cz/prace/programator/",
         # "https://www.jobs.cz/prace/tester/",
         # "https://www.jobs.cz/prace/datovy-analytik/",
-        "https://www.jobs.cz/prace/truhlar/",
+        "https://www.jobs.cz/prace/kuchar/",
     ]
     min_items = 5  # TODO DEBUG !
 
