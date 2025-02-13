@@ -136,10 +136,7 @@ class Spider(BaseSpider):
         next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
         if next_page_link := response.css(next_page_css).get():
             yield response.follow(
-                next_page_link,
-                callback=self.parse,
-                cb_kwargs={"page": page + 1},
-                meta={"impersonate": "edge101"},
+                next_page_link, callback=self.parse, meta={"impersonate": "edge101"}
             )
         else:
             self.logger.debug(f"No next page found for {response.url}")

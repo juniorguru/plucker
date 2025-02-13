@@ -1,29 +1,19 @@
 import asyncio
 import logging
 import os
-import pickle
 from pathlib import Path
-from time import time
 from typing import Any, Coroutine, Generator, Type
 
-from apify import Actor, Configuration
-from apify.apify_storage_client import ApifyStorageClient
+from apify import Actor
 from apify.scrapy import run_scrapy_actor
-from apify.scrapy._async_thread import AsyncThread
 from apify.scrapy.utils import apply_apify_settings
-from apify.storages import KeyValueStore
-from scrapy import Item, Request, Spider
+from scrapy import Item, Spider
 from scrapy.crawler import Crawler, CrawlerRunner
-from scrapy.http.headers import Headers
-from scrapy.http.response import Response
-from scrapy.responsetypes import responsetypes
 from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsT
 from scrapy.utils.defer import deferred_to_future
 from scrapy.utils.project import get_project_settings
-from scrapy.utils.reactor import is_asyncio_reactor_installed
-from scrapy.utils.request import RequestFingerprinterProtocol
 from twisted.internet import asyncioreactor
 
 
@@ -65,7 +55,7 @@ async def run_as_actor(
         logger.debug(f"Proxy config: {proxy_config!r}")
 
         settings = apply_apify_settings(proxy_config=proxy_config)
-        settings.set("HTTPCACHE_STORAGE", "jg.plucker.scrapers.CacheStorage")
+        settings.set("HTTPCACHE_STORAGE", "jg.plucker.cache.CacheStorage")
         settings.set("SPIDER_PARAMS", spider_params)
         logger.debug(f"Spider params: {spider_params!r}")
 
@@ -163,98 +153,3 @@ def evaluate_stats(stats: StatsT, min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
-
-
-class CacheStorage:
-    def __init__(self, settings: BaseSettings):
-        if not is_asyncio_reactor_installed():
-            raise ValueError(
-                f"{self.__class__.__qualname__} requires the asyncio Twisted reactor. "
-                "Make sure you have it configured in the TWISTED_REACTOR setting. See the asyncio "
-                "documentation of Scrapy for more information.",
-            )
-        self.expiration_secs: int = settings.getint("HTTPCACHE_EXPIRATION_SECS")
-        self.spider: Spider | None = None
-        self._kv: KeyValueStore | None = None
-        self._fingerprinter: RequestFingerprinterProtocol | None = None
-
-        logger.debug("Starting background thread for cache storage's event loop")
-        self._async_thread = AsyncThread()
-
-    def open_spider(self, spider: Spider) -> None:
-        logger.debug("Using Apify key value cache storage", extra={"spider": spider})
-        self.spider = spider
-        self._fingerprinter = spider.crawler.request_fingerprinter
-        kv_name = f"httpcache-{spider.name}"
-
-        async def open_kv() -> KeyValueStore:
-            config = Configuration.get_global_configuration()
-            if config.is_at_home:
-                storage_client = ApifyStorageClient.from_config(config)
-                return await KeyValueStore.open(
-                    name=kv_name, storage_client=storage_client
-                )
-            return await KeyValueStore.open(name=kv_name)
-
-        logger.debug(f"Opening cache storage's {kv_name!r} key value store")
-        self._kv = self._async_thread.run_coro(open_kv())
-
-    def close_spider(self, spider: Spider) -> None:
-        logger.debug("Closing cache storage...")
-        try:
-            self._async_thread.close()
-        except KeyboardInterrupt:
-            logger.warning("Shutdown interrupted by KeyboardInterrupt!")
-        except Exception:
-            logger.exception("Exception occurred while shutting down cache storage")
-        finally:
-            logger.debug("Cache storage closed")
-
-    def retrieve_response(self, spider: Spider, request: Request) -> Response | None:
-        assert self._kv is not None, "Key value store not initialized"
-        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
-
-        key = self._fingerprinter.fingerprint(request).hex()
-
-        seconds = self._async_thread.run_coro(self._kv.get_value(f"{key}_time"))
-        if seconds is None:
-            logger.debug("Cache miss", extra={"request": request})
-            return None
-
-        if 0 < self.expiration_secs < time() - seconds:
-            logger.debug("Cache expired", extra={"request": request})
-            self._async_thread.run_coro(self._kv.set_value(f"{key}_data", None))
-            self._async_thread.run_coro(self._kv.set_value(f"{key}_time", None))
-            return None
-
-        value = self._async_thread.run_coro(self._kv.get_value(f"{key}_data"))
-        if value is None:
-            logger.debug("Cache miss", extra={"request": request})
-            return None
-
-        data = pickle.loads(value)
-        url = data["url"]
-        status = data["status"]
-        headers = Headers(data["headers"])
-        body = data["body"]
-        respcls = responsetypes.from_args(headers=headers, url=url, body=body)
-
-        logger.debug("Cache hit", extra={"request": request})
-        return respcls(url=url, headers=headers, status=status, body=body)
-
-    def store_response(
-        self, spider: Spider, request: Request, response: Response
-    ) -> None:
-        assert self._kv is not None, "Key value store not initialized"
-        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
-
-        key = self._fingerprinter.fingerprint(request).hex()
-        data = {
-            "status": response.status,
-            "url": response.url,
-            "headers": dict(response.headers),
-            "body": response.body,
-        }
-        value = pickle.dumps(data, protocol=4)
-        self._async_thread.run_coro(self._kv.set_value(f"{key}_data", value))
-        self._async_thread.run_coro(self._kv.set_value(f"{key}_time", time()))
