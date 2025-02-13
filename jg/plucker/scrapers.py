@@ -1,66 +1,71 @@
 import asyncio
 import logging
-import pickle
+import os
 from pathlib import Path
-from threading import Thread
 from typing import Any, Coroutine, Generator, Type
 
-import nest_asyncio
-from apify import Actor, Configuration
-from apify.apify_storage_client import ApifyStorageClient
+from apify import Actor
+from apify.scrapy import run_scrapy_actor
 from apify.scrapy.utils import apply_apify_settings
-from apify.storages import KeyValueStore
-from crawlee.storage_clients import MemoryStorageClient  # pyright: ignore
-from scrapy import Item, Request, Spider
-from scrapy.crawler import CrawlerProcess
-from scrapy.http.headers import Headers
-from scrapy.http.response import Response
-from scrapy.responsetypes import responsetypes
-from scrapy.settings import BaseSettings, Settings
+from scrapy import Item, Spider
+from scrapy.crawler import Crawler, CrawlerRunner
+from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
-from scrapy.statscollectors import StatsCollector
-from scrapy.utils.reactor import is_asyncio_reactor_installed
-from scrapy.utils.request import RequestFingerprinterProtocol
+from scrapy.statscollectors import StatsT
+from scrapy.utils.defer import deferred_to_future
+from scrapy.utils.project import get_project_settings
+from twisted.internet import asyncioreactor
 
 
 logger = logging.getLogger("jg.plucker")
 
 
-def run_spider(
-    settings: Settings, spider_class: type[Spider], spider_params: dict[str, Any] | None
+def start_reactor(coroutine: Coroutine) -> None:
+    asyncioreactor.install(asyncio.get_event_loop())
+    run_scrapy_actor(coroutine)
+
+
+async def run_as_spider(
+    spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
-    logger.debug(f"Spider params: {spider_params!r}")
+    settings = get_project_settings()
     settings.set("SPIDER_PARAMS", spider_params)
+    logger.debug(f"Spider params: {spider_params!r}")
 
-    crawler_process = CrawlerProcess(settings, install_root_handler=False)
-    crawler_process.crawl(spider_class)
-    stats_collector = get_stats_collector(crawler_process)
-    crawler_process.start()
+    logger.info("Starting the spider")
+    runner = CrawlerRunner(settings)
+    crawler = runner.create_crawler(spider_class)
 
-    min_items = getattr(spider_class, "min_items", settings.getint("SPIDER_MIN_ITEMS"))
-    logger.debug(f"Min items required: {min_items}")
+    await deferred_to_future(runner.crawl(crawler))
 
-    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
-    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
-    evaluate_stats_fn(stats_collector.get_stats(), min_items=min_items)
+    check_crawl_results(crawler)
 
 
-async def run_actor(
-    settings: Settings, spider_class: Type[Spider], spider_params: dict[str, Any] | None
-) -> None:
-    config = Configuration.get_global_configuration()
-    config.purge_on_start = True
+async def run_as_actor(
+    spider_class: Type[Spider], spider_params: dict[str, Any] | None
+):
+    # workaround https://github.com/apify/apify-sdk-python/issues/401
+    os.environ["SCRAPY_SETTINGS_MODULE"] = "jg.plucker.settings"
+
     async with Actor:
-        Actor.log.info(f"Spider {spider_class.name}")
-        spider_params = dict(spider_params or (await Actor.get_input()) or {})
-        proxy_config = spider_params.pop("proxyConfig", None)
-        settings = apply_apify_settings(settings=settings, proxy_config=proxy_config)
-        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.KeyValueCacheStorage"
-        run_spider(settings, spider_class, spider_params)
+        logger.info(f"Starting actor for spider {spider_class.name}")
 
+        params = spider_params or (await Actor.get_input()) or {}
+        proxy_config = params.pop("proxyConfig", None)
+        logger.debug(f"Proxy config: {proxy_config!r}")
 
-def configure_async():
-    nest_asyncio.apply()
+        settings = apply_apify_settings(proxy_config=proxy_config)
+        settings.set("HTTPCACHE_STORAGE", "jg.plucker.cache.CacheStorage")
+        settings.set("SPIDER_PARAMS", spider_params)
+        logger.debug(f"Spider params: {spider_params!r}")
+
+        logger.info("Starting the spider")
+        runner = CrawlerRunner(settings)
+        crawler = runner.create_crawler(spider_class)
+
+        await deferred_to_future(runner.crawl(crawler))
+
+        check_crawl_results(crawler)
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
@@ -113,17 +118,27 @@ def generate_schema(item_class: Type[Item]) -> dict:
     }
 
 
-def get_stats_collector(crawler_process: CrawlerProcess) -> StatsCollector:
-    assert len(crawler_process.crawlers) == 1, "Exactly one crawler expected"
-    crawler = crawler_process.crawlers.pop()
-    return crawler.stats
+def check_crawl_results(crawler: Crawler) -> None:
+    spider_class = crawler.spidercls
+
+    assert crawler.stats is not None, "Stats collector not initialized"
+    stats = crawler.stats.get_stats()
+    assert stats, "Stats not collected"
+
+    default_min_items = crawler.settings.getint("SPIDER_MIN_ITEMS")
+    min_items = getattr(spider_class, "min_items", default_min_items)
+    logger.debug(f"Min items required: {min_items}")
+
+    logger.debug(f"Custom evaluate_stats(): {hasattr(spider_class, 'evaluate_stats')}")
+    evaluate_stats_fn = getattr(spider_class, "evaluate_stats", evaluate_stats)
+    evaluate_stats_fn(stats, min_items)
 
 
 class StatsError(RuntimeError):
     pass
 
 
-def evaluate_stats(stats: dict[str, Any], min_items: int):
+def evaluate_stats(stats: StatsT, min_items: int):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions"):
         raise StatsError(f"Exceptions raised: {exc_count}")
@@ -138,82 +153,3 @@ def evaluate_stats(stats: dict[str, Any], min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
-
-
-class KeyValueCacheStorage:
-    # TODO implement expiration as in https://github.com/scrapy/scrapy/blob/a8d9746f562681ed5a268148ec959dcf0881d859/scrapy/extensions/httpcache.py#L250
-    # TODO implement gzipping
-
-    def __init__(self, settings: BaseSettings):
-        if not is_asyncio_reactor_installed():
-            raise ValueError(
-                f"{self.__class__.__qualname__} requires the asyncio Twisted reactor. "
-                "Make sure you have it configured in the TWISTED_REACTOR setting. See the asyncio "
-                "documentation of Scrapy for more information.",
-            )
-        self.spider: Spider | None = None
-        self._kv: KeyValueStore | None = None
-        self._fingerprinter: RequestFingerprinterProtocol | None = None
-
-    def open_spider(self, spider: Spider) -> None:
-        logger.debug("Using Apify key value cache storage", extra={"spider": spider})
-        self.spider = spider
-        self._fingerprinter = spider.crawler.request_fingerprinter
-
-        config = Configuration.get_global_configuration()
-        storage_client = (
-            ApifyStorageClient.from_config(config)
-            if config.is_at_home
-            else MemoryStorageClient.from_config(config)
-        )
-        self._kv = self._run_async(
-            KeyValueStore.open(configuration=config, storage_client=storage_client)
-        )
-
-    def close_spider(self, spider: Spider) -> None:
-        pass
-
-    def retrieve_response(self, spider: Spider, request: Request) -> Response | None:
-        assert self._kv is not None, "Key value store not initialized"
-        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
-
-        key = self._fingerprinter.fingerprint(request).hex()
-        value = self._run_async(self._kv.get_value(key))
-        if value is None:
-            return None  # not cached
-
-        data = pickle.loads(value)
-        url = data["url"]
-        status = data["status"]
-        headers = Headers(data["headers"])
-        body = data["body"]
-        respcls = responsetypes.from_args(headers=headers, url=url, body=body)
-        return respcls(url=url, headers=headers, status=status, body=body)
-
-    def store_response(
-        self, spider: Spider, request: Request, response: Response
-    ) -> None:
-        assert self._kv is not None, "Key value store not initialized"
-        assert self._fingerprinter is not None, "Request fingerprinter not initialized"
-
-        key = self._fingerprinter.fingerprint(request).hex()
-        data = {
-            "status": response.status,
-            "url": response.url,
-            "headers": dict(response.headers),
-            "body": response.body,
-        }
-        value = pickle.dumps(data, protocol=4)
-        self._run_async(self._kv.set_value(key, value))
-
-    def _run_async(self, coroutine: Coroutine) -> Any:
-        result = None
-
-        def run():
-            nonlocal result
-            result = asyncio.run(coroutine)
-
-        t = Thread(target=run)
-        t.start()
-        t.join()
-        return result

@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import json
 import logging
@@ -8,30 +7,21 @@ import time
 from pathlib import Path
 from typing import IO, Callable, Generator, Type
 
+import click
+from apify.scrapy.logging_config import setup_logging
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
-from scrapy.utils.project import get_project_settings
-
-from jg.plucker.loggers import configure_logging
-
-
-settings = get_project_settings()
-configure_logging(settings, sys.argv)
-
-
-# ruff: noqa: E402
-import click
 from scrapy import Item
 
 from jg.plucker.scrapers import (
     StatsError,
-    configure_async,
     generate_schema,
     get_spider_module_name,
     iter_actor_paths,
-    run_actor,
-    run_spider,
+    run_as_actor,
+    run_as_spider,
+    start_reactor,
 )
 
 
@@ -50,7 +40,12 @@ logger = logging.getLogger("jg.plucker")
 @click.group()
 @click.option("-d", "--debug", default=False, is_flag=True)
 def main(debug: bool = False):
-    pass  # --debug is processed in configure_logging()
+    setup_logging()
+    level = logging.DEBUG if debug else logging.INFO
+    logging.getLogger().setLevel(level)
+    logger.setLevel(level)
+    for name in ["asyncio", "filelock", "crawlee"]:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 @main.command(context_settings={"ignore_unknown_options": True})
@@ -85,7 +80,6 @@ def crawl(
         logger.info("Reading spider params from stdin")
         spider_params = json.load(spider_params_f)
 
-    configure_async()
     try:
         if apify:
             logger.info(f"Crawling as Apify actor {actor_path}")
@@ -94,10 +88,11 @@ def crawl(
                 raise click.BadParameter(
                     f"Actor {actor_path} not found! Valid actors: {actors}"
                 )
-            asyncio.run(run_actor(settings, spider_class, spider_params))
+            run = run_as_actor(spider_class, spider_params)
         else:
             logger.info(f"Crawling as Scrapy spider {spider_name!r}")
-            run_spider(settings, spider_class, spider_params)
+            run = run_as_spider(spider_class, spider_params)
+        start_reactor(run)
     except StatsError as e:
         logger.error(e)
         raise click.Abort()

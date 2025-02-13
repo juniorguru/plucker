@@ -14,11 +14,10 @@ plucker = "jg.plucker.cli:main"
 
 [tool.poetry.dependencies]
 python = "3.12.*"
-apify = {version = "2.2.1", extras = ["scrapy"]}
-apify-client = "1.8.1"  # deployment of actors, monitoring, automation
+apify = { git = "https://github.com/apify/apify-sdk-python.git", branch = "master", extras = ["scrapy"] }
+apify-client = "1.9.1"  # deployment of actors, monitoring, automation
 apify-shared = "*"  # importing a few enums
 click = "8.1.8"
-crawlee = "*"  # importing MemoryStorageClient
 diskcache = "5.6.3"
 extruct = "0.18.0"
 feedparser = "6.0.11"
@@ -44,6 +43,7 @@ addopts = "--import-mode=importlib --ff --ruff --ruff-format"
 filterwarnings = [
     "ignore:twisted.web.http.HTTPClient was deprecated:DeprecationWarning",  # scrapy
     "ignore:invalid escape sequence:SyntaxWarning",  # extruct
+    "ignore:There is no current event loop:DeprecationWarning",  # apify
 ]
 
 [tool.ruff]

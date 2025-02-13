@@ -1,23 +1,24 @@
 import hashlib
 import json
-import logging
 import re
 import uuid
 from datetime import date, datetime
 from functools import lru_cache
+from logging import Logger
 from pathlib import Path
 from typing import Any, Generator, Iterable, cast
 from urllib.parse import urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
+from scrapy.http.response import Response
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
 from jg.plucker.processors import first, split
-from jg.plucker.url_params import get_params, strip_params
+from jg.plucker.url_params import get_param, get_params, strip_params
 
 
 MULTIPLE_LOCATIONS_RE = re.compile(
@@ -85,28 +86,26 @@ WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 class Spider(BaseSpider):
     name = "jobs-jobscz"
 
-    custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_DELAY": 0.5,
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.5,
-    }
-
     start_urls = [
         "https://www.jobs.cz/prace/programator/",
         "https://www.jobs.cz/prace/tester/",
         "https://www.jobs.cz/prace/datovy-analytik/",
     ]
 
-    employment_types_labels = [
-        "Typ pracovního poměru",
-        "Employment form",
-    ]
+    employment_types_labels = ["Typ pracovního poměru", "Employment form"]
 
-    def parse(self, response: HtmlResponse) -> Generator[Request, None, None]:
+    def logger_trk(self, trk: str) -> Logger:
+        return self.logger.logger.getChild(trk)
+
+    def parse(self, response: Response) -> Generator[Request, None, None]:
+        response = cast(HtmlResponse, response)
+        page = get_page(response.url)
+        self.logger.debug(f"Parsing listing {response.url} (page: {page})")
+
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         for n, card in enumerate(response.xpath(card_xpath), start=1):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
-            track_id = get_track_id(url)
+            trk = get_trk(url)  # logging track ID for each job
 
             loader = Loader(item=Job(), response=response)
             card_loader = loader.nested_xpath(f"{card_xpath}[{n}]")
@@ -124,34 +123,37 @@ class Spider(BaseSpider):
             card_loader.add_value("source_urls", url)
             item = loader.load_item()
 
-            self.track_logger(track_id).debug(f"Parsing card for {url}")
+            self.logger_trk(trk).debug(f"Parsing card for {url}")
             yield response.follow(
                 url,
                 callback=self.parse_job,
-                cb_kwargs=dict(item=item, track_id=track_id),
+                cb_kwargs=dict(item=item, trk=trk),
                 meta={"impersonate": "edge101"},
             )
-        urls = [
-            response.urljoin(relative_url)
-            for relative_url in response.css(".Pagination__link::attr(href)").getall()
-            if "page=" in relative_url
-        ]
-        yield from response.follow_all(
-            urls, callback=self.parse, meta={"impersonate": "edge101"}
-        )
+        self.logger.debug(f"Found {n} job cards on {response.url}")
+
+        next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
+        if next_page_link := response.css(next_page_css).get():
+            yield response.follow(
+                next_page_link, callback=self.parse, meta={"impersonate": "edge101"}
+            )
+        else:
+            self.logger.debug(f"No next page found for {response.url}")
 
     def parse_job(
-        self, response: HtmlResponse, item: Job, track_id: str
+        self, response: Response, item: Job, trk: str
     ) -> Generator[Job | Request, None, None]:
-        self.track_logger(track_id).debug("Parsing job page")
+        response = cast(HtmlResponse, response)
+        self.logger_trk(trk).debug(f"Parsing job page {response.url}")
+
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
 
         if "www.jobs.cz" not in response.url:
-            yield from self.parse_job_widget_data(response, item, track_id)
+            yield from self.parse_job_widget_data(response, item, trk)
         else:
-            self.track_logger(track_id).debug("Parsing as standard job page")
+            self.logger_trk(trk).debug("Parsing as standard job page")
             for label in self.employment_types_labels:
                 loader.add_xpath(
                     "employment_types",
@@ -161,7 +163,7 @@ class Spider(BaseSpider):
             loader.add_css("description_html", '[data-jobad="body"]')
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
-                self.track_logger(track_id).debug("Parsing as company job page")
+                self.logger_trk(trk).debug("Parsing as company job page")
                 loader.add_css(
                     "company_logo_urls",
                     ".CompanyProfileNavigation__logo img::attr(src)",
@@ -176,15 +178,13 @@ class Spider(BaseSpider):
             yield loader.load_item()
 
     def parse_job_widget_data(
-        self, response: HtmlResponse, item: Job, track_id: str
+        self, response: HtmlResponse, item: Job, trk: str
     ) -> Generator[Request, None, None]:
         try:
-            self.track_logger(track_id).debug("Looking for widget data in the HTML")
+            self.logger_trk(trk).debug("Looking for widget data in the HTML")
             widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
         except IndexError:
-            self.track_logger(track_id).debug(
-                "Looking for widget data in attached JavaScript"
-            )
+            self.logger_trk(trk).debug("Looking for widget data in attached JavaScript")
             script_urls = sorted(
                 map(
                     response.urljoin,
@@ -194,7 +194,7 @@ class Spider(BaseSpider):
                 ),
                 key=get_script_relevance,
             )
-            self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
+            self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             yield response.follow(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -202,7 +202,7 @@ class Spider(BaseSpider):
                     item=item,
                     url=response.url,
                     script_urls=script_urls,
-                    track_id=track_id,
+                    trk=trk,
                 ),
                 meta={"impersonate": "edge101"},
             )
@@ -213,17 +213,19 @@ class Spider(BaseSpider):
                 widget_host=widget_data["host"],
                 widget_api_key=widget_data["apiKey"],
                 widget_id=widget_data["widgetId"],
-                track_id=track_id,
+                trk=trk,
             )
 
     def parse_job_widget_script(
         self,
-        script_response: TextResponse,
+        script_response: Response,
         url: str,
         item: Job,
         script_urls: list[str],
-        track_id: str,
+        trk: str,
     ) -> Generator[Request, None, None]:
+        script_response = cast(TextResponse, script_response)
+
         if data := parse_widget_script_json(script_response.text):
             widget_name = select_widget(list(data["widgets"].keys()))
             widget_data = data["widgets"][widget_name]
@@ -233,7 +235,7 @@ class Spider(BaseSpider):
                 widget_host=data["host"],
                 widget_api_key=widget_data["apiKey"],
                 widget_id=widget_data["id"],
-                track_id=track_id,
+                trk=trk,
             )
         elif mess := parse_widget_script_mess(script_response.text):
             yield from self.parse_job_widget(
@@ -242,13 +244,13 @@ class Spider(BaseSpider):
                 widget_host=get_widget_host(url),
                 widget_api_key=mess["widgetApiKey"],
                 widget_id=mess["widgetId"],
-                track_id=track_id,
+                trk=trk,
             )
         elif chunk_names := parse_react_chunk_names(script_response.text):
             chunk_urls = [
                 url.replace("react.min.js", chunk_name) for chunk_name in chunk_names
             ]
-            self.track_logger(track_id).debug(f"Chunk URLs: {chunk_urls!r}")
+            self.logger_trk(trk).debug(f"Chunk URLs: {chunk_urls!r}")
             yield Request(
                 chunk_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -256,12 +258,12 @@ class Spider(BaseSpider):
                     item=item,
                     url=url,
                     script_urls=chunk_urls,
-                    track_id=track_id,
+                    trk=trk,
                 ),
                 meta={"impersonate": "edge101"},
             )
         elif script_urls:
-            self.track_logger(track_id).debug(f"Script URLs: {script_urls!r}")
+            self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             yield Request(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
@@ -269,7 +271,7 @@ class Spider(BaseSpider):
                     item=item,
                     url=url,
                     script_urls=script_urls,
-                    track_id=track_id,
+                    trk=trk,
                 ),
                 meta={"impersonate": "edge101"},
             )
@@ -283,14 +285,14 @@ class Spider(BaseSpider):
         widget_host: str,
         widget_api_key: str,
         widget_id: str,
-        track_id: str,
+        trk: str,
     ) -> Generator[Request, None, None]:
         loader = Loader(item=item)
         loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
         loader.add_value("source_urls", url)
 
-        self.track_logger(track_id).debug("Requesting data from job widget API")
+        self.logger_trk(trk).debug("Requesting data from job widget API")
         params = get_params(url)
         yield Request(
             "https://api.capybara.lmc.cz/api/graphql/widget",
@@ -322,14 +324,16 @@ class Spider(BaseSpider):
                 )
             ),
             callback=self.parse_job_widget_api,
-            cb_kwargs=dict(item=loader.load_item(), track_id=track_id),
+            cb_kwargs=dict(item=loader.load_item(), trk=trk),
             meta={"impersonate": "edge101"},
         )
 
     def parse_job_widget_api(
-        self, response: TextResponse, item: Job, track_id: str
+        self, response: Response, item: Job, trk: str
     ) -> Generator[Job, None, None]:
-        self.track_logger(track_id).debug("Parsing job widget API response")
+        response = cast(TextResponse, response)
+        self.logger_trk(trk).debug("Parsing job widget API response")
+
         try:
             payload = cast(dict, response.json())
         except json.JSONDecodeError as e:
@@ -352,13 +356,14 @@ class Spider(BaseSpider):
 
         yield loader.load_item()
 
-    def track_logger(self, track_id: str) -> logging.LoggerAdapter:
-        logger = logging.getLogger(f"{self.name}.{track_id}")
-        return logging.LoggerAdapter(logger, {"spider": self, "track_id": track_id})
+
+def get_page(url: str) -> int:
+    if page := get_param(url, "page"):
+        return int(page)
+    return 1
 
 
-@lru_cache
-def get_track_id(seed: str) -> str:
+def get_trk(seed: str) -> str:
     return hashlib.sha1(seed.encode()).hexdigest()[:10]
 
 
@@ -376,7 +381,9 @@ def select_widget(names: list[str]) -> str:
 
 def parse_widget_script_json(text: str) -> dict[str, Any] | None:
     for match in re.finditer(WIDGET_DATA_SCRIPT_JSON_RE, text):
-        data_text = re.sub(r"\'", r"\\'", match.group("data"))
+        data_text = match.group("data")
+        data_text = re.sub(r"\'", r"\\'", data_text)
+        data_text = re.sub(r'\\\\"', r"\"", data_text)
         data = json.loads(data_text)
         if "widgets" in data:
             return data
