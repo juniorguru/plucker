@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import IO, Callable, Generator, Type
 
 import click
-from apify.scrapy._logging_config import initialize_logging
+from apify.scrapy import initialize_logging
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
