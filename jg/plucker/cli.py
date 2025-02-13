@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import IO, Callable, Generator, Type
 
 import click
-from apify.scrapy.logging_config import setup_logging
+from apify.scrapy.logging_config import _MAIN_LOGGER_NAMES, setup_logging
 from apify_client import ApifyClient
 from apify_shared.consts import ActorJobStatus, ActorSourceType
 from pydantic import BaseModel
@@ -40,6 +40,7 @@ logger = logging.getLogger("jg.plucker")
 @click.group()
 @click.option("-d", "--debug", default=False, is_flag=True)
 def main(debug: bool = False):
+    _MAIN_LOGGER_NAMES.append("jg.plucker")
     setup_logging()
     logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
     for name in ["asyncio", "filelock", "crawlee"]:
