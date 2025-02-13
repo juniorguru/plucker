@@ -4,6 +4,8 @@ import pickle
 import threading
 from pathlib import Path
 from time import time
+from pathlib import Path
+from threading import Thread
 from typing import Any, Coroutine, Generator, Type
 
 from apify import Actor, Configuration
@@ -169,8 +171,6 @@ def evaluate_stats(stats: StatsT, min_items: int):
 
 
 class CacheStorage:
-    # TODO implement gzipping
-
     def __init__(self, settings: BaseSettings):
         if not is_asyncio_reactor_installed():
             raise ValueError(
