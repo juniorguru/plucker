@@ -4,8 +4,6 @@ import os
 import pickle
 from pathlib import Path
 from time import time
-from pathlib import Path
-from threading import Thread
 from typing import Any, Coroutine, Generator, Type
 
 from apify import Actor, Configuration
