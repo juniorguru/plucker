@@ -18,7 +18,7 @@ from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
 from jg.plucker.processors import first, split
-from jg.plucker.url_params import get_params, strip_params
+from jg.plucker.url_params import get_param, get_params, strip_params
 
 
 MULTIPLE_LOCATIONS_RE = re.compile(
@@ -100,7 +100,8 @@ class Spider(BaseSpider):
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
         response = cast(HtmlResponse, response)
-        self.logger.debug(f"Parsing listing {response.url}")
+        page = get_page(response.url)
+        self.logger.debug(f"Parsing listing {response.url} (page: {page})")
 
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         for n, card in enumerate(response.xpath(card_xpath), start=1):
@@ -130,14 +131,18 @@ class Spider(BaseSpider):
                 cb_kwargs=dict(item=item, trk=trk),
                 meta={"impersonate": "edge101"},
             )
-        urls = [
-            response.urljoin(relative_url)
-            for relative_url in response.css(".Pagination__link::attr(href)").getall()
-            if "page=" in relative_url
-        ]
-        yield from response.follow_all(
-            urls, callback=self.parse, meta={"impersonate": "edge101"}
-        )
+        self.logger.debug(f"Found {n} job cards on {response.url}")
+
+        next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
+        if next_page_link := response.css(next_page_css).get():
+            yield response.follow(
+                next_page_link,
+                callback=self.parse,
+                cb_kwargs={"page": page + 1},
+                meta={"impersonate": "edge101"},
+            )
+        else:
+            self.logger.debug(f"No next page found for {response.url}")
 
     def parse_job(
         self, response: Response, item: Job, trk: str
@@ -356,7 +361,12 @@ class Spider(BaseSpider):
         yield loader.load_item()
 
 
-@lru_cache
+def get_page(url: str) -> int:
+    if page := get_param(url, "page"):
+        return int(page)
+    return 1
+
+
 def get_trk(seed: str) -> str:
     return hashlib.sha1(seed.encode()).hexdigest()[:10]
 

@@ -1,7 +1,7 @@
 import asyncio
 import logging
+import os
 import pickle
-import threading
 from pathlib import Path
 from time import time
 from pathlib import Path
@@ -11,13 +11,7 @@ from typing import Any, Coroutine, Generator, Type
 from apify import Actor, Configuration
 from apify.apify_storage_client import ApifyStorageClient
 from apify.scrapy import run_scrapy_actor
-from apify.scrapy.scheduler import (
-    _TIMEOUT,
-    _force_exit_event_loop,
-    _run_async_coro,
-    _shutdown_async_tasks,
-    _start_event_loop,
-)
+from apify.scrapy._async_thread import AsyncThread
 from apify.scrapy.utils import apply_apify_settings
 from apify.storages import KeyValueStore
 from scrapy import Item, Request, Spider
@@ -62,19 +56,22 @@ async def run_as_spider(
 async def run_as_actor(
     spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ):
+    # workaround https://github.com/apify/apify-sdk-python/issues/401
+    os.environ["SCRAPY_SETTINGS_MODULE"] = "jg.plucker.settings"
+
     async with Actor:
-        Actor.log.info(f"Starting actor for spider {spider_class.name}")
+        logger.info(f"Starting actor for spider {spider_class.name}")
 
         params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
-        Actor.log.debug(f"Proxy config: {proxy_config!r}")
+        logger.debug(f"Proxy config: {proxy_config!r}")
 
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings.set("HTTPCACHE_STORAGE", "jg.plucker.scrapers.CacheStorage")
         settings.set("SPIDER_PARAMS", spider_params)
-        Actor.log.debug(f"Spider params: {spider_params!r}")
+        logger.debug(f"Spider params: {spider_params!r}")
 
-        Actor.log.info("Starting the spider")
+        logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
         crawler = runner.create_crawler(spider_class)
 
@@ -184,11 +181,7 @@ class CacheStorage:
         self._fingerprinter: RequestFingerprinterProtocol | None = None
 
         logger.debug("Starting background thread for cache storage's event loop")
-        self._eventloop = asyncio.new_event_loop()
-        self._thread = threading.Thread(
-            target=lambda: _start_event_loop(self._eventloop), daemon=True
-        )
-        self._thread.start()
+        self._async_thread = AsyncThread()
 
     def open_spider(self, spider: Spider) -> None:
         logger.debug("Using Apify key value cache storage", extra={"spider": spider})
@@ -206,20 +199,12 @@ class CacheStorage:
             return await KeyValueStore.open(name=kv_name)
 
         logger.debug(f"Opening cache storage's {kv_name!r} key value store")
-        self._kv = _run_async_coro(self._eventloop, open_kv())
+        self._kv = self._async_thread.run_coro(open_kv())
 
     def close_spider(self, spider: Spider) -> None:
         logger.debug("Closing cache storage...")
         try:
-            if self._eventloop.is_running():
-                _run_async_coro(self._eventloop, _shutdown_async_tasks(self._eventloop))
-            self._eventloop.call_soon_threadsafe(self._eventloop.stop)
-            self._thread.join(timeout=_TIMEOUT)
-            if self._thread.is_alive():
-                logger.warning(
-                    "Background thread for cache storage didn't exit cleanly! Forcing shutdown..."
-                )
-                _force_exit_event_loop(self._eventloop, self._thread)
+            self._async_thread.close()
         except KeyboardInterrupt:
             logger.warning("Shutdown interrupted by KeyboardInterrupt!")
         except Exception:
@@ -233,18 +218,18 @@ class CacheStorage:
 
         key = self._fingerprinter.fingerprint(request).hex()
 
-        seconds = _run_async_coro(self._eventloop, self._kv.get_value(f"{key}_time"))
+        seconds = self._async_thread.run_coro(self._kv.get_value(f"{key}_time"))
         if seconds is None:
             logger.debug("Cache miss", extra={"request": request})
             return None
 
         if 0 < self.expiration_secs < time() - seconds:
             logger.debug("Cache expired", extra={"request": request})
-            _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_data", None))
-            _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_time", None))
+            self._async_thread.run_coro(self._kv.set_value(f"{key}_data", None))
+            self._async_thread.run_coro(self._kv.set_value(f"{key}_time", None))
             return None
 
-        value = _run_async_coro(self._eventloop, self._kv.get_value(f"{key}_data"))
+        value = self._async_thread.run_coro(self._kv.get_value(f"{key}_data"))
         if value is None:
             logger.debug("Cache miss", extra={"request": request})
             return None
@@ -273,5 +258,5 @@ class CacheStorage:
             "body": response.body,
         }
         value = pickle.dumps(data, protocol=4)
-        _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_data", value))
-        _run_async_coro(self._eventloop, self._kv.set_value(f"{key}_time", time()))
+        self._async_thread.run_coro(self._kv.set_value(f"{key}_data", value))
+        self._async_thread.run_coro(self._kv.set_value(f"{key}_time", time()))

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from scrapy.http import HtmlResponse, TextResponse
+from scrapy.http.response.html import HtmlResponse
+from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import Spider, select_widget
@@ -21,7 +22,7 @@ def test_spider_parse():
     )
     requests = list(Spider().parse(response))
 
-    assert len(requests) == 30 + 4  # jobs + pagination (without page=1)
+    assert len(requests) == 30 + 1  # jobs + next page
 
     assert (
         requests[1].url
@@ -53,12 +54,50 @@ def test_spider_parse():
     }
 
     assert (
-        requests[30].url
+        requests[-1].url
         == "https://beta.www.jobs.cz/prace/programator/?profession%5B0%5D=201100249&page=2"
     )
+
+
+def test_spider_parse_listing_page():
+    url = "https://www.jobs.cz/prace/programator/?profession[0]=201100249&page=5"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "listing_page.html").read_bytes()
+    )
+    requests = list(Spider().parse(response))
+
+    assert len(requests) == 30 + 1  # jobs + next page
     assert (
         requests[-1].url
-        == "https://beta.www.jobs.cz/prace/programator/?profession%5B0%5D=201100249&page=5"
+        == "https://www.jobs.cz/prace/programator/?profession%5B0%5D=201100249&page=6"
+    )
+
+
+def test_spider_parse_listing_page_first():
+    url = "https://www.jobs.cz/prace/kuchar/"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "listing_page_first.html").read_bytes()
+    )
+    requests = list(Spider().parse(response))
+
+    assert len(requests) == 30 + 1  # jobs + next page
+    assert (
+        requests[-1].url
+        == "https://www.jobs.cz/prace/kuchar/?profession%5B0%5D=201100136&page=2"
+    )
+
+
+def test_spider_parse_listing_page_last():
+    url = "https://www.jobs.cz/prace/kuchar/?page=2"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "listing_page_last.html").read_bytes()
+    )
+    requests = list(Spider().parse(response))
+
+    assert len(requests) == 28 + 0  # jobs + next page
+    assert (
+        requests[-1].url
+        == "https://www.jobs.cz/rpd/2000404882/?searchId=6cbd9a5a-f1fc-4944-a64f-4445894fdff0&rps=233"
     )
 
 
