@@ -52,10 +52,7 @@ class Spider(BaseSpider):
 
     def start_requests(self) -> Iterable[Request]:
         self.logger.info(f"Loading {len(self._start_urls)} links")
-
-        # StartupJobs URLs checked in bulk
-        startupjobs_urls = []
-
+        startupjobs_urls = []  # StartupJobs URLs bulk
         for url in self._start_urls:
             if is_linkedin_url(url):
                 yield self._linkedin_request(url)
@@ -63,7 +60,6 @@ class Spider(BaseSpider):
                 startupjobs_urls.append(url)
             else:
                 yield Request(url, method="HEAD", callback=self.check_http)
-
         if startupjobs_urls:
             yield Request(
                 STARTUPJOBS_EXPORT_URL,
