@@ -24,8 +24,6 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "HTTPERROR_ALLOWED_CODES": [404, 410],
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_SLOTS": {"www.linkedin.com": {"concurrency": 1, "delay": 1}},
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
@@ -83,23 +81,23 @@ class Spider(BaseSpider):
     def _linkedin_request(self, url: str) -> Request:
         raise NotImplementedError("LinkedIn not supported")
 
-    def check_linkedin(
-        self, api_response: Response, job_url: str
-    ) -> JobCheck | Request:
-        self.logger.info(f"Checking {job_url} (LinkedIn)")
-        if api_response.status == 404:
-            return JobCheck(url=job_url, ok=False, reason="HTTP 404")
-        if api_response.css(".closed-job").get(None):
-            return JobCheck(url=job_url, ok=False, reason="LINKEDIN")
-        if api_response.css(".top-card-layout__cta-container").get(None):
-            return JobCheck(url=job_url, ok=True, reason="LINKEDIN")
-        self.logger.error(
-            f"Failed to parse {api_response.url}, "
-            f"status {api_response.status}, "
-            f"content length {len(api_response.text)}"
-            f"\n\n{api_response.text}"
-        )
-        raise NotImplementedError("Failed to parse LinkedIn API response")
+    # def check_linkedin(
+    #     self, api_response: Response, job_url: str
+    # ) -> JobCheck | Request:
+    #     self.logger.info(f"Checking {job_url} (LinkedIn)")
+    #     if api_response.status == 404:
+    #         return JobCheck(url=job_url, ok=False, reason="HTTP 404")
+    #     if api_response.css(".closed-job").get(None):
+    #         return JobCheck(url=job_url, ok=False, reason="LINKEDIN")
+    #     if api_response.css(".top-card-layout__cta-container").get(None):
+    #         return JobCheck(url=job_url, ok=True, reason="LINKEDIN")
+    #     self.logger.error(
+    #         f"Failed to parse {api_response.url}, "
+    #         f"status {api_response.status}, "
+    #         f"content length {len(api_response.text)}"
+    #         f"\n\n{api_response.text}"
+    #     )
+    #     raise NotImplementedError("Failed to parse LinkedIn API response")
 
     def check_startupjobs(
         self, response: Response, urls: list[str]
