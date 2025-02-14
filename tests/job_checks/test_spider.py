@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-from scrapy.http import HtmlResponse, XmlResponse
+from scrapy.http.response.html import HtmlResponse
+from scrapy.http.response.xml import XmlResponse
 
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import Spider
