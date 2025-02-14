@@ -28,15 +28,15 @@ def start_reactor(coroutine: Coroutine) -> None:
 async def run_as_spider(
     spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
+    params = spider_params or {}
     settings = get_project_settings()
-    settings.set("SPIDER_PARAMS", spider_params)
-    logger.debug(f"Spider params: {spider_params!r}")
 
     logger.info("Starting the spider")
     runner = CrawlerRunner(settings)
     crawler = runner.create_crawler(spider_class)
 
-    await deferred_to_future(runner.crawl(crawler))
+    logger.debug(f"Spider params: {params!r}")
+    await deferred_to_future(runner.crawl(crawler, **params))
 
     check_crawl_results(crawler)
 
@@ -56,14 +56,13 @@ async def run_as_actor(
 
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings.set("HTTPCACHE_STORAGE", "jg.plucker.cache.CacheStorage")
-        settings.set("SPIDER_PARAMS", spider_params)
-        logger.debug(f"Spider params: {spider_params!r}")
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
         crawler = runner.create_crawler(spider_class)
 
-        await deferred_to_future(runner.crawl(crawler))
+        logger.debug(f"Spider params: {params!r}")
+        await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
 

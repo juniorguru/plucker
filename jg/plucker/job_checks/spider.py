@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http import TextResponse, XmlResponse
+from scrapy.http.response import Response
 
 from jg.plucker.items import JobCheck
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
@@ -17,10 +17,6 @@ from jg.plucker.scrapers import evaluate_stats
 class Link(BaseModel):
     url: Url
     method: Literal["GET"] = "GET"
-
-
-class Params(BaseModel):
-    links: list[Link]
 
 
 class Spider(BaseSpider):
@@ -50,15 +46,19 @@ class Spider(BaseSpider):
 
         return evaluate_stats(stats, min_items)
 
-    def start_requests(self) -> Iterable[Request]:
-        params = Params.model_validate(self.settings.get("SPIDER_PARAMS"))
-        self.logger.info(f"Loaded {len(params.links)} links")
-        urls = [str(link.url) for link in params.links]
+    def __init__(self, name: str | None = None, links: list[Link] | None = None):
+        super().__init__(name)
+        if not links:
+            raise ValueError("No links provided")
+        self._start_urls = [str(link.url) for link in map(Link.model_validate, links)]
 
-        # StartupJobs URLs are checked in bulk
+    def start_requests(self) -> Iterable[Request]:
+        self.logger.info(f"Loading {len(self._start_urls)} links")
+
+        # StartupJobs URLs checked in bulk
         startupjobs_urls = []
 
-        for url in urls:
+        for url in self._start_urls:
             if is_linkedin_url(url):
                 yield self._linkedin_request(url)
             elif is_startupjobs_url(url):
@@ -73,7 +73,7 @@ class Spider(BaseSpider):
                 cb_kwargs={"urls": startupjobs_urls},
             )
 
-    def check_http(self, response: TextResponse) -> JobCheck:
+    def check_http(self, response: Response) -> JobCheck:
         self.logger.info(f"Checking {response.url} (HTTP)")
         reason = f"HTTP {response.status}"
         if response.status == 200:
@@ -84,7 +84,7 @@ class Spider(BaseSpider):
         raise NotImplementedError("LinkedIn not supported")
 
     def check_linkedin(
-        self, api_response: TextResponse, job_url: str
+        self, api_response: Response, job_url: str
     ) -> JobCheck | Request:
         self.logger.info(f"Checking {job_url} (LinkedIn)")
         if api_response.status == 404:
@@ -102,7 +102,7 @@ class Spider(BaseSpider):
         raise NotImplementedError("Failed to parse LinkedIn API response")
 
     def check_startupjobs(
-        self, response: XmlResponse, urls: list[str]
+        self, response: Response, urls: list[str]
     ) -> Generator[JobCheck, None, None]:
         self.logger.info(f"Checking {len(urls)} URLs (StartupJobs)")
         current_ids = set(
