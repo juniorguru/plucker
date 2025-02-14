@@ -62,7 +62,7 @@ class Spider(BaseSpider):
             elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
-                yield Request(url, callback=self.check_http)
+                yield Request(url, method="HEAD", callback=self.check_http)
 
         if startupjobs_urls:
             yield Request(
