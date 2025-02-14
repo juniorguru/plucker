@@ -132,15 +132,12 @@ class Spider(BaseSpider):
                 url,
                 callback=self.parse_job,
                 cb_kwargs=dict(item=item, trk=trk),
-                meta={"impersonate": "edge101"},
             )
         self.logger.debug(f"Found {n} job cards on {response.url}")
 
         next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
         if next_page_link := response.css(next_page_css).get():
-            yield response.follow(
-                next_page_link, callback=self.parse, meta={"impersonate": "edge101"}
-            )
+            yield response.follow(next_page_link, callback=self.parse)
         else:
             self.logger.debug(f"No next page found for {response.url}")
 
@@ -208,7 +205,6 @@ class Spider(BaseSpider):
                     script_urls=script_urls,
                     trk=trk,
                 ),
-                meta={"impersonate": "edge101"},
             )
         else:
             yield from self.parse_job_widget(
@@ -264,7 +260,6 @@ class Spider(BaseSpider):
                     script_urls=chunk_urls,
                     trk=trk,
                 ),
-                meta={"impersonate": "edge101"},
             )
         elif script_urls:
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
@@ -277,7 +272,6 @@ class Spider(BaseSpider):
                     script_urls=script_urls,
                     trk=trk,
                 ),
-                meta={"impersonate": "edge101"},
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -329,7 +323,7 @@ class Spider(BaseSpider):
             ),
             callback=self.parse_job_widget_api,
             cb_kwargs=dict(item=loader.load_item(), trk=trk),
-            meta={"impersonate": "edge101"},
+
         )
 
     def parse_job_widget_api(

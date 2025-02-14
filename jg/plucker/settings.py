@@ -37,11 +37,6 @@ ITEM_PIPELINES = {
     "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
 }
 
-DOWNLOAD_HANDLERS = {
-    "http": "scrapy_impersonate.ImpersonateDownloadHandler",
-    "https": "scrapy_impersonate.ImpersonateDownloadHandler",
-}
-
 CLOSESPIDER_ERRORCOUNT = 1
 
 AUTOTHROTTLE_ENABLED = True
