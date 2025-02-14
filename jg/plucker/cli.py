@@ -187,7 +187,7 @@ def check(token: str):
     logger.info(f"Found {len(schedules)} enabled schedules")
 
     actor_ids = set()
-    for schedule in client.schedules().list().items:
+    for schedule in schedules:
         schedule_actor_ids = [
             action["actorId"]
             for action in schedule["actions"]
