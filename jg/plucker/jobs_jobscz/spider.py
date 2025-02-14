@@ -86,6 +86,10 @@ WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 class Spider(BaseSpider):
     name = "jobs-jobscz"
 
+    custom_settings = {
+        "RETRY_TIMES": 5,
+    }
+
     start_urls = [
         "https://www.jobs.cz/prace/programator/",
         "https://www.jobs.cz/prace/tester/",
