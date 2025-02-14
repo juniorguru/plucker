@@ -23,6 +23,7 @@ class Spider(BaseSpider):
     name = "job-checks"
 
     custom_settings = {
+        "HTTPCACHE_ENABLED": False,
         "HTTPERROR_ALLOWED_CODES": [404, 410],
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
