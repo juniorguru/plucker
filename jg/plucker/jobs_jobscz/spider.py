@@ -107,7 +107,8 @@ class Spider(BaseSpider):
         self.logger.debug(f"Parsing listing {response.url} (page: {page})")
 
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
-        for n, card in enumerate(response.xpath(card_xpath), start=1):
+        cards = list(response.xpath(card_xpath))
+        for n, card in enumerate(cards, start=1):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
             trk = get_trk(url)  # logging track ID for each job
 
@@ -133,7 +134,7 @@ class Spider(BaseSpider):
                 callback=self.parse_job,
                 cb_kwargs=dict(item=item, trk=trk),
             )
-        self.logger.debug(f"Found {n} job cards on {response.url}")
+        self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
         next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
         if next_page_link := response.css(next_page_css).get():

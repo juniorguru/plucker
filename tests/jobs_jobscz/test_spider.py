@@ -73,6 +73,16 @@ def test_spider_parse_listing_page():
     )
 
 
+def test_spider_parse_listing_empty():
+    response = HtmlResponse(
+        "https://www.jobs.cz/prace/datovy-analytik/?profession[0]=201100619&page=7",
+        body=Path(FIXTURES_DIR / "listing_empty.html").read_bytes(),
+    )
+    requests = list(Spider().parse(response))
+
+    assert len(requests) == 0
+
+
 def test_spider_parse_listing_page_first():
     url = "https://www.jobs.cz/prace/kuchar/"
     response = HtmlResponse(
