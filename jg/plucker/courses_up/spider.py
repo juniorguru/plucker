@@ -41,8 +41,6 @@ class Spider(BaseSpider):
     start_urls = ["https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"]
 
     custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
         "RETRY_TIMES": 5,
     }
 
@@ -59,7 +57,7 @@ class Spider(BaseSpider):
         self,
         course_category: CourseCategory,
         start: int = 0,
-        step: int = 120,
+        step: int = 240,
     ) -> Request:
         self.logger.info(
             f"Fetching courses from {start} to {start + step} (category {course_category})"
