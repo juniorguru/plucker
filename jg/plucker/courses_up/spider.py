@@ -41,6 +41,7 @@ class Spider(BaseSpider):
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
+        "RETRY_TIMES": 5,
     }
 
     def parse(self, response: TextResponse) -> Generator[Request, None, None]:
