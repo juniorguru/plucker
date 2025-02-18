@@ -57,7 +57,7 @@ class Spider(BaseSpider):
         self,
         course_category: CourseCategory,
         start: int = 0,
-        step: int = 240,
+        step: int = 30,
     ) -> Request:
         self.logger.info(
             f"Fetching courses from {start} to {start + step} (category {course_category})"
