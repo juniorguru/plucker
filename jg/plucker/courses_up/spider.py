@@ -44,6 +44,7 @@ class Spider(BaseSpider):
         "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": 2,
         "RETRY_TIMES": 5,
+        "HTTPCACHE_EXPIRATION_SECS": 151200,  # 42 hours
     }
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
