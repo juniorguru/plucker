@@ -43,7 +43,7 @@ class CourseProvider(Item):
     name = Field(required=True)
     description = Field(required=True)
     company_name = Field(required=True)
-    cz_business_id = Field(required=True, apify_format="number")
+    business_id = Field(required=True, apify_format="number")
 
 
 class Meetup(Item):
