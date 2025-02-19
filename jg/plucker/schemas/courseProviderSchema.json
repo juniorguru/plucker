@@ -6,8 +6,8 @@
             "title": "CourseProvider",
             "transformation": {
                 "fields": [
+                    "business_id",
                     "company_name",
-                    "cz_business_id",
                     "description",
                     "id",
                     "name",
@@ -17,12 +17,12 @@
             "display": {
                 "component": "table",
                 "properties": {
+                    "business_id": {
+                        "label": "business_id",
+                        "format": "number"
+                    },
                     "company_name": {
                         "label": "company_name"
-                    },
-                    "cz_business_id": {
-                        "label": "cz_business_id",
-                        "format": "number"
                     },
                     "description": {
                         "label": "description"

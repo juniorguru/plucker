@@ -93,9 +93,7 @@ class Spider(BaseSpider):
     ) -> Generator[Request, None, None]:
         self.logger.info("Acquired cookies")
         self.logger.info(
-            f"Querying courses provided by {len(business_ids)} "
-            f"of {len(CourseType)} types "
-            f"which are in {len(CourseCategory)} categories"
+            f"Querying courses provided by {len(business_ids)} of {len(CourseType)} types "
         )
         for business_id in business_ids:
             yield self.fetch_courses(business_id)
