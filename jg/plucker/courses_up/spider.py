@@ -1,31 +1,13 @@
 import json
 from enum import IntEnum, unique
 from pprint import pformat
-from typing import Generator
+from typing import Generator, cast
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
+from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import CourseProvider
-
-
-# @unique
-# class CourseCategory(IntEnum):
-#     COMPUTER_COURSES = 10115
-#     INTERNET = 10124
-#     WEB_PAGES = 10125
-#     WEB_DESIGN = 10126
-#     E_COMMERCE = 10127
-#     OTHER_INTERNET = 10128
-#     OPERATING_SYSTEMS = 10116
-#     OPERATING_SYSTEMS_COMPUTERS = 10117
-#     OPERATING_SYSTEMS_MOBILE = 10118
-#     OPERATING_SYSTEMS_SERVERS = 10119
-#     OPERATING_SYSTEMS_OTHER = 10120
-#     NETWORKING_AND_SERVERS = 10123
-#     PROGRAMMING = 10130
-#     DATA = 10131
-#     SECURITY = 10140
 
 
 @unique
@@ -38,7 +20,7 @@ class CourseType(IntEnum):
 class Spider(BaseSpider):
     name = "courses-up"
 
-    start_urls = ["https://junior.guru"]  # TODO
+    start_urls = ["https://junior.guru/api/courses-up-business-ids.json"]
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
@@ -47,40 +29,8 @@ class Spider(BaseSpider):
     }
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
-        business_ids = [  # TODO
-            "01018329",
-            "02559226",
-            "03888509",
-            "04380011",
-            "04671317",
-            "05630631",
-            "05861381",
-            "06222447",
-            "06446710",
-            "07513666",
-            "09587535",
-            "09863427",
-            "10827161",
-            "14064570",
-            "14143801",
-            "14389762",
-            "17163587",
-            "17163587",
-            "17321743",
-            "17519039",
-            "22746668",
-            "22746668",
-            "22746668",
-            "22834958",
-            "24146692",
-            "25110853",
-            "26441381",
-            "26502275",
-            "27914950",
-            "28128842",
-            "61989100",
-            "69320144",
-        ]
+        response = cast(TextResponse, response)
+        business_ids: list[str] = response.json()
         yield Request(
             "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu",
             self.parse_cookies,
