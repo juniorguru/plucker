@@ -9,23 +9,23 @@ from scrapy.http.response import Response
 from jg.plucker.items import CourseProvider
 
 
-@unique
-class CourseCategory(IntEnum):
-    COMPUTER_COURSES = 10115
-    INTERNET = 10124
-    WEB_PAGES = 10125
-    WEB_DESIGN = 10126
-    E_COMMERCE = 10127
-    OTHER_INTERNET = 10128
-    OPERATING_SYSTEMS = 10116
-    OPERATING_SYSTEMS_COMPUTERS = 10117
-    OPERATING_SYSTEMS_MOBILE = 10118
-    OPERATING_SYSTEMS_SERVERS = 10119
-    OPERATING_SYSTEMS_OTHER = 10120
-    NETWORKING_AND_SERVERS = 10123
-    PROGRAMMING = 10130
-    DATA = 10131
-    SECURITY = 10140
+# @unique
+# class CourseCategory(IntEnum):
+#     COMPUTER_COURSES = 10115
+#     INTERNET = 10124
+#     WEB_PAGES = 10125
+#     WEB_DESIGN = 10126
+#     E_COMMERCE = 10127
+#     OTHER_INTERNET = 10128
+#     OPERATING_SYSTEMS = 10116
+#     OPERATING_SYSTEMS_COMPUTERS = 10117
+#     OPERATING_SYSTEMS_MOBILE = 10118
+#     OPERATING_SYSTEMS_SERVERS = 10119
+#     OPERATING_SYSTEMS_OTHER = 10120
+#     NETWORKING_AND_SERVERS = 10123
+#     PROGRAMMING = 10130
+#     DATA = 10131
+#     SECURITY = 10140
 
 
 @unique
@@ -98,18 +98,16 @@ class Spider(BaseSpider):
             f"which are in {len(CourseCategory)} categories"
         )
         for business_id in business_ids:
-            for course_category in sorted(CourseCategory):
-                yield self.fetch_courses(business_id, course_category)
+            yield self.fetch_courses(business_id)
 
     def fetch_courses(
         self,
         business_id: str,
-        course_category: CourseCategory,
         start: int = 0,
         step: int = 30,
     ) -> Request:
         self.logger.info(
-            f"Fetching courses from {start} to {start + step} (category {course_category})"
+            f"Fetching courses from {start} to {start + step} (business ID: {business_id})"
         )
         return Request(
             "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex",
@@ -130,8 +128,7 @@ class Spider(BaseSpider):
                     "optStavZajmu": False,
                     "optNazevVzdelavatele": False,
                     "optIcoVzdelavatele": True,
-                    "optKategorie": True,
-                    "kategorieId": int(course_category),
+                    "optKategorie": False,
                     "optAkreditace": False,
                     "pagination": {"start": start, "count": step, "order": ["-id"]},
                     "optFormaVzdelavaniIds": False,
@@ -145,26 +142,19 @@ class Spider(BaseSpider):
             ),
             dont_filter=True,
             callback=self.parse_courses,
-            cb_kwargs={
-                "business_id": business_id,
-                "course_category": course_category,
-                "next_start": start + step,
-            },
+            cb_kwargs={"business_id": business_id, "next_start": start + step},
         )
 
     def parse_courses(
         self,
         response: Response,
         business_id: str,
-        course_category: CourseCategory,
         next_start: int,
     ) -> Generator[CourseProvider | Request, None, None]:
         data = json.loads(response.body)
-        print(data)
         if count := len(data["list"]):
             self.logger.info(
-                f"Processing {count} courses of {data['count']} "
-                f"(business ID: {business_id}, category {course_category})"
+                f"Processing {count} courses of {data['count']} (business ID: {business_id})"
             )
             for course in data["list"]:
                 try:
@@ -183,16 +173,16 @@ class Spider(BaseSpider):
                         company_name=course["osoba"]["nazev"],
                         business_id=business_id,
                     )
-                except KeyError as e:
+                except KeyError:
                     self.logger.error(f"Failed to parse:\n{pformat(course)}")
                     raise
             if count == data["count"]:
                 self.logger.info(
-                    f"Seems like all {data['count']} courses are done (category {course_category})"
+                    f"Seems like all {data['count']} courses are done (business ID: {business_id})"
                 )
             else:
-                yield self.fetch_courses(business_id, course_category, next_start)
+                yield self.fetch_courses(business_id, next_start)
         else:
             self.logger.info(
-                f"Seems like all {data['count']} courses are done (category {course_category})"
+                f"Seems like all {data['count']} courses are done (business ID: {business_id})"
             )
