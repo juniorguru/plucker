@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 from pathlib import Path
@@ -14,14 +13,15 @@ from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsT
 from scrapy.utils.defer import deferred_to_future
 from scrapy.utils.project import get_project_settings
-from twisted.internet import asyncioreactor
+from scrapy.utils.reactor import install_reactor
 
 
 logger = logging.getLogger("jg.plucker")
 
 
 def start_reactor(coroutine: Coroutine) -> None:
-    asyncioreactor.install(asyncio.get_event_loop())
+    settings = get_project_settings()
+    install_reactor(settings["TWISTED_REACTOR"])
     run_scrapy_actor(coroutine)
 
 
