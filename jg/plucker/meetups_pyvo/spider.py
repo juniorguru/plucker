@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from typing import Generator
+from zoneinfo import ZoneInfo
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
@@ -25,7 +26,13 @@ class Spider(BaseSpider):
         meetups = (self.parse_event(response.url, today, event) for event in events)
         yield from filter(None, meetups)
 
-    def parse_event(self, source_url: str, today: date, event: Event) -> Meetup | None:
+    def parse_event(
+        self,
+        source_url: str,
+        today: date,
+        event: Event,
+        tz: ZoneInfo = ZoneInfo("Europe/Prague"),
+    ) -> Meetup | None:
         if event.begin and event.begin.date() < today:
             self.logger.debug(f"Past event: {event.summary} {event.begin}")
             return
@@ -44,8 +51,8 @@ class Spider(BaseSpider):
             title=event.summary,
             url=event.url,
             description=event.description,
-            starts_at=event.begin,
-            ends_at=max(event.end or default_ends_at, default_ends_at),
+            starts_at=event.begin.astimezone(tz),
+            ends_at=max(event.end or default_ends_at, default_ends_at).astimezone(tz),
             location=event.location,
             source_url=source_url,
             series_name="Pyvo",
