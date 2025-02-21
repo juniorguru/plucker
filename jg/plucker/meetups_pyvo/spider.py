@@ -1,6 +1,5 @@
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Generator
-from zoneinfo import ZoneInfo
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
@@ -45,15 +44,11 @@ class Spider(BaseSpider):
             title=event.summary,
             url=event.url,
             description=event.description,
-            starts_at=as_prg_tz(event.begin),
-            ends_at=as_prg_tz(max(event.end or default_ends_at, default_ends_at)),
+            starts_at=event.begin,
+            ends_at=max(event.end or default_ends_at, default_ends_at),
             location=event.location,
             source_url=source_url,
             series_name="Pyvo",
             series_org="komunita kolem Pythonu",
             series_url="https://pyvo.cz/",
         )
-
-
-def as_prg_tz(dt: datetime, tz: ZoneInfo = ZoneInfo("Europe/Prague")) -> datetime:
-    return dt.astimezone(tz).replace(tzinfo=None)
