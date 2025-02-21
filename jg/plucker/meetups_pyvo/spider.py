@@ -3,7 +3,7 @@ from typing import Generator
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
-from scrapy.http import TextResponse
+from scrapy.http.response import Response
 
 from jg.plucker.items import Meetup
 
@@ -16,7 +16,7 @@ class Spider(BaseSpider):
     min_items = 0
 
     def parse(
-        self, response: TextResponse, today: date | None = None
+        self, response: Response, today: date | None = None
     ) -> Generator[Meetup, None, None]:
         today = today or date.today()
         self.logger.info(f"Parsing {response.url}, today is {today}")
