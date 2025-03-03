@@ -32,7 +32,7 @@ class Spider(BaseSpider):
         response = cast(TextResponse, response)
         business_ids: list[str] = response.json()
         yield Request(
-            "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu",
+            "https://www.uradprace.cz/vyhledani-rekvalifikacniho-kurzu",
             self.parse_cookies,
             cb_kwargs={"business_ids": business_ids},
         )
