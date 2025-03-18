@@ -1,0 +1,32 @@
+{
+    "title": "Followers",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Followers",
+            "transformation": {
+                "fields": [
+                    "count",
+                    "date",
+                    "name"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "count": {
+                        "label": "count",
+                        "format": "number"
+                    },
+                    "date": {
+                        "label": "date",
+                        "format": "date"
+                    },
+                    "name": {
+                        "label": "name"
+                    }
+                }
+            }
+        }
+    }
+}

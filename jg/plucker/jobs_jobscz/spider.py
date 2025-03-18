@@ -324,7 +324,6 @@ class Spider(BaseSpider):
             ),
             callback=self.parse_job_widget_api,
             cb_kwargs=dict(item=loader.load_item(), trk=trk),
-
         )
 
     def parse_job_widget_api(

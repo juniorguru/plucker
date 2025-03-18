@@ -1,0 +1,31 @@
+{
+  "actorSpecification": 1,
+  "name": "followers",
+  "title": "followers",
+  "version": "0.0",
+  "input": {
+    "title": "Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "proxyConfig": {
+        "title": "Proxy config",
+        "type": "object",
+        "editor": "proxy",
+        "prefill": {
+          "useApifyProxy": true,
+          "apifyProxyGroups": ["RESIDENTIAL"]
+        },
+        "default": {
+          "useApifyProxy": true,
+          "apifyProxyGroups": ["RESIDENTIAL"]
+        }
+      }
+    }
+  },
+  "dockerfile": "../../../../Dockerfile",
+  "dockerContextDir": "../../../../",
+  "storages": {
+    "dataset": "../../schemas/followersSchema.json"
+  }
+}

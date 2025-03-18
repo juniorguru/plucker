@@ -57,3 +57,9 @@ class Meetup(Item):
     series_name = Field(required=True)
     series_org = Field(required=True)
     series_url = Field(required=True, apify_format="link")
+
+
+class Followers(Item):
+    date = Field(required=True, apify_format="date")
+    name = Field(required=True)
+    count = Field(required=True, apify_format="number")
