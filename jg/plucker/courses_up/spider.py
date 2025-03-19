@@ -1,5 +1,4 @@
 import json
-from enum import IntEnum, unique
 from pprint import pformat
 from typing import Generator, cast
 
@@ -8,13 +7,6 @@ from scrapy.http.response import Response
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import CourseProvider
-
-
-@unique
-class CourseType(IntEnum):
-    SECURED_REQUALIFICATION = 10078
-    CHOSEN_REQUALIFICATION = 10079
-    COURSE = 10080
 
 
 class Spider(BaseSpider):
@@ -41,9 +33,7 @@ class Spider(BaseSpider):
         self, response: Response, business_ids: list[str]
     ) -> Generator[Request, None, None]:
         self.logger.info("Acquired cookies")
-        self.logger.info(
-            f"Querying courses provided by {len(business_ids)} of {len(CourseType)} types "
-        )
+        self.logger.info(f"Querying courses provided by {len(business_ids)}")
         for business_id in business_ids:
             yield self.fetch_courses(business_id)
 
@@ -83,8 +73,7 @@ class Spider(BaseSpider):
                     "optCena": False,
                     "optJazykIds": False,
                     "optMistoKonani": False,
-                    "optTypKurzuIds": True,
-                    "typKurzuIds": sorted(map(int, CourseType)),
+                    "optTypKurzuIds": False,
                 }
             ),
             dont_filter=True,
