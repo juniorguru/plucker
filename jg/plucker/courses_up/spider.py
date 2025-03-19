@@ -57,7 +57,7 @@ class Spider(BaseSpider):
             f"Fetching courses from {start} to {start + step} (business ID: {business_id})"
         )
         return Request(
-            "https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex",
+            f"https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex#{business_id}",
             method="POST",
             headers={
                 "Accept": "application/json",
