@@ -177,7 +177,14 @@ def build(
 
 @main.command()
 @click.option("--token", envvar="APIFY_TOKEN", required=True)
-def check(token: str):
+@click.option(
+    "-l",
+    "--lookback",
+    default=2,
+    type=int,
+    help="How many previous runs to consider in the decision.",
+)
+def check(token: str, lookback: int):
     client = ApifyClient(token=token)
     schedules = [
         schedule
@@ -207,18 +214,29 @@ def check(token: str):
     for actor_id in actor_ids:
         actor_client = client.actor(actor_id)
         if actor_info := actor_client.get():
-            logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
-            last_run = actor_client.last_run()
-            run_info = last_run.get()
-            if run_info is None:
-                logger.warning("No runs found")
-            elif run_info["status"] == ActorJobStatus.SUCCEEDED:
-                logger.info(f"Status: {run_info['status']}, {run_info['startedAt']}")
-            else:
-                logger.error(f"Status: {run_info['status']}, {run_info['startedAt']}")
-                logs_urls.append(
-                    f"https://console.apify.com/actors/{actor_id}/runs/{run_info['id']}#log"
+            actor_name = f"{actor_info['username']}/{actor_info['name']}"
+            logger.debug(f"Actor {actor_name}")
+            runs = actor_client.runs()
+            latest_runs = runs.list(limit=lookback, desc=True).items
+            latest_runs_count = len(latest_runs)
+            successful_runs_count = len(
+                [
+                    run
+                    for run in latest_runs
+                    if run["status"] == ActorJobStatus.SUCCEEDED
+                ]
+            )
+            if successful_runs_count == latest_runs_count:
+                logger.info(
+                    f"{actor_name}: {successful_runs_count}/{latest_runs_count} successful"
                 )
+            elif successful_runs_count:
+                logger.warning(
+                    f"{actor_name}: {successful_runs_count}/{latest_runs_count} successful"
+                )
+            else:
+                logger.error(f"{actor_name}: No successful runs found")
+                logs_urls.append(f"https://console.apify.com/actors/{actor_id}/runs/")
         else:
             logger.error(f"Actor {actor_id!r} not found")
             raise click.Abort()
