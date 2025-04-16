@@ -12,7 +12,7 @@ from jg.plucker.items import CourseProvider
 class Spider(BaseSpider):
     name = "courses-up"
 
-    start_urls = ["https://junior.guru/api/courses-up-business-ids.json"]
+    start_urls = ["https://junior.guru/api/course-providers.json"]
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 4,
@@ -22,7 +22,11 @@ class Spider(BaseSpider):
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
         response = cast(TextResponse, response)
-        business_ids: list[str] = response.json()
+        business_ids = [
+            course_provider["cz_business_id"]
+            for course_provider in response.json()
+            if course_provider["cz_business_id"]
+        ]
         yield Request(
             "https://www.uradprace.cz/vyhledani-rekvalifikacniho-kurzu",
             self.parse_cookies,
