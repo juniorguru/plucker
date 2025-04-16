@@ -46,6 +46,10 @@ class CourseProvider(Item):
     business_id = Field(required=True, apify_format="number")
 
 
+class Company(Item):
+    name = Field(required=True)
+
+
 class Meetup(Item):
     title = Field(required=True)
     description = Field()

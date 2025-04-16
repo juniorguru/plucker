@@ -1,0 +1,22 @@
+{
+    "title": "Company",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "Company",
+            "transformation": {
+                "fields": [
+                    "name"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "name": {
+                        "label": "name"
+                    }
+                }
+            }
+        }
+    }
+}

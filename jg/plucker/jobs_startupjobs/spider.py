@@ -3,7 +3,7 @@ from typing import Generator
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Spider as BaseSpider
-from scrapy.http import XmlResponse
+from scrapy.http.response.xml import XmlResponse
 from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job

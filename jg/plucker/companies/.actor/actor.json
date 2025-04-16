@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "companies",
+  "title": "companies",
+  "version": "0.0",
+  "dockerfile": "../../../../Dockerfile",
+  "dockerContextDir": "../../../../",
+  "storages": {
+    "dataset": "../../schemas/companySchema.json"
+  }
+}

@@ -49,6 +49,8 @@ LINKEDIN_USERNAME = os.getenv("LINKEDIN_USERNAME")
 
 LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
+MERK_API_KEY = os.getenv("MERK_API_KEY")
+
 FEEDS = {
     "items.json": {
         "format": "json",
