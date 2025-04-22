@@ -6,14 +6,32 @@
             "title": "Company",
             "transformation": {
                 "fields": [
-                    "name"
+                    "business_id",
+                    "country_code",
+                    "legal_form",
+                    "name",
+                    "years_in_business"
                 ]
             },
             "display": {
                 "component": "table",
                 "properties": {
+                    "business_id": {
+                        "label": "business_id",
+                        "format": "number"
+                    },
+                    "country_code": {
+                        "label": "country_code"
+                    },
+                    "legal_form": {
+                        "label": "legal_form"
+                    },
                     "name": {
                         "label": "name"
+                    },
+                    "years_in_business": {
+                        "label": "years_in_business",
+                        "format": "number"
                     }
                 }
             }
