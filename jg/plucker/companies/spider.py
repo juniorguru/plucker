@@ -20,37 +20,40 @@ class Spider(BaseSpider):
     }
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
-        response = cast(TextResponse, response)
-        course_providers: list[dict] = response.json()
-        self.logger.info(f"Fetched {len(course_providers)} course providers")
-        for country_code in ["cz", "sk"]:
-            self.logger.info(
-                f"Filtering course providers for {country_code.upper()} "
-                f"({len(course_providers)} total)"
-            )
-            business_ids = sorted(
-                course_provider[f"{country_code}_business_id"]
-                for course_provider in course_providers
-                if course_provider[f"{country_code}_business_id"]
-            )
-            self.logger.info(
-                f"Found {len(business_ids)} course providers "
-                f"with {country_code.upper()} business IDs"
-            )
-            if business_ids:
-                yield Request(
-                    "https://api.merk.cz/company/mget/",
-                    method="POST",
-                    headers={
-                        "Authorization": f"Token {self.settings['MERK_API_KEY']}",
-                        "Content-Type": "application/json",
-                    },
-                    body=json.dumps(
-                        {"country_code": country_code, "regnos": business_ids}
-                    ),
-                    callback=self.parse_companies,
-                    cb_kwargs={"country_code": country_code},
+        if api_key := self.settings.get("MERK_API_KEY"):
+            response = cast(TextResponse, response)
+            course_providers: list[dict] = response.json()
+            self.logger.info(f"Fetched {len(course_providers)} course providers")
+            for country_code in ["cz", "sk"]:
+                self.logger.info(
+                    f"Filtering course providers for {country_code.upper()} "
+                    f"({len(course_providers)} total)"
                 )
+                business_ids = sorted(
+                    course_provider[f"{country_code}_business_id"]
+                    for course_provider in course_providers
+                    if course_provider[f"{country_code}_business_id"]
+                )
+                self.logger.info(
+                    f"Found {len(business_ids)} course providers "
+                    f"with {country_code.upper()} business IDs"
+                )
+                if business_ids:
+                    yield Request(
+                        "https://api.merk.cz/company/mget/",
+                        method="POST",
+                        headers={
+                            "Authorization": f"Token {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        body=json.dumps(
+                            {"country_code": country_code, "regnos": business_ids}
+                        ),
+                        callback=self.parse_companies,
+                        cb_kwargs={"country_code": country_code},
+                    )
+        else:
+            raise ValueError("Missing MERK_API_KEY environment variable")
 
     def parse_companies(
         self, response: Response, country_code: str
