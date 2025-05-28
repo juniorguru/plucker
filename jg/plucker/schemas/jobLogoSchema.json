@@ -1,0 +1,48 @@
+{
+    "title": "JobLogo",
+    "actorSpecification": 1,
+    "views": {
+        "titles": {
+            "title": "JobLogo",
+            "transformation": {
+                "fields": [
+                    "format",
+                    "height",
+                    "image_url",
+                    "original_image_url",
+                    "source_url",
+                    "width"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "format": {
+                        "label": "format",
+                        "format": "string"
+                    },
+                    "height": {
+                        "label": "height",
+                        "format": "number"
+                    },
+                    "image_url": {
+                        "label": "image_url",
+                        "format": "image"
+                    },
+                    "original_image_url": {
+                        "label": "original_image_url",
+                        "format": "image"
+                    },
+                    "source_url": {
+                        "label": "source_url",
+                        "format": "link"
+                    },
+                    "width": {
+                        "label": "width",
+                        "format": "number"
+                    }
+                }
+            }
+        }
+    }
+}

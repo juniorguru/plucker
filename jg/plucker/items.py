@@ -1,3 +1,5 @@
+from functools import cache
+
 from scrapy import Field, Item
 
 
@@ -24,6 +26,15 @@ class Job(Item):
 
     source = Field(required=True)
     source_urls = Field(required=True, apify_format="array")
+
+
+class JobLogo(Item):
+    image_url = Field(required=True, apify_format="image")
+    original_image_url = Field(required=True, apify_format="image")
+    width = Field(apify_format="number")
+    height = Field(apify_format="number")
+    format = Field(required=True, apify_format="string")
+    source_url = Field(required=True, apify_format="link")
 
 
 class JobCheck(Item):
@@ -71,3 +82,21 @@ class Followers(Item):
     date = Field(required=True, apify_format="date")
     name = Field(required=True)
     count = Field(required=True, apify_format="number")
+
+
+@cache
+def get_required_fields(item_class: type[Item]) -> set[str]:
+    return {
+        name
+        for name, kwargs in item_class.fields.items()
+        if kwargs.get("required") is True
+    }
+
+
+@cache
+def get_image_fields(item_class: type[Item]) -> set[str]:
+    return {
+        name
+        for name, kwargs in item_class.fields.items()
+        if kwargs.get("apify_format") == "image"
+    }

@@ -35,6 +35,7 @@ SPIDER_MIN_ITEMS = 10
 
 ITEM_PIPELINES = {
     "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
+    "jg.plucker.pipelines.ImagePipeline": 60,
 }
 
 CLOSESPIDER_ERRORCOUNT = 1

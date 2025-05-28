@@ -1,22 +1,13 @@
 import re
-from typing import Any, Generator, Iterable, Literal
+from typing import Any, Generator, Iterable
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
-from pydantic_core import Url
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
 
 from jg.plucker.items import JobCheck
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
-from jg.plucker.scrapers import evaluate_stats
-
-
-# Trying to be at least somewhat compatible with 'requestListSources'
-# See https://docs.apify.com/platform/actors/development/actor-definition/input-schema/specification/v1
-class Link(BaseModel):
-    url: Url
-    method: Literal["GET"] = "GET"
+from jg.plucker.scrapers import Link, evaluate_stats, parse_links
 
 
 class Spider(BaseSpider):
@@ -47,9 +38,7 @@ class Spider(BaseSpider):
 
     def __init__(self, name: str | None = None, links: list[Link] | None = None):
         super().__init__(name)
-        self._start_urls = [
-            str(link.url) for link in map(Link.model_validate, links or [])
-        ]
+        self._start_urls = parse_links(links)
 
     def start_requests(self) -> Iterable[Request]:
         if not self._start_urls:

@@ -44,7 +44,7 @@ def main(debug: bool = False):
     level = logging.DEBUG if debug else logging.INFO
     logging.getLogger().setLevel(level)
     logger.setLevel(level)
-    for name in ["asyncio", "filelock", "crawlee", "websockets.client"]:
+    for name in ["asyncio", "filelock", "crawlee", "websockets.client", "PIL"]:
         logging.getLogger(name).setLevel(logging.WARNING)
 
 

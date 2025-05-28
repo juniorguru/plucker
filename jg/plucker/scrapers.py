@@ -1,11 +1,11 @@
 import logging
-import os
 from pathlib import Path
-from typing import Any, Coroutine, Generator, Type
+from typing import Annotated, Any, Coroutine, Generator, Literal, Type
 
 from apify import Actor
 from apify.scrapy import run_scrapy_actor
 from apify.scrapy.utils import apply_apify_settings
+from pydantic import BaseModel, HttpUrl, PlainSerializer
 from scrapy import Item, Spider
 from scrapy.crawler import Crawler, CrawlerRunner
 from scrapy.settings import BaseSettings
@@ -17,6 +17,13 @@ from scrapy.utils.reactor import install_reactor
 
 
 logger = logging.getLogger("jg.plucker")
+
+
+# Trying to be at least somewhat compatible with 'requestListSources'
+# See https://docs.apify.com/platform/actors/development/actor-definition/input-schema/specification/v1
+class Link(BaseModel):
+    url: Annotated[HttpUrl, PlainSerializer(str)]
+    method: Literal["GET"] = "GET"
 
 
 def start_reactor(coroutine: Coroutine) -> None:
@@ -44,9 +51,6 @@ async def run_as_spider(
 async def run_as_actor(
     spider_class: Type[Spider], spider_params: dict[str, Any] | None
 ):
-    # workaround https://github.com/apify/apify-sdk-python/issues/401
-    os.environ["SCRAPY_SETTINGS_MODULE"] = "jg.plucker.settings"
-
     async with Actor:
         logger.info(f"Starting actor for spider {spider_class.name}")
 
@@ -152,3 +156,7 @@ def evaluate_stats(stats: StatsT, min_items: int):
             raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
+
+
+def parse_links(links: list[Link] | None) -> list[str]:
+    return [str(link.url) for link in map(Link.model_validate, links or [])]
