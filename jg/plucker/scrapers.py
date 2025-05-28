@@ -159,4 +159,4 @@ def evaluate_stats(stats: StatsT, min_items: int):
 
 
 def parse_links(links: list[Link] | None) -> list[str]:
-    return [str(link.url) for link in map(Link.model_validate, links or [])]
+    return list(set(str(link.url) for link in map(Link.model_validate, links or [])))

@@ -4,9 +4,9 @@ from typing import Generator
 from urllib.parse import urljoin
 
 from favicon import Icon, favicon
+from PIL import Image
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
-from PIL import Image
 
 from jg.plucker.items import JobLogo
 from jg.plucker.scrapers import Link, parse_links
@@ -75,10 +75,24 @@ class Spider(BaseSpider):
             )
         else:
             self.logger.debug("Assuming company homepage URL")
-            source_url = source_url or request.url
             favicon_url = urljoin(response.url, '/favicon.ico')
             self.logger.debug(f"Favicon URL: {favicon_url}")
-            yield Request(favicon_url, callback=self.parse, cb_kwargs={'source_url': source_url})
-            icons: set[Icon] = favicon.tags(response.url, html)
+            yield Request(
+                favicon_url,
+                callback=self.parse,
+                cb_kwargs={"source_url": source_url or request.url},
+                dont_filter=True,
+            )
+            icons: set[Icon] = {
+                icon
+                for icon in favicon.tags(response.url, html)
+                if icon.url != favicon_url
+            }
+            self.logger.debug(f"Found {len(icons)} other URLs in HTML tags")
             for icon in icons:
-                yield Request(icon.url, callback=self.parse, cb_kwargs={'source_url': source_url})
+                yield Request(
+                    icon.url,
+                    callback=self.parse,
+                    cb_kwargs={"source_url": source_url or request.url},
+                    dont_filter=True,
+                )
