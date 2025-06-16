@@ -66,18 +66,19 @@ resolved_reference = "511baeabb6fea2647be29fb7570edb8c5d8c3a3c"
 
 [[package]]
 name = "apify-client"
-version = "1.9.3"
+version = "1.11.0"
 description = "Apify API client for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "apify_client-1.9.3-py3-none-any.whl", hash = "sha256:6ccfd03ee5efe30e81ea1dc59f4b29eeeee3215b43946aa6b94fe76325eed262"},
-    {file = "apify_client-1.9.3.tar.gz", hash = "sha256:fb50a03c92ba21e9469a8ad207588b59a1de176a527d94ff68993d6c0a3a3b25"},
+    {file = "apify_client-1.11.0-py3-none-any.whl", hash = "sha256:9d691960bdbeee17624a2a82aafc4f0bfba9b48820a48f559b7eba76bf01cb3c"},
+    {file = "apify_client-1.11.0.tar.gz", hash = "sha256:c2e151754c35be9bc7c1028bf7cb127aeb1ffa2fbd1ec1ad7e97b901deb32e08"},
 ]
 
 [package.dependencies]
-apify-shared = ">=1.1.2"
+apify-shared = ">=1.4.1"
+colorama = ">=0.4.0,<0.5.0"
 httpx = ">=0.25"
 more-itertools = ">=10.0.0"
 
@@ -1933,14 +1934,14 @@ files = [
 
 [[package]]
 name = "pydantic"
-version = "2.11.5"
+version = "2.11.7"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pydantic-2.11.5-py3-none-any.whl", hash = "sha256:f9c26ba06f9747749ca1e5c94d6a85cb84254577553c8785576fd38fa64dc0f7"},
-    {file = "pydantic-2.11.5.tar.gz", hash = "sha256:7f853db3d0ce78ce8bbb148c401c2cdd6431b3473c0cdff2755c7690952a7b7a"},
+    {file = "pydantic-2.11.7-py3-none-any.whl", hash = "sha256:dde5df002701f6de26248661f6835bbe296a47bf73990135c7d07ce741b9623b"},
+    {file = "pydantic-2.11.7.tar.gz", hash = "sha256:d989c3c6cb79469287b1569f7447a17848c998458d49ebe294e975b9baf0f0db"},
 ]
 
 [package.dependencies]
@@ -3077,4 +3078,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "92c74dc2ef7562e17c1cdebca92cdf7bcaba2fb3bc53d5e62929319ccf5ff29f"
+content-hash = "a47a5ffaca7613fba9e4d2b61d3cbd3ba7ea0b884f68fba6003477f933066823"
