@@ -33,6 +33,8 @@ class Spider(BaseSpider):
 
     start_urls = []
 
+    min_items = 1
+
     def __init__(self, name: str | None = None, links: list[Link] | None = None):
         super().__init__(name)
         self.start_urls = parse_links(links)
