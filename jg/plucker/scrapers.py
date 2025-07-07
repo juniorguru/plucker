@@ -59,7 +59,8 @@ async def run_as_actor(
         logger.debug(f"Proxy config: {proxy_config!r}")
 
         settings = apply_apify_settings(proxy_config=proxy_config)
-        settings.set("HTTPCACHE_STORAGE", "jg.plucker.cache.CacheStorage")
+        settings["HTTPCACHE_STORAGE"] = "jg.plucker.cache.CacheStorage"
+        settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)

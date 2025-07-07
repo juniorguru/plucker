@@ -30,7 +30,12 @@ class ImagePipeline:
         self._kvs = None
 
     async def process_item(self, item: Item, spider: Spider) -> Item:
-        self._kvs = self._kvs or await Actor.open_key_value_store()
+        try:
+            self._kvs = self._kvs or await Actor.open_key_value_store()
+        except RuntimeError as e:
+            logger.error(f"Failed to open key-value store: {e}")
+            return item
+
         item_class = item.__class__
         for field in get_image_fields(item_class):
             value = item[field]

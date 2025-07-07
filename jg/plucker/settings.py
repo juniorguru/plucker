@@ -33,10 +33,7 @@ SPIDER_LOADER_SPIDERS_PATH = "./jg/plucker"
 # Custom setting, see 'run_spider()' and 'raise_for_stats()'
 SPIDER_MIN_ITEMS = 10
 
-ITEM_PIPELINES = {
-    "jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50,
-    "jg.plucker.pipelines.ImagePipeline": 60,
-}
+ITEM_PIPELINES = {"jg.plucker.pipelines.RequiredFieldsFilterPipeline": 50}
 
 CLOSESPIDER_ERRORCOUNT = 1
 
