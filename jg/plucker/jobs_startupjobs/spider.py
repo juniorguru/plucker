@@ -19,6 +19,8 @@ class Spider(BaseSpider):
 
     start_urls = [EXPORT_URL]
 
+    min_items = 5
+
     def parse(self, response: XmlResponse) -> Generator[Job, None, None]:
         for n, offer in enumerate(response.xpath("//offer"), start=1):
             loader = Loader(item=Job(), response=response)
