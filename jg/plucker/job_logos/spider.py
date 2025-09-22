@@ -18,7 +18,7 @@ class Format(StrEnum):
     ICO = "ico"
 
     @classmethod
-    def from_content_type(cls, content_type: str) -> 'Format':
+    def from_content_type(cls, content_type: str) -> "Format":
         if content_type.startswith("image/png"):
             return cls.PNG
         elif content_type.startswith("image/jpeg"):
@@ -39,7 +39,9 @@ class Spider(BaseSpider):
         super().__init__(name)
         self.start_urls = parse_links(links)
 
-    def parse(self, response: Response, source_url: str | None = None) -> Generator[Request | JobLogo, None, None]:
+    def parse(
+        self, response: Response, source_url: str | None = None
+    ) -> Generator[Request | JobLogo, None, None]:
         if not response.request:
             raise ValueError("Response does not have a request")
         request = response.request
@@ -49,11 +51,11 @@ class Spider(BaseSpider):
             details.append(f"redirected from {request.url}")
         if source_url:
             details.append(f"originally {source_url}")
-        details = f" ({' '.join(details)})" if details else ''
+        details = f" ({' '.join(details)})" if details else ""
         self.logger.info(f"Processing {response.url}{details}")
 
-        content_type = (response.headers.get('Content-Type') or b'').decode('utf8')
-        if not content_type.startswith(('image/', 'text/')):
+        content_type = (response.headers.get("Content-Type") or b"").decode("utf8")
+        if not content_type.startswith(("image/", "text/")):
             self.logger.warning(f"Declared content type: {content_type!r}")
         else:
             self.logger.debug(f"Declared content type: {content_type!r}")
@@ -77,7 +79,7 @@ class Spider(BaseSpider):
             )
         else:
             self.logger.debug("Assuming company homepage URL")
-            favicon_url = urljoin(response.url, '/favicon.ico')
+            favicon_url = urljoin(response.url, "/favicon.ico")
             self.logger.debug(f"Favicon URL: {favicon_url}")
             yield Request(
                 favicon_url,
