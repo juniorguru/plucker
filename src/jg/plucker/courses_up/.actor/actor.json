@@ -4,26 +4,26 @@
   "title": "courses-up",
   "version": "0.0",
   "input": {
-        "title": "Input",
+    "title": "Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "proxyConfig": {
+        "title": "Proxy config",
+        "description": "Configuration for Apify Proxy",
         "type": "object",
-        "schemaVersion": 1,
-        "properties": {
-            "proxyConfig": {
-                "title": "Proxy config",
-                "description": "Configuration for Apify Proxy",
-                "type": "object",
-                "editor": "proxy",
-                "prefill": {
-                    "useApifyProxy": true,
-                    "apifyProxyGroups": []
-                },
-                "default": {
-                    "useApifyProxy": true,
-                    "apifyProxyGroups": []
-                }
-            }
+        "editor": "proxy",
+        "prefill": {
+          "useApifyProxy": true,
+          "apifyProxyGroups": []
+        },
+        "default": {
+          "useApifyProxy": true,
+          "apifyProxyGroups": []
         }
-    },
+      }
+    }
+  },
   "dockerfile": "../../../../../Dockerfile",
   "dockerContextDir": "../../../../../",
   "storages": {

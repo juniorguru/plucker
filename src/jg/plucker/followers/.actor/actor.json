@@ -15,11 +15,15 @@
         "editor": "proxy",
         "prefill": {
           "useApifyProxy": true,
-          "apifyProxyGroups": ["RESIDENTIAL"]
+          "apifyProxyGroups": [
+            "RESIDENTIAL"
+          ]
         },
         "default": {
           "useApifyProxy": true,
-          "apifyProxyGroups": ["RESIDENTIAL"]
+          "apifyProxyGroups": [
+            "RESIDENTIAL"
+          ]
         }
       }
     }

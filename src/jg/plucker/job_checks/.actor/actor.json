@@ -9,10 +9,14 @@
     "schemaVersion": 1,
     "properties": {
       "links": {
-          "title": "Links to check",
-          "type": "array",
-          "editor": "requestListSources",
-          "prefill": [{"url": "https://www.jobs.cz/fp/seyfor-a-s-5591518/2000270091/"}]
+        "title": "Links to check",
+        "type": "array",
+        "editor": "requestListSources",
+        "prefill": [
+          {
+            "url": "https://www.jobs.cz/fp/seyfor-a-s-5591518/2000270091/"
+          }
+        ]
       },
       "proxyConfig": {
         "title": "Proxy config",
@@ -21,11 +25,15 @@
         "editor": "proxy",
         "prefill": {
           "useApifyProxy": true,
-          "apifyProxyGroups": ["RESIDENTIAL"]
+          "apifyProxyGroups": [
+            "RESIDENTIAL"
+          ]
         },
         "default": {
           "useApifyProxy": true,
-          "apifyProxyGroups": ["RESIDENTIAL"]
+          "apifyProxyGroups": [
+            "RESIDENTIAL"
+          ]
         }
       }
     }

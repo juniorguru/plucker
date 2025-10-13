@@ -1,11 +1,11 @@
 {
-    "actorSpecification": 1,
-    "name": "exchange-rates",
-    "title": "exchange-rates",
-    "version": "0.0",
-    "dockerfile": "../../../../../Dockerfile",
-    "dockerContextDir": "../../../../../",
-    "storages": {
-        "dataset": "../../schemas/exchangeRateSchema.json"
-    }
+  "actorSpecification": 1,
+  "name": "exchange-rates",
+  "title": "exchange-rates",
+  "version": "0.0",
+  "dockerfile": "../../../../../Dockerfile",
+  "dockerContextDir": "../../../../../",
+  "storages": {
+    "dataset": "../../schemas/exchangeRateSchema.json"
+  }
 }
