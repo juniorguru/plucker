@@ -125,11 +125,13 @@ def schemas(items_module_name: str, output_path: Path):
 )
 @click.option("--build-timeout", default=5 * 60, type=int, help="In seconds.")
 @click.option("--build-polling-wait", default=30, type=int, help="In seconds.")
+@click.option("--build-attempts", default=2, type=int)
 def build(
     token: str,
     git_repo_url_match: str,
     build_timeout: int,
     build_polling_wait: int,
+    build_attempts: int,
 ):
     client = ApifyClient(token=token)
     success = False
@@ -145,7 +147,7 @@ def build(
 
             git_repo_url = latest_version.get("gitRepoUrl") or ""
             if git_repo_url.startswith(git_repo_url_match):
-                for attempt in range(1, 2):
+                for attempt in range(1, build_attempts + 1):
                     logger.info(f"Building actor… (attempt #{attempt})")
                     build_info = actor_client.build(
                         version_number=latest_version["versionNumber"]
