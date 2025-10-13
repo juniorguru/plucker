@@ -1,4 +1,4 @@
-FROM apify/actor-python:3.12
+FROM apify/actor-python:3.13
 ARG ACTOR_PATH_IN_DOCKER_CONTEXT
 
 RUN rm -rf /usr/src/app/*
@@ -8,19 +8,12 @@ COPY . ./
 
 RUN echo "Python version:" \
  && python --version \
- && echo "Pip version:" \
- && pip --version \
- && echo "Installing Poetry:" \
- && pip install --no-cache-dir poetry==1.8.5 \
+ && echo "uv version:" \
+ && uv --version \
  && echo "Installing dependencies:" \
- && poetry config cache-dir /tmp/.poetry-cache \
- && poetry config virtualenvs.in-project true \
- && poetry install --only=main --no-interaction --no-ansi \
- && rm -rf /tmp/.poetry-cache \
- && echo "All installed Python packages:" \
- && pip freeze
+ && uv sync
 
-RUN python3 -m compileall -q ./jg/plucker
+RUN python3 -m compileall -q ./src/jg/plucker
 
 ENV ACTOR_PATH_IN_DOCKER_CONTEXT="${ACTOR_PATH_IN_DOCKER_CONTEXT}"
-CMD ["poetry", "run", "plucker", "--debug", "crawl", "--apify"]
+CMD ["uv", "run", "plucker", "--debug", "crawl", "--apify"]

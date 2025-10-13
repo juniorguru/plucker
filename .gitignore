@@ -33,7 +33,7 @@ node_modules
 .venv
 
 # cookiecutter
-jg/plucker/jobs_actor
+src/jg/plucker/jobs_actor
 
 # ad-hoc spider input and output
 params.json

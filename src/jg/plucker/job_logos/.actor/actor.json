@@ -1,9 +1,8 @@
 {
   "actorSpecification": 1,
-  "name": "{{ cookiecutter.scraper_name }}",
-  "title": "{{ cookiecutter.scraper_name }}",
+  "name": "job-logos",
+  "title": "job-logos",
   "version": "0.0",
-  {% if cookiecutter.use_proxy -%}
   "input": {
     "title": "Input",
     "type": "object",
@@ -24,10 +23,9 @@
       }
     }
   },
-  {% endif -%}
   "dockerfile": "../../../../../Dockerfile",
   "dockerContextDir": "../../../../../",
   "storages": {
-    "dataset": "../../schemas/{{ cookiecutter.schema_name }}"
+    "dataset": "../../schemas/jobLogoSchema.json"
   }
 }

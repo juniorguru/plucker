@@ -61,13 +61,13 @@ You can access the params inside the spider class as `self.settings.get("SPIDER_
 Look at existing code and follow conventions.
 Creating new scraper, e.g. `gravel-bikes`:
 
-1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `jg/plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
+1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `src/jg/plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
     Run `plucker schemas` to generate schema for Apify.
     Should the new scraper produce items already known to this codebase, such as jobs, you can skip this step.
 1.  Run `plucker new`, answer questions.
     It is a [cookiecutter](https://github.com/cookiecutter/cookiecutter).
     It takes the `scraper_template` directory and creates a scaffolding of a new scraper for you.
-1.  Fill the newly created `jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
+1.  Fill the newly created `src/jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
     See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) You can also learn scraping from the Apify's [Web scraping basics](https://docs.apify.com/academy/scraping-basics-python) course.
 1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
 1.  Run the spider with `scrapy crawl gravel-bikes`.

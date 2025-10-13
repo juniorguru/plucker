@@ -14,7 +14,7 @@ from jg.plucker.scrapers import (
 
 
 spider_packages = [
-    spider_path.parent for spider_path in Path("jg/plucker").rglob("spider.py")
+    spider_path.parent for spider_path in Path("src/jg/plucker").rglob("spider.py")
 ]
 
 assert len(spider_packages) > 0, "no spider packages found"
@@ -168,14 +168,14 @@ def test_evaluate_stats_min_items_failing():
 
 def test_get_spider_module():
     assert (
-        get_spider_module_name("jg/plucker/exchange_rates")
+        get_spider_module_name("src/jg/plucker/exchange_rates")
         == "jg.plucker.exchange_rates.spider"
     )
 
 
 def test_get_spider_module_path():
     assert (
-        get_spider_module_name(Path("jg/plucker/exchange_rates"))
+        get_spider_module_name(Path("src/jg/plucker/exchange_rates"))
         == "jg.plucker.exchange_rates.spider"
     )
 

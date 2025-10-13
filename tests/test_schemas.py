@@ -26,7 +26,7 @@ assert len(item_classes) > 0, f"no item classes found in {items.__file__}"
 def test_schema_exists(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
-    schema_path = Path(f"jg/plucker/schemas/{schema_name}Schema.json")
+    schema_path = Path(f"src/jg/plucker/schemas/{schema_name}Schema.json")
 
     assert schema_path.exists()
 
@@ -38,6 +38,6 @@ def test_schema_exists(item_class: type[Item]):
 def test_schema_is_updated(item_class: type[Item]):
     item_class_name = item_class.__name__
     schema_name = item_class_name[0].lower() + item_class_name[1:]
-    schema_path = Path(f"jg/plucker/schemas/{schema_name}Schema.json")
+    schema_path = Path(f"src/jg/plucker/schemas/{schema_name}Schema.json")
 
     assert json.loads(schema_path.read_text()) == generate_schema(item_class)

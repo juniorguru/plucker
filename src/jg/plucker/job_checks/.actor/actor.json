@@ -1,14 +1,19 @@
 {
   "actorSpecification": 1,
-  "name": "{{ cookiecutter.scraper_name }}",
-  "title": "{{ cookiecutter.scraper_name }}",
+  "name": "job-checks",
+  "title": "job-checks",
   "version": "0.0",
-  {% if cookiecutter.use_proxy -%}
   "input": {
     "title": "Input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+      "links": {
+          "title": "Links to check",
+          "type": "array",
+          "editor": "requestListSources",
+          "prefill": [{"url": "https://www.jobs.cz/fp/seyfor-a-s-5591518/2000270091/"}]
+      },
       "proxyConfig": {
         "title": "Proxy config",
         "type": "object",
@@ -24,10 +29,9 @@
       }
     }
   },
-  {% endif -%}
   "dockerfile": "../../../../../Dockerfile",
   "dockerContextDir": "../../../../../",
   "storages": {
-    "dataset": "../../schemas/{{ cookiecutter.schema_name }}"
+    "dataset": "../../schemas/jobCheckSchema.json"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "meetups-pyvo",
+  "title": "meetups-pyvo",
+  "version": "0.0",
+  "dockerfile": "../../../../../Dockerfile",
+  "dockerContextDir": "../../../../../",
+  "storages": {
+    "dataset": "../../schemas/meetupSchema.json"
+  }
+}

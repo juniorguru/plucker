@@ -1,38 +1,40 @@
-[tool.poetry]
+[project]
 name = "jg.plucker"
-version = "0.0"
+version = "0.0.1"
 description = "Junior Guru scrapers"
-authors = ["Honza Javorek <honza@junior.guru>"]
-license = "AGPL-3.0-only"
 readme = "README.md"
-homepage = "https://junior.guru/"
-repository = "https://github.com/juniorguru/plucker/"
-packages = [{ include = "jg" }]
+authors = [{name = "Honza Javorek", email = "honza@junior.guru"}]
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.13"
+dependencies = [
+    "apify[scrapy]>=3.0.1",
+    "apify-client>=2.1.0",  # deployment of actors, monitoring, automation
+    "apify-shared",  # importing a few enums
+    "click>=8.3.0",
+    "diskcache>=5.6.3",
+    "favicon>=0.7.0",
+    "ics>=0.8.0.dev0",
+    "linkedin-api>=2.3.1",
+    "lxml>=5.3.0",
+    "pillow>=11.3.0",
+    "pydantic>=2.11.10",
+    "scrapy>=2.13.3",
+    "teemup>=1.2.1",
+]
 
-[tool.poetry.scripts]
+[project.urls]
+repository = "https://github.com/juniorguru/plucker"
+
+[project.scripts]
 plucker = "jg.plucker.cli:main"
 
-[tool.poetry.dependencies]
-python = "3.12.*"
-apify = { version = "3.0.1", extras = ["scrapy"] }
-apify-client = "2.1.0"  # deployment of actors, monitoring, automation
-apify-shared = "*"  # importing a few enums
-click = "8.3.0"
-diskcache = "5.6.3"
-favicon = "0.7.0"
-ics = { version = "0.8.0.dev0", allow-prereleases = true }
-linkedin-api = "2.3.1"
-lxml = "5.3.0"
-pillow = "11.3.0"
-pydantic = "2.11.10"
-scrapy = "2.13.3"
-teemup = "1.2.1"
-
-[tool.poetry.group.dev.dependencies]
-cookiecutter = "2.6.0"
-pytest = "8.4.2"
-pytest-ruff = "0.5"
-ruff = "0.13.*"
+[dependency-groups]
+dev = [
+    "cookiecutter>=2.6.0",
+    "pytest>=8.4.2",
+    "pytest-ruff>=0.5",
+    "ruff>=0.13.0",
+]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"
@@ -55,5 +57,8 @@ combine-as-imports = true
 lines-after-imports = 2
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "jg.plucker"
