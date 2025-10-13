@@ -11,9 +11,10 @@ DEFAULT_REQUEST_HEADERS = {
     "Accept": "*/*",
     "Accept-Language": "cs;q=0.8,en;q=0.6",
     "DNT": "1",
+    "Sec-Gpc": "1",
 }
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:136.0) Gecko/20100101 Firefox/136.0"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0"
 
 ROBOTSTXT_OBEY = False
 
