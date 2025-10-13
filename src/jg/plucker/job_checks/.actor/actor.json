@@ -10,6 +10,7 @@
     "properties": {
       "links": {
         "title": "Links to check",
+        "description": "List of job posting URLs to check.",
         "type": "array",
         "editor": "requestListSources",
         "prefill": [
