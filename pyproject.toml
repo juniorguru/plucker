@@ -5,7 +5,7 @@ description = "Junior Guru scrapers"
 readme = "README.md"
 authors = [{name = "Honza Javorek", email = "honza@junior.guru"}]
 license = {text = "AGPL-3.0-only"}
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "apify[scrapy]>=3.0.1",
     "apify-client>=2.1.0",  # deployment of actors, monitoring, automation
