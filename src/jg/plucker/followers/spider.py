@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import date
-from typing import Generator
+from typing import AsyncGenerator
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
@@ -14,7 +14,7 @@ class Spider(BaseSpider):
 
     min_items = 0
 
-    def start_requests(self) -> Generator[Request, None, None]:
+    async def start(self) -> AsyncGenerator[Request, None]:
         today = date.today()
         yield Request(
             "https://mastodonczech.cz/@honzajavorek",

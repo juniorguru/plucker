@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
@@ -11,7 +11,7 @@ from jg.plucker.items import ExchangeRate
 class Spider(BaseSpider):
     name = "exchange-rates"
 
-    def start_requests(self) -> Generator[Request, None, None]:
+    async def start(self) -> AsyncGenerator[Request, None]:
         monday = get_last_monday(date.today())
         yield Request(
             "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/"

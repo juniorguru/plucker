@@ -4,14 +4,14 @@ import re
 from datetime import datetime
 from multiprocessing import Process, Queue
 from pathlib import Path
-from typing import Generator, cast
+from typing import AsyncGenerator, Generator, cast
 from urllib.parse import urlparse
 
 from apify.log import ActorLogFormatter
 from diskcache import Cache
 from linkedin_api import Linkedin as BaseLinkedIn
 from scrapy import Request, Spider as BaseSpider
-from scrapy.http.response.html import HtmlResponse
+from scrapy.http import Response
 from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
@@ -58,7 +58,7 @@ class Spider(BaseSpider):
 
     start_url = "https://junior.guru"
 
-    def start_requests(self) -> Generator[Request, None, None]:
+    async def start(self) -> AsyncGenerator[Request, None]:
         yield Request(self.start_url, self.parse, errback=self.handle_error)
 
     # This doesn't seem to work
@@ -69,7 +69,7 @@ class Spider(BaseSpider):
                 self.start_url, self.parse, errback=self.handle_error, dont_filter=True
             )
 
-    def parse(self, response: HtmlResponse) -> Generator[Job | Request, None, None]:
+    def parse(self, response: Response) -> Generator[Job | Request, None, None]:
         queue = Queue()
         scrape_proc = Process(
             target=linkedin_task,

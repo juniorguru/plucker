@@ -1,8 +1,8 @@
-from typing import Generator, Iterable, NotRequired, TypedDict
+from typing import AsyncGenerator, Generator, NotRequired, TypedDict
 
 import teemup
 from scrapy import Spider as BaseSpider
-from scrapy.http import Request, TextResponse
+from scrapy.http import Request, Response
 
 from jg.plucker.items import Meetup
 
@@ -83,7 +83,7 @@ class Spider(BaseSpider):
 
     min_items = 1
 
-    def start_requests(self) -> Iterable[Request]:
+    async def start(self) -> AsyncGenerator[Request, None]:
         for series_url in GROUPS:
             yield Request(
                 f"{series_url.rstrip('/')}/events/",
@@ -92,7 +92,7 @@ class Spider(BaseSpider):
             )
 
     def parse(
-        self, response: TextResponse, series_url: str, group: GroupSpec
+        self, response: Response, series_url: str, group: GroupSpec
     ) -> Generator[Meetup, None, None]:
         self.logger.info(f"Parsing {response.url}")
         events = teemup.parse(response.text)

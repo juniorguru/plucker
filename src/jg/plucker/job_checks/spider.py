@@ -1,5 +1,5 @@
 import re
-from typing import Any, Generator, Iterable
+from typing import Any, AsyncGenerator, Generator
 from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider
@@ -40,7 +40,7 @@ class Spider(BaseSpider):
         super().__init__(name)
         self._start_urls = parse_links(links)
 
-    def start_requests(self) -> Iterable[Request]:
+    async def start(self) -> AsyncGenerator[Request, None]:
         if not self._start_urls:
             raise ValueError("No links provided")
         self.logger.info(f"Loading {len(self._start_urls)} links")
