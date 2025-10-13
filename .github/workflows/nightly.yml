@@ -12,24 +12,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Install Poetry
-        run: pipx install poetry==1.8.5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: pyproject.toml
-          cache: poetry
-
-      - name: Install Python dependencies
-        run: poetry install
+      - uses: astral-sh/setup-uv@v7
 
       - name: Build
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: poetry run plucker build
+        run: uv run plucker build
 
       - name: Check
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: poetry run plucker check
+        run: uv run plucker check
