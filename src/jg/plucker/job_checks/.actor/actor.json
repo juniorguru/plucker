@@ -16,6 +16,7 @@
       },
       "proxyConfig": {
         "title": "Proxy config",
+        "description": "Configuration for Apify Proxy",
         "type": "object",
         "editor": "proxy",
         "prefill": {

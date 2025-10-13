@@ -146,7 +146,7 @@ def build(
             git_repo_url = latest_version.get("gitRepoUrl") or ""
             if git_repo_url.startswith(git_repo_url_match):
                 for attempt in range(1, 2):
-                    logger.info("Building actor…")
+                    logger.info(f"Building actor… (attempt #{attempt})")
                     build_info = actor_client.build(
                         version_number=latest_version["versionNumber"]
                     )
