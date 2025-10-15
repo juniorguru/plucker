@@ -7,7 +7,7 @@ authors = [{name = "Honza Javorek", email = "honza@junior.guru"}]
 license = {text = "AGPL-3.0-only"}
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "apify[scrapy]@git+https://github.com/apify/apify-sdk-python.git@f242d8e225ab9a6de1bff62744d39d8039bf529d",  # https://github.com/apify/apify-sdk-python/issues/627
+    "apify[scrapy]@git+https://github.com/apify/apify-sdk-python.git@fix-scrapy-validation-error",  # https://github.com/apify/apify-sdk-python/issues/627
     "apify-client>=2.1.0",  # deployment of actors, monitoring, automation
     "apify-shared",  # importing a few enums
     "click>=8.3.0",
@@ -57,7 +57,7 @@ combine-as-imports = true
 lines-after-imports = 2
 
 [build-system]
-requires = ["uv_build>=0.8.11,<0.10.0"]
+requires = ["uv_build>=0.8.11,<0.9.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
