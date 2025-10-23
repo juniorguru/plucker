@@ -44,9 +44,7 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
 EXTENSIONS = {"scrapy.extensions.memusage.MemoryUsage": None}
 
-LINKEDIN_USERNAME = os.getenv("LINKEDIN_USERNAME")
-
-LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
+APIFY_TOKEN = os.getenv("APIFY_TOKEN")
 
 MERK_API_KEY = os.getenv("MERK_API_KEY")
 

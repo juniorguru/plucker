@@ -1,18 +1,12 @@
-import json
-import logging
 import re
-from datetime import datetime
-from multiprocessing import Process, Queue
-from pathlib import Path
-from typing import AsyncGenerator, Generator, cast
-from urllib.parse import urlparse
+from datetime import UTC, date, datetime, timedelta
+from pprint import pformat
+from typing import AsyncGenerator
+from urllib.parse import quote, urlparse
 
-from apify.log import ActorLogFormatter
-from diskcache import Cache
-from linkedin_api import Linkedin as BaseLinkedIn
-from scrapy import Request, Spider as BaseSpider
-from scrapy.http import Response
-from twisted.python.failure import Failure
+from apify_client import ApifyClientAsync
+from apify_shared.consts import ActorJobStatus
+from scrapy import Spider as BaseSpider
 
 from jg.plucker.items import Job
 from jg.plucker.url_params import (
@@ -23,27 +17,8 @@ from jg.plucker.url_params import (
 )
 
 
-class LinkedIn(BaseLinkedIn):
-    def _fetch(self, uri: str, *args, **kwargs):
-        # Patch which gives us more job data
-        if uri.startswith("/jobs/jobPostings/"):
-            kwargs["params"] = {
-                "decorationId": "com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-64",
-            }
-        return super()._fetch(uri, *args, **kwargs)
-
-
 class Spider(BaseSpider):
-    # https://github.com/everping/Linkedin-Authentication-Challenge/tree/master
-    # https://github.com/tomquirk/linkedin-api/issues/331
-    # https://github.com/tomquirk/linkedin-api/issues/392
-    # https://github.com/tomquirk/linkedin-api/issues/78
-
     name = "jobs-linkedin"
-
-    cache_dir = Path.cwd() / ".linkedin_cache"
-
-    cache_expire = 60 * 60 * 24
 
     search_queries = [
         "junior software engineer",
@@ -54,184 +29,63 @@ class Spider(BaseSpider):
         "junior data",
     ]
 
-    locations = ["Czechia", "Slovakia"]
+    locations = [
+        ("Czechia", "104508036"),
+        ("Slovakia", "103119917"),
+    ]
 
-    start_url = "https://junior.guru"
+    async def start(self) -> AsyncGenerator[Job, None]:
+        client = ApifyClientAsync(token=self.settings.get("APIFY_TOKEN"))
+        li_actor = client.actor("curious_coder/linkedin-jobs-scraper")
 
-    async def start(self) -> AsyncGenerator[Request, None]:
-        yield Request(self.start_url, self.parse, errback=self.handle_error)
-
-    # This doesn't seem to work
-    def handle_error(self, failure: Failure) -> Generator[Request, None, None]:
-        self.logger.error(repr(failure))
-        if "CHALLENGE" in failure.getErrorMessage():
-            yield Request(
-                self.start_url, self.parse, errback=self.handle_error, dont_filter=True
+        li_runs_listing = await li_actor.runs().list(
+            status=ActorJobStatus.SUCCEEDED,
+            desc=True,
+            limit=1,
+            started_after=datetime.now(UTC) - timedelta(hours=24),
+        )
+        if li_runs := li_runs_listing.items:
+            li_run = li_runs[0]
+            self.logger.info(
+                f"Reusing LinkedIn scraper run from {li_run['startedAt']:%Y-%m-%d}: "
+                f"{li_run['id']} (dataset {li_run['defaultDatasetId']})"
             )
-
-    def parse(self, response: Response) -> Generator[Job | Request, None, None]:
-        queue = Queue()
-        scrape_proc = Process(
-            target=linkedin_task,
-            args=(
-                self.settings["LINKEDIN_USERNAME"],
-                self.settings["LINKEDIN_PASSWORD"],
-                queue,
-                self.search_queries,
-                self.locations,
-                response.request.meta.get("proxy") if response.request else None,
-                self.cache_dir,
-                self.cache_expire,
-                self.logger.name,
-                self.logger.getEffectiveLevel(),
-            ),
-        )
-        try:
-            scrape_proc.start()
-            while True:
-                if job_data := queue.get():
-                    if error := job_data.get("error"):
-                        raise RuntimeError(error)
-                    try:
-                        yield create_job(job_data)
-                    except NotImplementedError as e:
-                        self.logger.warning(f"Failed to create job: {e}")
-                    except Exception:
-                        self.logger.error(
-                            f"Failed to create job:\n\n"
-                            f"{json.dumps(job_data, indent=2, ensure_ascii=False)}"
-                        )
-                        raise
-                else:
-                    break
-        except Exception:
-            self.logger.debug("Got exception, terminating task")
-            scrape_proc.terminate()
-            raise
-        finally:
-            scrape_proc.join()
-
-
-def linkedin_task(
-    username: str,
-    password: str,
-    queue: Queue,
-    search_queries: list[str],
-    locations: list[str],
-    proxy: str | None,
-    cache_dir: str | Path,
-    cache_expire: int,
-    logger_name: str,
-    logger_level: int,
-):
-    if not username or not password:
-        raise ValueError("Missing LinkedIn credentials")
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(ActorLogFormatter(include_logger_name=True))
-    logging.basicConfig(level=logger_level, handlers=[handler])
-    logging.basicConfig = lambda *args, **kwargs: None
-    logger = logging.getLogger(logger_name)
-
-    try:
-        logger.info(f"Proxy: {proxy}")
-        api = LinkedIn(
-            username,
-            password,
-            cookies_dir=f"{cache_dir}/",
-            proxies={"http": proxy, "https": proxy},
-            authenticate=True,
-        )
-        cache = Cache(Path(cache_dir) / "jobs")
-
-        jobs = cast(list, cache.get("job-ids"))
-        if not jobs:
-            jobs = set()
-            for search_query in search_queries:
-                for location in locations:
-                    logger.info(f"Searching for {search_query!r} @ {location}")
-                    results = api.search_jobs(
-                        search_query,
-                        experience=["1", "2", "3"],
-                        location_name=location,
-                        listed_at=60 * 60 * 24 * 7 * 4,
-                        distance=200,
-                    )
-                    jobs.update(
-                        result["entityUrn"].split(":")[-1] for result in results
-                    )
-            jobs = sorted(jobs)
-            cache.set("job-ids", jobs, expire=cache_expire)
-
-        jobs_count = len(jobs)
-        logger.info(f"Loaded {jobs_count} job IDs")
-
-        for i, job_id in enumerate(jobs):
-            logger.info(f"Job {get_job_url(job_id)} ({i + 1}/{jobs_count})")
-            cache_key = f"job-{job_id}"
-            job_data = cast(dict, cache.get(cache_key))
-            if not job_data:
-                logger.info("Fetching…")
-                job_data = api.get_job(job_id)
-                cache.set(cache_key, job_data, expire=cache_expire)
-            queue.put(job_data)
-    except BaseException as e:
-        logger.exception(e)
-        queue.put({"error": f"{e.__class__.__name__} / {e or '(no message)'}"})
-    finally:
-        queue.put(None)
-
-
-def create_job(data: dict) -> Job:
-    company_details = data["companyDetails"]
-    try:
-        company_wrapper = (
-            company_details
-            ["com.linkedin.voyager.deco.jobs.web.shared.WebJobPostingCompany"]
-        )  # fmt: skip
-    except KeyError:
-        company_name = (
-            company_details
-            ["com.linkedin.voyager.jobs.JobPostingCompanyName"]
-            ["companyName"]
-        )  # fmt: skip
-        logo_urls = []
-    else:
-        if "companyResolutionResult" not in company_wrapper:
-            raise NotImplementedError("Company doesn't exist (anymore?)")
-        company = company_wrapper["companyResolutionResult"]
-        company_name = company["name"]
-        try:
-            logo = company["logo"]["image"]["com.linkedin.common.VectorImage"]
-        except KeyError:
-            logo_urls = []
+            li_dataset = client.dataset(li_run["defaultDatasetId"])
         else:
-            logo_urls = [
-                logo["rootUrl"] + artifact["fileIdentifyingUrlPathSegment"]
-                for artifact in logo["artifacts"]
+            urls = [
+                f"https://www.linkedin.com/jobs/search?keywords={quote(query)}&location={quote(location)}&geoId={geo_id}&f_TPR=r604800&position=1&pageNum=0"
+                for query in self.search_queries
+                for location, geo_id in self.locations
             ]
+            self.logger.info(f"Scraping {len(urls)} URLs:\n{pformat(urls)}")
 
-    offsite_apply = data["applyMethod"].get("com.linkedin.voyager.jobs.OffsiteApply")
-    if offsite_apply:
-        apply_url = offsite_apply["companyApplyUrl"]
-        apply_url = clean_url(clean_validated_url(clean_proxied_url(apply_url)))
-    else:
-        apply_url = None
+            run_input = {"count": 1000, "scrapeCompany": True, "urls": urls}
+            self.logger.debug(f"LinkedIn scraper input data:\n{pformat(run_input)}")
+            self.logger.info("Starting the LinkedIn scraper actor...")
+            li_run = await li_actor.call(run_input=run_input)
+            if li_run:
+                li_dataset = client.dataset(li_run["defaultDatasetId"])
+            else:
+                raise RuntimeError("Failed to call the LinkedIn scraper actor")
 
-    return Job(
-        title=data["title"],
-        posted_on=datetime.fromtimestamp(data["originalListedAt"] / 1e3),
-        url=get_job_url(data["jobPostingId"]),
-        apply_url=apply_url,
-        company_name=company_name,
-        company_logo_urls=logo_urls,
-        locations_raw=data["formattedLocation"],
-        remote=data["workRemoteAllowed"],
-        employment_types=[data["employmentStatus"].split(":")[-1]],
-        description_html=data["description"]["text"],
-        source="linkedin",
-        source_urls=[data["dashEntityUrn"]],
-    )
+        async for item in li_dataset.iterate_items():
+            self.logger.debug(f"LinkedIn scraper item:\n{pformat(item)}")
+            yield Job(
+                title=item["title"],
+                posted_on=date.fromisoformat(item["postedAt"]),
+                url=get_job_url(get_job_id(item["link"])),
+                apply_url=clean_url(
+                    clean_validated_url(clean_proxied_url(item["applyUrl"]))
+                ),
+                company_name=item["companyName"],
+                company_url=item["companyWebsite"],
+                company_logo_urls=[item["companyLogo"]],
+                locations_raw=item["location"],
+                employment_types=item["employmentType"],
+                description_html=item["descriptionHtml"],
+                source="linkedin",
+                source_urls=[item["inputUrl"]],
+            )
 
 
 def get_job_url(job_id: str) -> str:
