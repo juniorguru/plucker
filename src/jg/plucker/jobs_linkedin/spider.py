@@ -82,13 +82,14 @@ class Spider(BaseSpider):
 
         for item in li_items_listing.items:
             # self.logger.debug(f"LinkedIn scraper item:\n{pformat(item)}")
+            apply_url = clean_url(
+                clean_validated_url(clean_proxied_url(item["applyUrl"]))
+            )
             yield Job(
                 title=item["title"],
                 posted_on=date.fromisoformat(item["postedAt"]),
                 url=get_job_url(get_job_id(item["link"])),
-                apply_url=clean_url(
-                    clean_validated_url(clean_proxied_url(item["applyUrl"]))
-                ),
+                apply_url=apply_url or None,
                 company_name=item["companyName"],
                 company_url=item.get("companyWebsite"),
                 company_logo_urls=[item["companyLogo"]],
