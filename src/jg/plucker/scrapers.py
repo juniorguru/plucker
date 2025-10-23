@@ -61,6 +61,7 @@ async def run_as_actor(
         settings = apply_apify_settings(proxy_config=proxy_config)
         settings["HTTPCACHE_STORAGE"] = "apify.scrapy.extensions.ApifyCacheStorage"
         settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
+        settings["FEEDS"] = {}
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
