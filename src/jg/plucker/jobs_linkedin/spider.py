@@ -75,9 +75,13 @@ class Spider(BaseSpider):
                 li_dataset = client.dataset(li_run["defaultDatasetId"])
             else:
                 raise RuntimeError("Failed to call the LinkedIn scraper actor")
+            self.logger.info("Scraping done!")
 
-        async for item in li_dataset.iterate_items():
-            self.logger.debug(f"LinkedIn scraper item:\n{pformat(item)}")
+        li_items_listing = await li_dataset.list_items()
+        self.logger.info(f"Processing {li_items_listing.total} scraped items")
+
+        for item in li_items_listing.items:
+            # self.logger.debug(f"LinkedIn scraper item:\n{pformat(item)}")
             yield Job(
                 title=item["title"],
                 posted_on=date.fromisoformat(item["postedAt"]),
@@ -86,7 +90,7 @@ class Spider(BaseSpider):
                     clean_validated_url(clean_proxied_url(item["applyUrl"]))
                 ),
                 company_name=item["companyName"],
-                company_url=item["companyWebsite"],
+                company_url=item.get("companyWebsite"),
                 company_logo_urls=[item["companyLogo"]],
                 locations_raw=item["location"],
                 employment_types=item["employmentType"],
