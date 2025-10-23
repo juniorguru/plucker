@@ -77,10 +77,13 @@ class Spider(BaseSpider):
                 raise RuntimeError("Failed to call the LinkedIn scraper actor")
             self.logger.info("Scraping done!")
 
-        li_items_listing = await li_dataset.list_items()
-        self.logger.info(f"Processing {li_items_listing.total} scraped items")
+        items = (await li_dataset.list_items()).items
+        items_count = len(items)
+        self.logger.info(f"Processing {items_count} scraped items")
 
-        for item in li_items_listing.items:
+        for i, item in enumerate(items, start=1):
+            if i % 100 == 0:
+                self.logger.info(f"Processing item {i}/{items_count}")
             # self.logger.debug(f"LinkedIn scraper item:\n{pformat(item)}")
             apply_url = clean_url(
                 clean_validated_url(clean_proxied_url(item["applyUrl"]))
@@ -99,6 +102,7 @@ class Spider(BaseSpider):
                 source="linkedin",
                 source_urls=[item["inputUrl"]],
             )
+        self.logger.info("All items processed!")
 
 
 def get_job_url(job_id: str) -> str:
