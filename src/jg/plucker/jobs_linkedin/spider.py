@@ -53,7 +53,15 @@ class Spider(BaseSpider):
             li_dataset = client.dataset(li_run["defaultDatasetId"])
         else:
             urls = [
-                f"https://www.linkedin.com/jobs/search?keywords={quote(query)}&location={quote(location)}&geoId={geo_id}&f_TPR=r604800&position=1&pageNum=0"
+                (
+                    f"https://www.linkedin.com/jobs/search"
+                    f"?keywords={quote(query)}"
+                    f"&location={quote(location)}"
+                    f"&geoId={geo_id}"
+                    f"&f_TPR=r86400"  # last 24 hours
+                    f"&position=1"
+                    f"&pageNum=0"
+                )
                 for query in self.search_queries
                 for location, geo_id in self.locations
             ]
