@@ -42,7 +42,7 @@ class Spider(BaseSpider):
             status=ActorJobStatus.SUCCEEDED,
             desc=True,
             limit=1,
-            started_after=datetime.now(UTC) - timedelta(hours=24),
+            started_after=datetime.now(UTC) - timedelta(hours=1),
         )
         if li_runs := li_runs_listing.items:
             li_run = li_runs[0]
