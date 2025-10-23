@@ -6,6 +6,7 @@ import sys
 import time
 from pathlib import Path
 from typing import IO, Callable, Generator, Type
+from urllib.parse import quote
 
 import click
 from apify.scrapy import initialize_logging
@@ -341,6 +342,37 @@ def deploy(
         if build_info["status"] != ActorJobStatus.SUCCEEDED:
             logger.error(f"Status: {build_info['status']}")
             raise click.Abort()
+
+
+@main.command()
+def li_params():
+    search_queries = [
+        "junior software engineer",
+        "junior developer",
+        "junior vyvojar",
+        "junior programator",
+        "junior tester",
+        "junior data",
+    ]
+    locations = [
+        ("Czechia", "104508036"),
+        ("Slovakia", "103119917"),
+    ]
+    urls = [
+        (
+            f"https://www.linkedin.com/jobs/search"
+            f"?keywords={quote(query)}"
+            f"&location={quote(location)}"
+            f"&geoId={geo_id}"
+            f"&f_TPR=r86400"  # last 24 hours
+            f"&position=1"
+            f"&pageNum=0"
+        )
+        for query in search_queries
+        for location, geo_id in locations
+    ]
+    params = {"count": 1000, "scrapeCompany": True, "urls": urls}
+    click.echo(json.dumps(params, indent=2, ensure_ascii=False))
 
 
 def get_scraper(
