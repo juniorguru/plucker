@@ -60,6 +60,9 @@ class Spider(BaseSpider):
         content_type = (response.headers.get("Content-Type") or b"").decode("utf8")
         if not content_type.startswith(("image/", "text/")):
             self.logger.warning(f"Declared content type: {content_type!r}")
+        elif "image/svg" in content_type:
+            self.logger.warning("SVG images are not supported")
+            return
         else:
             self.logger.debug(f"Declared content type: {content_type!r}")
 
@@ -84,6 +87,9 @@ class Spider(BaseSpider):
             self.logger.debug("Assuming company homepage URL")
             favicon_url = urljoin(response.url, "/favicon.ico")
             self.logger.debug(f"Favicon URL: {favicon_url}")
+            if response.url == favicon_url:
+                self.logger.warning("Favicon URL doesn't return an image")
+                return
             yield Request(
                 favicon_url,
                 callback=self.parse,
@@ -97,6 +103,9 @@ class Spider(BaseSpider):
             }
             self.logger.debug(f"Found {len(icons)} other URLs in HTML tags")
             for icon in icons:
+                if icon.url.startswith("data:"):
+                    self.logger.warning(f"Skipping data URL favicon at {response.url}")
+                    continue
                 yield Request(
                     icon.url,
                     callback=self.parse,
