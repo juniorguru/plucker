@@ -18,6 +18,7 @@ class Format(StrEnum):
     ICO = "ico"
     WEBP = "webp"
     BMP = "bmp"
+    GIF = "gif"
 
     @classmethod
     def from_content_type(cls, content_type: str) -> "Format":
@@ -31,6 +32,8 @@ class Format(StrEnum):
             return cls.WEBP
         elif content_type.startswith("image/bmp"):
             return cls.BMP
+        elif content_type.startswith("image/gif"):
+            return cls.GIF
         raise ValueError(f"Unsupported content type: {content_type!r}")
 
 
