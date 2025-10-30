@@ -22,6 +22,7 @@ dependencies = [
 ]
 
 [project.urls]
+homepage = "https://junior.guru/"
 repository = "https://github.com/juniorguru/plucker"
 
 [project.scripts]
@@ -39,10 +40,6 @@ dev = [
 python_files = "test_*.py"
 testpaths = "tests"
 addopts = "--import-mode=importlib --ff --ruff --ruff-format"
-filterwarnings = [
-    "ignore:twisted.web.http.HTTPClient was deprecated:DeprecationWarning",  # scrapy
-    "ignore:There is no current event loop:DeprecationWarning",  # apify
-]
 
 [tool.ruff]
 target-version = "py313"
