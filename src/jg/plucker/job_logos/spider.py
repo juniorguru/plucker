@@ -100,7 +100,6 @@ class Spider(BaseSpider):
                 favicon_url,
                 callback=self.parse,
                 cb_kwargs={"source_url": source_url or request.url},
-                dont_filter=True,
             )
             icons: set[Icon] = {
                 icon
@@ -116,5 +115,4 @@ class Spider(BaseSpider):
                     icon.url,
                     callback=self.parse,
                     cb_kwargs={"source_url": source_url or request.url},
-                    dont_filter=True,
                 )
