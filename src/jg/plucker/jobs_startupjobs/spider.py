@@ -1,9 +1,9 @@
 import html
-from typing import Generator
+from typing import Generator, cast
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Spider as BaseSpider
-from scrapy.http.response.xml import XmlResponse
+from scrapy.http import Response, TextResponse
 from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
@@ -11,7 +11,7 @@ from jg.plucker.processors import parse_iso_date
 from jg.plucker.url_params import strip_utm_params
 
 
-EXPORT_URL = "https://feedback.startupjobs.cz/feed/juniorguru.php"
+EXPORT_URL = "https://feedback.startupjobs.cz/feed/juniorguru2.php"
 
 
 class Spider(BaseSpider):
@@ -21,23 +21,24 @@ class Spider(BaseSpider):
 
     min_items = 1
 
-    def parse(self, response: XmlResponse) -> Generator[Job, None, None]:
-        for n, offer in enumerate(response.xpath("//offer"), start=1):
+    def parse(self, response: Response) -> Generator[Job, None, None]:
+        response = cast(TextResponse, response)
+        for offer in response.json()["offers"]:
             loader = Loader(item=Job(), response=response)
-            offer_loader = loader.nested_xpath(f"//offer[{n}]")
-            offer_loader.add_value("source", self.name)
-            offer_loader.add_value("source_urls", response.url)
-            offer_loader.add_xpath("title", ".//position/text()")
-            offer_loader.add_xpath("url", ".//url/text()")
-            offer_loader.add_xpath("apply_url", ".//url/text()")
-            offer_loader.add_xpath("company_name", ".//startup/text()")
-            offer_loader.add_xpath("locations_raw", ".//city/text()")
-            offer_loader.add_xpath("remote", ".//jobtype[contains(., 'Remote')]/text()")
-            offer_loader.add_value("remote", False)
-            offer_loader.add_xpath("employment_types", ".//jobtype/text()")
-            offer_loader.add_xpath("posted_on", ".//lastUpdate//text()")
-            offer_loader.add_xpath("description_html", ".//description/text()")
-            offer_loader.add_xpath("company_logo_urls", ".//startupLogo/text()")
+            loader.add_value("source", self.name)
+            loader.add_value("source_urls", response.url)
+            loader.add_value("title", offer["position"])
+            loader.add_value("url", offer["url"])
+            loader.add_value("apply_url", offer["url"])
+            loader.add_value("company_name", offer["startup"])
+            loader.add_value("locations_raw", offer["cities"])
+            loader.add_value(
+                "remote", "remote" in [t.lower() for t in offer["jobtypes"]]
+            )
+            loader.add_value("employment_types", offer["jobtypes"])
+            loader.add_value("posted_on", offer["lastUpdate"])
+            loader.add_value("description_html", offer["description"])
+            loader.add_value("company_logo_urls", offer["startupLogo"])
             yield loader.load_item()
 
 

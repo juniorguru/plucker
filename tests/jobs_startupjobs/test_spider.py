@@ -2,25 +2,22 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from scrapy.http import XmlResponse
+from scrapy.http import TextResponse
 
-from jg.plucker.jobs_startupjobs.spider import (
-    Spider,
-    drop_remote,
-)
+from jg.plucker.jobs_startupjobs.spider import Spider, drop_remote
 
 
 FIXTURES_DIR = Path(__file__).parent
 
 
 def test_spider_parse():
-    response = XmlResponse(
+    response = TextResponse(
         "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "feed.xml").read_bytes(),
+        body=Path(FIXTURES_DIR / "feed.json").read_bytes(),
     )
     jobs = list(Spider().parse(response))
 
-    assert len(jobs) == 2
+    assert len(jobs) == 5
 
     job = jobs[0]
 
@@ -40,70 +37,57 @@ def test_spider_parse():
             "source_urls",
         ]
     )
-    assert (
-        job["title"]
-        == "My hledáme stále! Přidej se k nám do týmu jako junior linux admin"
-    )
-    assert (
-        job["url"]
-        == "https://www.startupjobs.cz/nabidka/22025/my-hledame-stale-pridej-se-k-nam-do-tymu-jako-junior-linux-admin"
-    )
+    assert job["title"] == "Medior PHP developer"
+    assert job["url"] == "https://www.startupjobs.cz/nabidka/96801/medior-php-developer"
     assert (
         job["apply_url"]
-        == "https://www.startupjobs.cz/nabidka/22025/my-hledame-stale-pridej-se-k-nam-do-tymu-jako-junior-linux-admin?utm_source=juniorguru&utm_medium=cpc&utm_campaign=juniorguru"
+        == "https://www.startupjobs.cz/nabidka/96801/medior-php-developer?utm_source=juniorguru&utm_medium=cpc&utm_campaign=juniorguru"
     )
-    assert job["company_name"] == "Cloudinfrastack"
-    assert job["locations_raw"] == ["Praha, Česko"]
+    assert job["company_name"] == "3IT úspěšný eshop s.r.o."
+    assert job["locations_raw"] == ["Ostrava, Česko"]
     assert job["remote"] is False
-    assert job["employment_types"] == ["Part-time", "Full-time"]
-    assert job["posted_on"] == date(2020, 5, 5)
+    assert job["employment_types"] == ["Full-time"]
+    assert job["posted_on"] == date(2025, 11, 5)
     assert job["company_logo_urls"] == [
-        "https://www.startupjobs.cz/uploads/U56OHNIPVP54cloudinfrastack-fb-logo-180x180-1154411059762.png"
+        "https://www.startupjobs.cz/uploads/2025/09/0c66d6d229700c7df91f059eabdec561.png"
     ]
     assert job["source"] == "jobs-startupjobs"
     assert job["source_urls"] == ["https://example.com/example/"]
-    assert "<p>Ahoj, baví tě Linux?" in job["description_html"]
+    assert (
+        "<br>Tvoř e-shopy, které odbaví tisíce objednávek měsíčně"
+        in job["description_html"]
+    )
+
+
+def test_spider_parse_cities():
+    response = TextResponse(
+        "https://example.com/example/",
+        body=Path(FIXTURES_DIR / "feed_cities.json").read_bytes(),
+    )
+    job = next(Spider().parse(response))
+
+    assert job["locations_raw"] == ["Ostrava, Česko", "Olomouc, Česko"]
 
 
 def test_spider_parse_job_types():
-    response = XmlResponse(
+    response = TextResponse(
         "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "feed_job_types.xml").read_bytes(),
+        body=Path(FIXTURES_DIR / "feed_job_types.json").read_bytes(),
     )
     job = next(Spider().parse(response))
 
     assert job["employment_types"] == ["Full-time", "External collaboration"]
-
-
-def test_spider_parse_html_entities():
-    response = XmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "feed_html_entities.xml").read_bytes(),
-    )
-    job = next(Spider().parse(response))
-
-    assert job["title"] == "Analytik&programátor Junior"
-    assert job["company_name"] == "P&J Capital"
-
-
-def test_spider_parse_cities():
-    response = XmlResponse(
-        "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "feed_cities.xml").read_bytes(),
-    )
-    job = next(Spider().parse(response))
-
-    assert job["locations_raw"] == ["Praha, Česko", "Olomouc, Česko"]
+    assert job["remote"] is False
 
 
 def test_spider_parse_remote():
-    response = XmlResponse(
+    response = TextResponse(
         "https://example.com/example/",
-        body=Path(FIXTURES_DIR / "feed_remote.xml").read_bytes(),
+        body=Path(FIXTURES_DIR / "feed_remote.json").read_bytes(),
     )
     job = next(Spider().parse(response))
 
-    assert job["employment_types"] == ["Part-time", "External collaboration"]
+    assert job["employment_types"] == ["Full-time", "External collaboration"]
     assert job["remote"] is True
 
 
@@ -116,5 +100,5 @@ def test_spider_parse_remote():
         (["full-time", "part-time"], ["full-time", "part-time"]),
     ],
 )
-def test_drop_remote(types, expected):
+def test_drop_remote(types: list[str], expected: list[str]):
     assert drop_remote(types) == expected
