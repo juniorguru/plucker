@@ -8,7 +8,6 @@ from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
-from jg.plucker.url_params import strip_utm_params
 
 
 EXPORT_URL = "https://feedback.startupjobs.cz/feed/juniorguru2.php"
@@ -29,7 +28,6 @@ class Spider(BaseSpider):
             loader.add_value("source_urls", response.url)
             loader.add_value("title", offer["position"])
             loader.add_value("url", offer["url"])
-            loader.add_value("apply_url", offer["url"])
             loader.add_value("company_name", offer["startup"])
             loader.add_value("locations_raw", offer["cities"])
             loader.add_value(
@@ -50,7 +48,6 @@ class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
     title_in = MapCompose(html.unescape)
-    url_in = MapCompose(str.strip, strip_utm_params)
     company_name_in = MapCompose(html.unescape)
     employment_types_in = Compose(MapCompose(str.strip), drop_remote)
     employment_types_out = Identity()

@@ -25,7 +25,6 @@ def test_spider_parse():
         [
             "title",
             "url",
-            "apply_url",
             "company_name",
             "locations_raw",
             "employment_types",
@@ -38,9 +37,8 @@ def test_spider_parse():
         ]
     )
     assert job["title"] == "Medior PHP developer"
-    assert job["url"] == "https://www.startupjobs.cz/nabidka/96801/medior-php-developer"
     assert (
-        job["apply_url"]
+        job["url"]
         == "https://www.startupjobs.cz/nabidka/96801/medior-php-developer?utm_source=juniorguru&utm_medium=cpc&utm_campaign=juniorguru"
     )
     assert job["company_name"] == "3IT úspěšný eshop s.r.o."

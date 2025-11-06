@@ -9,7 +9,7 @@ from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import Job
-from jg.plucker.jobs_jobscz.spider import Spider, select_widget
+from jg.plucker.jobs_jobscz.spider import Spider, get_param, get_params, select_widget
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -141,8 +141,9 @@ def test_spider_parse_multiple_locations():
 
 
 def test_spider_parse_job_standard():
+    url = "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228"
     response = HtmlResponse(
-        "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228",
+        url,
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
     job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
@@ -150,15 +151,13 @@ def test_spider_parse_job_standard():
     assert sorted(job.keys()) == sorted(
         ["employment_types", "description_html", "locations_raw", "source_urls", "url"]
     )
-    assert job["url"] == "https://beta.www.jobs.cz/rpd/1613133866/"
+    assert job["url"] == url
     assert job["employment_types"] == [
         "práce na plný úvazek",
         "práce na zkrácený úvazek",
     ]
     assert job["locations_raw"] == ["Brno"]
-    assert job["source_urls"] == [
-        "https://beta.www.jobs.cz/rpd/1613133866/?searchId=ac8f8a52-70fe-4be5-b32e-9f6e6b1c2b23&rps=228"
-    ]
+    assert job["source_urls"] == [url]
 
     assert (
         '<p class="typography-body-large-text-regular mb-800">Baví Tě frontend? Máš cit pro to, aby byly aplikace'
@@ -193,9 +192,9 @@ def test_spider_parse_job_multiple_locations():
 
 
 def test_spider_parse_job_company():
+    url = "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233"
     response = HtmlResponse(
-        "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
-        body=Path(FIXTURES_DIR / "job_company.html").read_bytes(),
+        url, body=Path(FIXTURES_DIR / "job_company.html").read_bytes()
     )
     job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
@@ -210,12 +209,10 @@ def test_spider_parse_job_company():
             "company_logo_urls",
         ]
     )
-    assert job["url"] == "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/"
+    assert job["url"] == url
     assert job["employment_types"] == ["práce na plný úvazek"]
     assert job["locations_raw"] == ["U Pergamenky 1522/2, Praha – Holešovice"]
-    assert job["source_urls"] == [
-        "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233"
-    ]
+    assert job["source_urls"] == [url]
     assert job["company_url"] == "https://beta.www.jobs.cz/fp/alza-cz-a-s-7910630/"
     assert job["company_logo_urls"] == [
         "https://aeqqktywno.cloudimg.io/v7/_cpimg_prod_/7910630/db7f211a-59cc-11ec-87b6-0242ac11000c.png?width=200&tl_px=0,9&br_px=350,110"
@@ -227,9 +224,9 @@ def test_spider_parse_job_company():
 
 
 def test_spider_parse_job_widget():
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
     response = HtmlResponse(
-        "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d",
-        body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
+        url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
     )
     request = next(Spider().parse_job(response, Job(), "123"))
 
@@ -239,13 +236,8 @@ def test_spider_parse_job_widget():
         request.headers["X-Api-Key"]
         == b"77dd9cff31711f94a97698fda3ecec7d9a561a15db53cfec868bafd31c9befbb"
     )
-    assert (
-        request.cb_kwargs["item"]["url"]
-        == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365"
-    )
-    assert request.cb_kwargs["item"]["source_urls"] == [
-        "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
-    ]
+    assert request.cb_kwargs["item"]["url"] == url
+    assert request.cb_kwargs["item"]["source_urls"] == [url]
 
     body = json.loads(request.body)
 
@@ -261,9 +253,9 @@ def test_spider_parse_job_widget():
 
 
 def test_spider_parse_job_widget_script_request():
+    url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
     response = HtmlResponse(
-        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708",
-        body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes(),
+        url, body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes()
     )
     request = next(Spider().parse_job(response, Job(), "123"))
 
@@ -353,13 +345,8 @@ def test_spider_parse_job_widget_script_response():
         request.headers["X-Api-Key"]
         == b"79b29ad58130f75778f8b9d041b789fdd7fc6b428d01ba27f3c1ca569ec39757"
     )
-    assert (
-        request.cb_kwargs["item"]["url"]
-        == "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478"
-    )
-    assert request.cb_kwargs["item"]["source_urls"] == [
-        "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
-    ]
+    assert request.cb_kwargs["item"]["url"] == html_url
+    assert request.cb_kwargs["item"]["source_urls"] == [html_url]
 
     body = json.loads(request.body)
 
@@ -419,3 +406,20 @@ def test_spider_parse_job_widget_api():
 )
 def test_select_widget(names: list[str], expected: str):
     assert select_widget(names) == expected
+
+
+def test_get_param():
+    url = "https://example.com?redirect=https%3A%2F%2Fjobs%2Eexample%2Ecom"
+
+    assert get_param(url, "redirect") == "https://jobs.example.com"
+
+
+def test_get_params():
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=a653a2a6-05c9-49fb-b391-96b185355f2d"
+
+    assert get_params(url) == dict(
+        r="detail",
+        id="2000142365",
+        rps="228",
+        impressionId="a653a2a6-05c9-49fb-b391-96b185355f2d",
+    )

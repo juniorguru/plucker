@@ -7,7 +7,7 @@ from functools import lru_cache
 from logging import Logger
 from pathlib import Path
 from typing import Any, Generator, Iterable, cast
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
@@ -18,7 +18,6 @@ from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
 from jg.plucker.processors import first, split
-from jg.plucker.url_params import get_param, get_params, strip_params
 
 
 MULTIPLE_LOCATIONS_RE = re.compile(
@@ -420,10 +419,13 @@ def get_script_relevance(url: str) -> int:
     return 3
 
 
-def clean_url(url: str) -> str:
-    return strip_params(
-        url, ["positionOfAdInAgentEmail", "searchId", "rps", "impressionId"]
-    )
+def get_params(url: str) -> dict[str, str]:
+    qs = urlparse(url).query
+    return {name: values[0] for name, values in parse_qs(qs).items()}
+
+
+def get_param(url: str, param_name: str) -> str | None:
+    return get_params(url).get(param_name)
 
 
 def join(values: Iterable[str]) -> str:
@@ -441,8 +443,8 @@ def parse_multiple_locations(text: str) -> str:
 class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
-    url_in = Compose(first, clean_url)
-    company_url_in = Compose(first, clean_url)
+    url_in = Compose(first)
+    company_url_in = Compose(first)
     company_logo_urls_in = Identity()
     company_logo_urls_out = Compose(set, list)
     description_html_out = Compose(join)
