@@ -17,6 +17,8 @@ class Spider(BaseSpider):
         "https://portal.isoss.gov.cz/irj/portal/anonymous/mvrest?path=/eosm-public-offer&officeLabels=%7B%7D&page=1&pageSize=100000&sortColumn=zdatzvsm&sortOrder=-1"
     ]
 
+    min_items = 3
+
     def parse(self, response: Response) -> Generator[Request | Job, None, None]:
         response = cast(TextResponse, response)
         jobs = response.json()
