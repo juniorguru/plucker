@@ -22,9 +22,9 @@ Use the `exchange-rates` scraper to test out whether everything works.
 It's a minimal scraper performing just one request.
 Try all of the following:
 
--   Run `scrapy crawl exchange-rates` to run it by the **Scrapy CLI** as a pure **Scrapy spider**.
--   Run `plucker crawl exchange-rates` to run it by the **CLI of this project** as a pure **Scrapy spider**.
--   Run `plucker crawl exchange-rates --apify` to run it by the **CLI of this project** as a local **Apify actor**.
+-   Run `uv run scrapy crawl exchange-rates` to run it by the **Scrapy CLI** as a pure **Scrapy spider**.
+-   Run `uv run plucker crawl exchange-rates` to run it by the **CLI of this project** as a pure **Scrapy spider**.
+-   Run `uv run plucker crawl exchange-rates --apify` to run it by the **CLI of this project** as a local **Apify actor**.
 
 If you get no errors, you have the project correctly set up.
 
@@ -41,16 +41,16 @@ Sometimes scrapers need input data.
 Plucker's `crawl` CLI command can pass parameters to your scraper through the `--params` option. Use shell to pass ad-hoc data:
 
 ```
-$ echo '{"links": [{"url": "https://junior.guru"}]}' | plucker crawl job-checks --params
+$ echo '{"links": [{"url": "https://junior.guru"}]}' | uv run plucker crawl job-checks --params
 ```
 
 Use file for more complex input:
 
 ```
-$ plucker crawl job-links --params < params.json
+$ uv run plucker crawl job-links --params < params.json
 ```
 
-You can also run it simply as `plucker crawl job-links --params` and type the JSON manually as a standard input of the command.
+You can also run it simply as `uv run plucker crawl job-links --params` and type the JSON manually as a standard input of the command.
 
 At Apify, whatever is set as the [actor input](https://docs.apify.com/platform/actors/running/input-and-output) gets passed down as params (except for the proxy settings). Don't forget to add [input schema](https://docs.apify.com/platform/actors/development/actor-definition/input-schema) in your `actor.json`.
 
@@ -62,15 +62,15 @@ Look at existing code and follow conventions.
 Creating new scraper, e.g. `gravel-bikes`:
 
 1.  Should the new scraper produce items not yet known to this codebase, such as bikes, go to `src/jg/plucker/items.py` and add a new Scrapy [Item](https://docs.scrapy.org/en/latest/topics/items.html) class, e.g. `GravelBike`.
-    Run `plucker schemas` to generate schema for Apify.
+    Run `uv run plucker schemas` to generate schema for Apify.
     Should the new scraper produce items already known to this codebase, such as jobs, you can skip this step.
-1.  Run `plucker new`, answer questions.
+1.  Run `uv run plucker new`, answer questions.
     It is a [cookiecutter](https://github.com/cookiecutter/cookiecutter).
     It takes the `scraper_template` directory and creates a scaffolding of a new scraper for you.
 1.  Fill the newly created `src/jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
     See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) You can also learn scraping from the Apify's [Web scraping basics](https://docs.apify.com/academy/scraping-basics-python) course.
 1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
-1.  Run the spider with `scrapy crawl gravel-bikes`.
+1.  Run the spider with `uv run scrapy crawl gravel-bikes`.
     Learn about Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
     Develop and debug.
 1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
@@ -78,7 +78,7 @@ Creating new scraper, e.g. `gravel-bikes`:
 ## Deploying to Apify (you need to be admin)
 
 1.  Push all your code to GitHub.
-1.  Run `plucker deploy gravel-bikes`.
+1.  Run `uv run plucker deploy gravel-bikes`.
 1.  Go to [Apify Console](https://console.apify.com/actors) and verify everything went well.
 1.  Go to the <kbd>Builds</kbd> tab and start a build.
 1.  Go to the <kbd>Runs</kbd> tab and try a first run.
