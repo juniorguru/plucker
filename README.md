@@ -22,7 +22,7 @@ Use the `exchange-rates` scraper to test out whether everything works.
 It's a minimal scraper performing just one request.
 Try all of the following:
 
--   Run `scrapy crawl exchange-rates` to run it by the **Scrapy CLI** as a pure **Scrapy spider**.
+-   Run `uv run scrapy crawl exchange-rates` to run it by the **Scrapy CLI** as a pure **Scrapy spider**.
 -   Run `uv run plucker crawl exchange-rates` to run it by the **CLI of this project** as a pure **Scrapy spider**.
 -   Run `uv run plucker crawl exchange-rates --apify` to run it by the **CLI of this project** as a local **Apify actor**.
 
@@ -70,7 +70,7 @@ Creating new scraper, e.g. `gravel-bikes`:
 1.  Fill the newly created `src/jg/plucker/gravel_bikes/spider.py` file with implementation of your scraper.
     See Scrapy documentation: [Tutorial](https://docs.scrapy.org/en/latest/intro/tutorial.html#our-first-spider), [Spiders](https://docs.scrapy.org/en/latest/topics/spiders.html) You can also learn scraping from the Apify's [Web scraping basics](https://docs.apify.com/academy/scraping-basics-python) course.
 1.  Make sure the spider produces instances of the selected [Item](https://docs.scrapy.org/en/latest/topics/items.html) subclass, e.g. `GravelBike`.
-1.  Run the spider with `scrapy crawl gravel-bikes`.
+1.  Run the spider with `uv run scrapy crawl gravel-bikes`.
     Learn about Scrapy's [crawl command](https://docs.scrapy.org/en/latest/topics/commands.html#crawl) or its [shell](https://docs.scrapy.org/en/latest/topics/shell.html).
     Develop and debug.
 1.  Test the spider, i.e. create `tests/gravel_bikes` directory with `test_spider.py` inside and optionally with some test fixtures (static HTML files etc.) around.
