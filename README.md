@@ -17,7 +17,7 @@ The [main Junior Guru codebase](https://github.com/juniorguru/junior.guru) then 
 
 ## Installation
 
-Have [Poetry](https://python-poetry.org/), run `poetry install`.
+Have [uv](https://docs.astral.sh/uv/), run `uv sync`.
 Use the `exchange-rates` scraper to test out whether everything works.
 It's a minimal scraper performing just one request.
 Try all of the following:
