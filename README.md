@@ -93,7 +93,7 @@ This is because Apify's built-in automatic builds didn't work properly, but also
 
 There is a nightly GitHub Action which checks whether each actor's last run finished with success.
 The check fails only if two consecutive runs are failing.
-In case they didn't succeed, the GitHub Action fails, which causes an e-mail notification.
+In case two consecutive runs didn't succeed, the GitHub Action fails, which causes an e-mail notification.
 Apify used to send summary e-mail about actor runs, but they removed that feature and there was no equivalent at the time.
 Maybe there is now, but the monitoring is already implemented, so…
 
