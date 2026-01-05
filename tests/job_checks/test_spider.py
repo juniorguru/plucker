@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
+from scrapy.http import TextResponse
 from scrapy.http.response.html import HtmlResponse
-from scrapy.http.response.xml import XmlResponse
 
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import Spider
@@ -36,9 +36,9 @@ def test_spider_check_linkedin(
 
 
 def test_spider_check_startupjobs():
-    response = XmlResponse(
-        "https://example.com/feed.xml",
-        body=Path(FIXTURES_DIR / "startupjobs.xml").read_bytes(),
+    response = TextResponse(
+        "https://example.com/feed.json",
+        body=Path(FIXTURES_DIR / "startupjobs.json").read_bytes(),
     )
     links = list(
         Spider().check_startupjobs(
