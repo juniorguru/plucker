@@ -91,9 +91,9 @@ class Spider(BaseSpider):
         self, response: Response, urls: list[str]
     ) -> Generator[JobCheck, None, None]:
         self.logger.info(f"Checking {len(urls)} URLs (StartupJobs)")
+        data = response.json()
         current_ids = set(
-            parse_startupjobs_id(url)
-            for url in response.xpath("//url/text()").extract()
+            parse_startupjobs_id(offer["url"]) for offer in data.get("offers", [])
         )
         for url in urls:
             if parse_startupjobs_id(url) in current_ids:
