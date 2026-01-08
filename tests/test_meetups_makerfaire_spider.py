@@ -27,11 +27,11 @@ def test_parse_index():
     assert any("brno" in str(req.url) or "makerfaire.cz" in str(req.url) for req in requests)
 
 
-def test_parse_brno_two_day_event():
-    """Test parsing Brno detail page with 2-day event without time."""
+def test_parse_multi_day_event():
+    """Test parsing detail page with 2-day event without time (Brno)."""
     response = HtmlResponse(
         "https://makerfaire.cz/brno/",
-        body=Path(FIXTURES_DIR / "brno.html").read_bytes(),
+        body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
     )
     meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
     
@@ -71,8 +71,39 @@ def test_parse_brno_two_day_event():
     assert starts_at2.day == 18
 
 
-def test_parse_ostrava_single_day_with_time():
-    """Test parsing Ostrava detail page with single-day event with time."""
+def test_parse_single_day_event():
+    """Test parsing detail page with single-day event without time (Rychnov nad Kněžnou)."""
+    response = HtmlResponse(
+        "https://makerfaire.cz/rychnov-nad-kneznou/",
+        body=Path(FIXTURES_DIR / "detail.html").read_bytes(),
+    )
+    meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
+    
+    # Should create 1 meetup for single-day event (19. dubna 2026)
+    assert len(meetups) == 1
+    
+    meetup = meetups[0]
+    assert isinstance(meetup, Meetup)
+    assert meetup["title"] == "Maker Faire Rychnov nad Kněžnou"
+    assert meetup["location"] == "Kulturní dům, Rychnov nad Kněžnou"
+    assert meetup["url"] == "https://makerfaire.cz/rychnov-nad-kneznou/"
+    assert meetup["source_url"] == "https://makerfaire.cz/rychnov-nad-kneznou/"
+    
+    # Check date (April 19, 2026, no time specified)
+    starts_at = meetup["starts_at"]
+    assert starts_at.year == 2026
+    assert starts_at.month == 4
+    assert starts_at.day == 19
+    assert starts_at.hour == 0
+    assert starts_at.minute == 0
+    assert starts_at.tzinfo == PRAGUE_TZ
+    
+    # No end time when not specified
+    assert meetup["ends_at"] is None
+
+
+def test_parse_single_day_with_time():
+    """Test parsing detail page with single-day event with time (Ostrava)."""
     response = HtmlResponse(
         "https://makerfaire.cz/ostrava/",
         body=Path(FIXTURES_DIR / "detail-time.html").read_bytes(),
@@ -110,7 +141,7 @@ def test_timezone_conversion_to_utc():
     """Test that datetime is in Europe/Prague timezone (will be converted to UTC by Scrapy)."""
     response = HtmlResponse(
         "https://makerfaire.cz/brno/",
-        body=Path(FIXTURES_DIR / "brno.html").read_bytes(),
+        body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
     )
     meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
     
@@ -125,7 +156,7 @@ def test_past_events_filtered():
     """Test that past events are filtered out."""
     response = HtmlResponse(
         "https://makerfaire.cz/brno/",
-        body=Path(FIXTURES_DIR / "brno.html").read_bytes(),
+        body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
     )
     # Set today to after the event
     meetups = list(Spider().parse_city(response, today=date(2026, 12, 1)))
