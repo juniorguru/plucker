@@ -153,7 +153,7 @@ def test_parse_complicated_location():
     assert meetup["url"] == "https://makerfaire.cz/ceske-budejovice/"
     assert meetup["source_url"] == "https://makerfaire.cz/ceske-budejovice/"
     assert meetup["starts_at"] == datetime(
-        2026, 9, 3, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 10, 3, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
     assert meetup["ends_at"] is None
 

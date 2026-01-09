@@ -54,13 +54,15 @@ class Spider(BaseSpider):
             return
 
         # Extract address/venue
-        address_text = response.xpath(
-            '//a[contains(@class, "city-hero__place")]//text()'
-        ).get()
+        address_nodes = response.xpath(
+            '//*[contains(@class, "city-hero__place")]//text()'
+        ).getall()
+        address_text = " ".join(
+            part.strip() for part in address_nodes if part and part.strip()
+        )
         if not address_text:
             self.logger.error(f"Could not find address at {response.url}")
             return
-        address_text = address_text.strip()
 
         # Full location includes both venue and city
         location = f"{address_text}, {city_name}"
