@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -18,14 +18,16 @@ def test_parse_index():
         "https://makerfaire.cz/",
         body=Path(FIXTURES_DIR / "index.html").read_bytes(),
     )
-    requests = list(Spider().parse(response, today=date(2025, 1, 1)))
+    requests = list(Spider().parse(response))
 
     # Should have at least some city links
     assert len(requests) > 0
-    # Check that we're following city pages
-    assert any(
-        "brno" in str(req.url) or "makerfaire.cz" in str(req.url) for req in requests
-    )
+
+    # Check that specific city pages are included
+    urls = [str(req.url) for req in requests]
+    assert any("brno" in url for url in urls)
+    assert any("ostrava" in url for url in urls)
+    assert any("rychnov-nad-kneznou" in url for url in urls)
 
 
 def test_parse_multi_day_event():
@@ -34,7 +36,7 @@ def test_parse_multi_day_event():
         "https://makerfaire.cz/brno/",
         body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
     )
-    meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
+    meetups = list(Spider().parse_city(response))
 
     # Should create 2 meetups for 2-day event (17.–18. října 2026)
     assert len(meetups) == 2
@@ -52,24 +54,16 @@ def test_parse_multi_day_event():
 
     # Check date for first day (October 17, 2026)
     starts_at = meetup1["starts_at"]
-    assert starts_at.year == 2026
-    assert starts_at.month == 10
-    assert starts_at.day == 17
+    assert starts_at.date() == date(2026, 10, 17)
+    assert starts_at.time() == time(0, 0)
     assert starts_at.tzinfo == PRAGUE_TZ
-
-    # When no time is specified, should use midnight
-    assert starts_at.hour == 0
-    assert starts_at.minute == 0
     assert meetup1["ends_at"] is None
 
     # Check second day
     meetup2 = meetups[1]
     assert meetup2["title"] == "Maker Faire Brno (2. den)"
     assert meetup2["location"] == "Brněnské výstaviště, Brno"
-    starts_at2 = meetup2["starts_at"]
-    assert starts_at2.year == 2026
-    assert starts_at2.month == 10
-    assert starts_at2.day == 18
+    assert meetup2["starts_at"].date() == date(2026, 10, 18)
 
 
 def test_parse_single_day_event():
@@ -78,7 +72,7 @@ def test_parse_single_day_event():
         "https://makerfaire.cz/rychnov-nad-kneznou/",
         body=Path(FIXTURES_DIR / "detail.html").read_bytes(),
     )
-    meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
+    meetups = list(Spider().parse_city(response))
 
     # Should create 1 meetup for single-day event (19. dubna 2026)
     assert len(meetups) == 1
@@ -92,11 +86,8 @@ def test_parse_single_day_event():
 
     # Check date (April 19, 2026, no time specified)
     starts_at = meetup["starts_at"]
-    assert starts_at.year == 2026
-    assert starts_at.month == 4
-    assert starts_at.day == 19
-    assert starts_at.hour == 0
-    assert starts_at.minute == 0
+    assert starts_at.date() == date(2026, 4, 19)
+    assert starts_at.time() == time(0, 0)
     assert starts_at.tzinfo == PRAGUE_TZ
 
     # No end time when not specified
@@ -109,7 +100,7 @@ def test_parse_single_day_with_time():
         "https://makerfaire.cz/ostrava/",
         body=Path(FIXTURES_DIR / "detail-time.html").read_bytes(),
     )
-    meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
+    meetups = list(Spider().parse_city(response))
 
     # Should create 1 meetup for single-day event (23. května 2026)
     assert len(meetups) == 1
@@ -123,44 +114,12 @@ def test_parse_single_day_with_time():
 
     # Check date (May 23, 2026, 10:00-17:00)
     starts_at = meetup["starts_at"]
-    assert starts_at.year == 2026
-    assert starts_at.month == 5
-    assert starts_at.day == 23
-    assert starts_at.hour == 10
-    assert starts_at.minute == 0
+    assert starts_at.date() == date(2026, 5, 23)
+    assert starts_at.time() == time(10, 0)
     assert starts_at.tzinfo == PRAGUE_TZ
 
     # Check end time
     ends_at = meetup["ends_at"]
     assert ends_at is not None
-    assert ends_at.hour == 17
-    assert ends_at.minute == 0
+    assert ends_at.time() == time(17, 0)
     assert ends_at.tzinfo == PRAGUE_TZ
-
-
-def test_timezone_conversion_to_utc():
-    """Test that datetime is in Europe/Prague timezone (will be converted to UTC by Scrapy)."""
-    response = HtmlResponse(
-        "https://makerfaire.cz/brno/",
-        body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
-    )
-    meetups = list(Spider().parse_city(response, today=date(2025, 1, 1)))
-
-    assert len(meetups) > 0
-    meetup = meetups[0]
-
-    # Check that timezone is Europe/Prague
-    assert meetup["starts_at"].tzinfo == PRAGUE_TZ
-
-
-def test_past_events_filtered():
-    """Test that past events are filtered out."""
-    response = HtmlResponse(
-        "https://makerfaire.cz/brno/",
-        body=Path(FIXTURES_DIR / "detail-multi-days.html").read_bytes(),
-    )
-    # Set today to after the event
-    meetups = list(Spider().parse_city(response, today=date(2026, 12, 1)))
-
-    # Should not return any meetups as the event is in the past
-    assert len(meetups) == 0
