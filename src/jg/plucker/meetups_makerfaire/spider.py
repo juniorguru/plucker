@@ -18,6 +18,10 @@ class Spider(BaseSpider):
 
     prague_tz = ZoneInfo("Europe/Prague")
 
+    default_start_time = time(8, 0)
+
+    default_end_time = time(18, 0)
+
     def parse(self, response: TextResponse) -> Generator[Request, None, None]:
         self.logger.debug(f"Parsing {response.url}")
         # Extract city URLs from the index page
