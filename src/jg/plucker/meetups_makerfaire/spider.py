@@ -66,9 +66,13 @@ class Spider(BaseSpider):
         location = f"{address_text}, {city_name}"
 
         # Extract time if available
-        time_text = response.xpath(
+        time_text_nodes = response.xpath(
             '//div[contains(@class, "city-hero__time")]/text()'
-        ).get()
+        ).getall()
+        time_text = next(
+            (text.strip() for text in time_text_nodes if ":" in text),
+            None,
+        )
 
         # Parse dates and create meetup items
         yield from self.parse_dates(
