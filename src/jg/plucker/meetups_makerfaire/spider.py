@@ -171,22 +171,17 @@ class Spider(BaseSpider):
     ) -> Meetup:
         """Create a meetup item with the given parameters."""
         event_date = date(year, month, day)
-        starts_at = datetime.combine(
-            event_date, start_time or time(0, 0), tzinfo=self.prague_tz
-        )
-        ends_at = (
-            datetime.combine(event_date, end_time, tzinfo=self.prague_tz)
-            if end_time
-            else None
-        )
-
-        self.logger.info(f"Event: {title} {starts_at}")
+        self.logger.info(f"Event: {title} ({event_date})")
         return Meetup(
             title=title,
             url=source_url,
             description=None,
-            starts_at=starts_at,
-            ends_at=ends_at,
+            starts_at=datetime.combine(
+                event_date, start_time or self.default_start_time, tzinfo=self.prague_tz
+            ),
+            ends_at=datetime.combine(
+                event_date, end_time or self.default_end_time, tzinfo=self.prague_tz
+            ),
             location=location,
             source_url=source_url,
             series_name="Maker Faire",

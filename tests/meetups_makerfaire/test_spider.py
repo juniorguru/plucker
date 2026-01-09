@@ -50,16 +50,21 @@ def test_parse_multi_day_event():
     assert meetup1["series_org"] == "komunita technologických kutilů"
     assert meetup1["series_url"] == "https://makerfaire.cz/"
     assert meetup1["starts_at"] == datetime(
-        2026, 10, 17, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 10, 17, 8, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
-    assert meetup1["ends_at"] is None
+    assert meetup1["ends_at"] == datetime(
+        2026, 10, 17, 18, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
 
     # Check second day
     meetup2 = meetups[1]
     assert meetup2["title"] == "Maker Faire Brno (2. den)"
     assert meetup2["location"] == "Brněnské výstaviště, Brno"
     assert meetup2["starts_at"] == datetime(
-        2026, 10, 18, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 10, 18, 8, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
+    assert meetup2["ends_at"] == datetime(
+        2026, 10, 18, 18, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
 
 
@@ -81,9 +86,11 @@ def test_parse_single_day_event():
     assert meetup["url"] == "https://makerfaire.cz/rychnov-nad-kneznou/"
     assert meetup["source_url"] == "https://makerfaire.cz/rychnov-nad-kneznou/"
     assert meetup["starts_at"] == datetime(
-        2026, 4, 19, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 4, 19, 8, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
-    assert meetup["ends_at"] is None
+    assert meetup["ends_at"] == datetime(
+        2026, 4, 19, 18, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
 
 
 def test_parse_single_day_with_time():
@@ -128,9 +135,11 @@ def test_parse_something_that_looks_like_time_but_isnt():
     assert meetup["url"] == "https://makerfaire.cz/mlada-boleslav/"
     assert meetup["source_url"] == "https://makerfaire.cz/mlada-boleslav/"
     assert meetup["starts_at"] == datetime(
-        2026, 9, 19, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 9, 19, 8, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
-    assert meetup["ends_at"] is None
+    assert meetup["ends_at"] == datetime(
+        2026, 9, 19, 18, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
 
 
 def test_parse_complicated_location():
@@ -153,9 +162,11 @@ def test_parse_complicated_location():
     assert meetup["url"] == "https://makerfaire.cz/ceske-budejovice/"
     assert meetup["source_url"] == "https://makerfaire.cz/ceske-budejovice/"
     assert meetup["starts_at"] == datetime(
-        2026, 10, 3, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+        2026, 10, 3, 8, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
-    assert meetup["ends_at"] is None
+    assert meetup["ends_at"] == datetime(
+        2026, 10, 3, 18, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
 
 
 def test_parse_time_with_em_dash():
