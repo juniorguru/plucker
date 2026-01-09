@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Generator
 from zoneinfo import ZoneInfo
 
@@ -93,8 +93,7 @@ class Spider(BaseSpider):
         # Format examples: "17.–18. října 2026", "23. května 2026", "19. dubna 2026"
 
         # Try single date first
-        single_date_match = re.match(r"(\d{1,2})\.\s+(\w+)\s+(\d{4})", date_text)
-        if single_date_match:
+        if single_date_match := re.match(r"(\d{1,2})\.\s+(\w+)\s+(\d{4})", date_text):
             day = int(single_date_match.group(1))
             month_name = single_date_match.group(2)
             year = int(single_date_match.group(3))
@@ -106,8 +105,9 @@ class Spider(BaseSpider):
             return
 
         # Try date range (e.g., "17.–18. října 2026" or "9.–10. května 2026")
-        range_match = re.match(r"(\d{1,2})\.–(\d{1,2})\.\s+(\w+)\s+(\d{4})", date_text)
-        if range_match:
+        if range_match := re.match(
+            r"(\d{1,2})\.–(\d{1,2})\.\s+(\w+)\s+(\d{4})", date_text
+        ):
             start_day = int(range_match.group(1))
             end_day = int(range_match.group(2))
             month_name = range_match.group(3)
@@ -131,7 +131,7 @@ class Spider(BaseSpider):
                 )
             return
 
-        self.logger.error(f"Could not parse date: {date_text}")
+        raise ValueError(f"Could not parse date: {date_text}")
 
     def parse_time(self, time_text: str | None) -> tuple[time | None, time | None]:
         """Parse time text (format: "10:00–17:00" or "10:00 - 17:00")."""
@@ -139,14 +139,14 @@ class Spider(BaseSpider):
             return None, None
 
         time_match = re.search(
-            r"(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})", time_text
+            r"(\d{1,2}):(\d{2})\s*[–\u2013\u2014-]\s*(\d{1,2}):(\d{2})", time_text
         )
         if time_match:
             start_time = time(int(time_match.group(1)), int(time_match.group(2)))
             end_time = time(int(time_match.group(3)), int(time_match.group(4)))
             return start_time, end_time
 
-        return None, None
+        raise ValueError(f"Could not parse time: {time_text}")
 
     def create_meetup(
         self,
@@ -160,17 +160,15 @@ class Spider(BaseSpider):
         end_time: time | None,
     ) -> Meetup:
         """Create a meetup item with the given parameters."""
-        from datetime import date as date_class
-
-        event_date = date_class(year, month, day)
-        starts_at = datetime.combine(event_date, start_time or time(0, 0))
-        starts_at = starts_at.replace(tzinfo=self.prague_tz)
-
-        if end_time:
-            ends_at = datetime.combine(event_date, end_time)
-            ends_at = ends_at.replace(tzinfo=self.prague_tz)
-        else:
-            ends_at = None
+        event_date = date(year, month, day)
+        starts_at = datetime.combine(
+            event_date, start_time or time(0, 0), tzinfo=self.prague_tz
+        )
+        ends_at = (
+            datetime.combine(event_date, end_time, tzinfo=self.prague_tz)
+            if end_time
+            else None
+        )
 
         self.logger.info(f"Event: {title} {starts_at}")
         return Meetup(
@@ -182,7 +180,7 @@ class Spider(BaseSpider):
             location=location,
             source_url=source_url,
             series_name="Maker Faire",
-            series_org="komunita tvůrců a kutilů",
+            series_org="komunita technologických kutilů",
             series_url="https://makerfaire.cz/",
         )
 
