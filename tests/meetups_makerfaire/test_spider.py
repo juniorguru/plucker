@@ -111,7 +111,7 @@ def test_parse_single_day_with_time():
     )
 
 
-def test_parse_single_day_with_something_that_looks_like_time_but_isnt():
+def test_parse_something_that_looks_like_time_but_isnt():
     response = HtmlResponse(
         "https://makerfaire.cz/mlada-boleslav/",
         body=Path(FIXTURES_DIR / "detail-not-time.html").read_bytes(),
@@ -129,6 +129,31 @@ def test_parse_single_day_with_something_that_looks_like_time_but_isnt():
     assert meetup["source_url"] == "https://makerfaire.cz/mlada-boleslav/"
     assert meetup["starts_at"] == datetime(
         2026, 9, 19, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
+    )
+    assert meetup["ends_at"] is None
+
+
+def test_parse_complicated_location():
+    response = HtmlResponse(
+        "https://makerfaire.cz/ceske-budejovice/",
+        body=Path(FIXTURES_DIR / "detail-location.html").read_bytes(),
+    )
+    meetups = list(Spider().parse_city(response))
+
+    assert len(meetups) == 1
+
+    meetup = meetups[0]
+
+    assert isinstance(meetup, Meetup)
+    assert meetup["title"] == "Maker Faire České Budějovice"
+    assert (
+        meetup["location"]
+        == "Národní pavilon Z – Výstaviště České Budějovice, České Budějovice"
+    )
+    assert meetup["url"] == "https://makerfaire.cz/ceske-budejovice/"
+    assert meetup["source_url"] == "https://makerfaire.cz/ceske-budejovice/"
+    assert meetup["starts_at"] == datetime(
+        2026, 9, 3, 0, 0, tzinfo=ZoneInfo("Europe/Prague")
     )
     assert meetup["ends_at"] is None
 
