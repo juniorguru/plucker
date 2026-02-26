@@ -21,6 +21,7 @@ class Spider(BaseSpider):
     }
 
     def parse(self, response: Response) -> Generator[Request, None, None]:
+        self.logger.info("Acquiring cookies")
         response = cast(TextResponse, response)
         business_ids = [
             course_provider["cz_business_id"]
@@ -28,7 +29,7 @@ class Spider(BaseSpider):
             if course_provider["cz_business_id"]
         ]
         yield Request(
-            "https://www.uradprace.cz/vyhledani-rekvalifikacniho-kurzu",
+            "https://up.gov.cz/vyhledani-rekvalifikacniho-kurzu",
             self.parse_cookies,
             cb_kwargs={"business_ids": business_ids},
         )
@@ -51,7 +52,7 @@ class Spider(BaseSpider):
             f"Fetching courses from {start} to {start + step} (business ID: {business_id})"
         )
         return Request(
-            f"https://www.uradprace.cz/api/rekvalifikace/rest/kurz/query-ex#{business_id}",
+            f"https://up.gov.cz/api/rekvalifikace/rest/kurz/query-ex#{business_id}",
             method="POST",
             headers={
                 "Accept": "application/json",
@@ -60,7 +61,6 @@ class Spider(BaseSpider):
             },
             body=json.dumps(
                 {
-                    "icoVzdelavatele": business_id,
                     "optKurzIds": False,
                     "optDruhKurzu": False,
                     "optNazevKurzu": False,
@@ -69,6 +69,7 @@ class Spider(BaseSpider):
                     "optStavZajmu": False,
                     "optNazevVzdelavatele": False,
                     "optIcoVzdelavatele": True,
+                    "icoVzdelavatele": business_id,
                     "optKategorie": False,
                     "optAkreditace": False,
                     "pagination": {"start": start, "count": step, "order": ["-id"]},
@@ -105,7 +106,7 @@ class Spider(BaseSpider):
                     yield CourseProvider(
                         id=course["id"],
                         url=(
-                            "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"
+                            "https://up.gov.cz/web/cz/vyhledani-rekvalifikacniho-kurzu"
                             f"#/rekvalifikacni-kurz-detail/{course['id']}"
                         ),
                         name=course["nazev"],
