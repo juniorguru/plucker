@@ -28,7 +28,7 @@ def test_parse_courses():
     assert course["id"] == 20127
     assert (
         course["url"]
-        == "https://www.uradprace.cz/web/cz/vyhledani-rekvalifikacniho-kurzu#/rekvalifikacni-kurz-detail/20127"
+        == "https://up.gov.cz/web/cz/vyhledani-rekvalifikacniho-kurzu#/rekvalifikacni-kurz-detail/20127"
     )
     assert (
         course["name"]
