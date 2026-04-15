@@ -1,0 +1,57 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//nepyvo.cz//NONSGML Event Calendar//CS
+X-WR-CALNAME:nepyvo.cz
+X-WR-TIMEZONE:Europe/Prague
+BEGIN:VEVENT
+SUMMARY:AI mění (nejen) svět IT
+DTSTART:20260416T170000
+DTEND:20260416T200000
+DTSTAMP:20260415T093348Z
+UID:69cb8efbdc8b45d48bcd7791@nepyvo.cz
+DESCRIPTION:Umělá inteligence hýbe celým IT světem a Python je u toho
+  v první linii. Jak ale AI skutečně mění náš obor\, naši každoden
+ ní práci a co nás čeká dál?\n    \nTohle NePyvo věnujeme AI pěkně
+  z nadhledu. Čekají nás přednášky (jejichž detaily najdete níže)\
+ , které toto téma rozeberou z různých úhlů\, ale hlavně spousta pro
+ storu pro neformální diskuzi. Pojďme se podělit o názory\, reálné z
+ kušenosti\, nadšení i případnou zdravou skepsi.\n    \nPřijďte si r
+ ozšířit obzory\, potkat se s komunitou a probrat budoucnost (nejen) pro
+ gramování nad sklenicí dobrého moku. Ať už jste v oblasti AI fanatic
+ i\, nebo jen zvědaví kolemjdoucí\, všichni jste vítáni!\n\nProgram:\
+ n- Vojtěch Oram: Základy AI programování\n- Daniela Drážná: Co děl
+ á junior tester?\n- Pavel Grochal: Edge of Developer: Učení se Pythonu 
+ v éře AI\n- Luděk Reif: Digitální archeologie: Deprecated\n- Nina Bel
+ yavskaya: Pozvánka na workshop: Kryptografie v praxi\n
+LOCATION:Hostinec Pod Schody\nHrnčířská 813/23\n602 00 Brno-střed-Vev
+ eří ((alias Pivovar Fénix))
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:NePyvo 2.0
+DTSTART:20260312T180000
+DTEND:20260312T210000
+DTSTAMP:20260415T093348Z
+UID:6989e6427d67a65052bd401b@nepyvo.cz
+DESCRIPTION:### 🐍 Rozšiřujeme brněnské vody Python komunity\nMáš 
+ pocit\, že příležitostí potkat se s lidmi od Pythonu není nikdy dost
+ ? My také. Proto oživujeme formát NePyvo.\n\nNechceme nikomu konkurovat
+  ani tříštit síly stávající komunity. Naopak – náš cíl je brn
+ ěnskou scénu rozšířit a nabídnout další\, neformální prostor pro
+  setkávání. Startujeme novou kapitolu a zveme každého\, kdo má chuť
+  se bavit o kódu\, ať už s tím teprve začíná\, nebo má roky praxe.
+ \n\n### O co nám jde?\n- **Restart setkávání** - Pravidelná dávka mo
+ tivace a networkingu. Chceme vytvořit místo\, kam se budeš těšit.\n\n
+ - **Otevřenost** - Nezáleží na senioritě. Prostor tu je pro studenty\
+ , samouky i softwarové architekty. Žádné hloupé otázky\, jen sdílen
+ í know-how.\n\n- **Čeština hraje prim** - Setkání probíhají v češ
+ tině. Pokud ale dorazí někdo\, kdo česky neumí\, určitě ho nevyhod
+ íme – u stolu se anglicky (nebo rukama nohama) vždycky domluvíme\, al
+ e hlavní jazyk akce držíme český.\n\nProgram:\n- Luděk Reif: Vibe Co
+ ding: Na vlnách podivna\n- Luděk Reif: Programátor vs. metodik: Ztracen
+ o v překladu?\n- Luděk Reif: Pozvánka na workshop: Jak dostat svou apli
+ kaci na internet\n- Luděk Reif: Pozvánka na akci: Daruj krev s PyLadies\
+ n
+LOCATION:Hostinec Pod Schody\nHrnčířská 813/23\n602 00 Brno-střed-Vev
+ eří ((alias Pivovar Fénix))
+END:VEVENT
+END:VCALENDAR
