@@ -502,26 +502,26 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apify", extras = ["scrapy"], specifier = ">=3.3.2b1" },
-    { name = "apify-client", specifier = ">=2.1.0" },
+    { name = "apify", extras = ["scrapy"], specifier = ">=3.3.2" },
+    { name = "apify-client", specifier = ">=2.5.0" },
     { name = "apify-shared" },
-    { name = "click", specifier = ">=8.3.0" },
+    { name = "click", specifier = ">=8.3.2" },
     { name = "diskcache", specifier = ">=5.6.3" },
     { name = "favicon", specifier = ">=0.7.0" },
     { name = "ics", specifier = ">=0.8.0.dev0" },
-    { name = "lxml", specifier = ">=5.3.0" },
-    { name = "pillow", specifier = ">=11.3.0" },
-    { name = "pydantic", specifier = ">=2.11.10" },
-    { name = "scrapy", specifier = ">=2.13.3" },
-    { name = "teemup", specifier = ">=1.2.1" },
+    { name = "lxml", specifier = ">=6.0.4" },
+    { name = "pillow", specifier = ">=12.2.0" },
+    { name = "pydantic", specifier = ">=2.13.0" },
+    { name = "scrapy", specifier = ">=2.15.0" },
+    { name = "teemup", specifier = ">=1.2.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "cookiecutter", specifier = ">=2.6.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "cookiecutter", specifier = ">=2.7.1" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-ruff", specifier = ">=0.5" },
-    { name = "ruff", specifier = ">=0.13.0" },
+    { name = "ruff", specifier = ">=0.15.10" },
 ]
 
 [[package]]
