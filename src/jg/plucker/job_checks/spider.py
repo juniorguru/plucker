@@ -47,7 +47,8 @@ class Spider(BaseSpider):
         startupjobs_urls = []  # StartupJobs URLs bulk
         for url in self._start_urls:
             if is_linkedin_url(url):
-                yield self._linkedin_request(url)
+                if request := self._linkedin_request(url):
+                    yield request
             elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
@@ -66,8 +67,9 @@ class Spider(BaseSpider):
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
 
-    def _linkedin_request(self, url: str) -> Request:
-        raise NotImplementedError("LinkedIn not supported")
+    def _linkedin_request(self, url: str) -> Request | None:
+        self.logger.warning(f"Skipping {url}, LinkedIn job checks are not supported")
+        return None
 
     def check_linkedin(
         self, api_response: Response, job_url: str

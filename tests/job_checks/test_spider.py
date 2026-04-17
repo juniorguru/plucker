@@ -64,6 +64,16 @@ def test_spider_check_startupjobs():
     ]
 
 
+def test_spider_linkedin_request_warns_and_skips(caplog):
+    url = "https://www.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/"
+
+    with caplog.at_level("WARNING"):
+        request = Spider()._linkedin_request(url)
+
+    assert request is None
+    assert f"Skipping {url}, LinkedIn job checks are not supported" in caplog.messages
+
+
 @pytest.mark.parametrize(
     "stats_override",
     [
