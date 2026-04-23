@@ -14,14 +14,14 @@ DEFAULT_REQUEST_HEADERS = {
     "Sec-Gpc": "1",
 }
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:149.0) Gecko/20100101 Firefox/149.0"
 
 ROBOTSTXT_OBEY = False
 
 # If these occur, let's fail fast! For reference, see https://www.rfc-editor.org/rfc/rfc9110.html
 HTTPERROR_ALLOWED_CODES = [400, 405, 406, 410, 411, 412, 413, 414, 415, 422, 501]
 
-RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 403, 408, 429, 999]
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 403, 408, 421, 429, 999]
 
 HTTPCACHE_ENABLED = True
 
