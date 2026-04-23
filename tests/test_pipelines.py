@@ -1,5 +1,5 @@
 import pytest
-from scrapy import Field, Item, Spider
+from scrapy import Field, Item
 
 from jg.plucker.pipelines import (
     MissingRequiredFields,
@@ -16,11 +16,11 @@ class Something(Item):
 
 def test_required_fields_filter_pipeline():
     item = Something(prop1="foo", prop2="moo", prop4="boo")
-    RequiredFieldsFilterPipeline().process_item(item, Spider(name="sample"))
+    RequiredFieldsFilterPipeline().process_item(item)
 
 
 def test_required_fields_filter_pipeline_drops():
     item = Something()
 
     with pytest.raises(MissingRequiredFields, match="prop2, prop4"):
-        RequiredFieldsFilterPipeline().process_item(item, Spider(name="sample"))
+        RequiredFieldsFilterPipeline().process_item(item)

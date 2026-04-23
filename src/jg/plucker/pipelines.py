@@ -2,7 +2,8 @@ import hashlib
 import logging
 
 from apify import Actor
-from scrapy import Item, Spider
+from scrapy import Item
+from scrapy.crawler import Crawler
 from scrapy.exceptions import DropItem
 
 from jg.plucker.items import get_image_fields, get_required_fields
@@ -16,7 +17,7 @@ class MissingRequiredFields(DropItem):
 
 
 class RequiredFieldsFilterPipeline:
-    def process_item(self, item: Item, spider: Spider) -> Item:
+    def process_item(self, item: Item) -> Item:
         required_fields = get_required_fields(item.__class__)
         missing_fields = required_fields - frozenset(item.keys())
         if missing_fields:
@@ -26,15 +27,23 @@ class RequiredFieldsFilterPipeline:
 
 
 class ImagePipeline:
-    def __init__(self):
+    def __init__(self, crawler: Crawler):
+        self.crawler = crawler
         self._kvs = None
 
-    async def process_item(self, item: Item, spider: Spider) -> Item:
+    @classmethod
+    def from_crawler(cls, crawler: Crawler) -> "ImagePipeline":
+        return cls(crawler)
+
+    async def process_item(self, item: Item) -> Item:
         try:
             self._kvs = self._kvs or await Actor.open_key_value_store()
         except RuntimeError as e:
             logger.error(f"Failed to open key-value store: {e}")
             return item
+
+        spider = self.crawler.spider
+        spider_name = spider.name if spider else "<unknown>"
 
         item_class = item.__class__
         for field in get_image_fields(item_class):
@@ -42,7 +51,7 @@ class ImagePipeline:
             if isinstance(value, bytes):
                 size_kb = len(value) // 1024
                 logger.info(
-                    f"Processing image: {item_class.__name__}.{field}, size {size_kb}kB, spider {spider.name}"
+                    f"Processing image: {item_class.__name__}.{field}, size {size_kb}kB, spider {spider_name}"
                 )
                 key = hashlib.sha256(value).hexdigest()
                 await self._kvs.set_value(key, value)
