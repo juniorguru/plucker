@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Annotated, Any, Coroutine, Generator, Literal, Type
 
-from apify import Actor
+from apify import Actor, Event as ApifyEvent
 from apify.scrapy import run_scrapy_actor
 from apify.scrapy.utils import apply_apify_settings
 from pydantic import BaseModel, HttpUrl, PlainSerializer
@@ -53,6 +53,7 @@ async def run_as_actor(
 ):
     async with Actor:
         logger.info(f"Starting actor for spider {spider_class.name}")
+        Actor.on(ApifyEvent.MIGRATING, actor_migrate)
 
         params = spider_params or (await Actor.get_input()) or {}
         proxy_config = params.pop("proxyConfig", None)
@@ -71,6 +72,11 @@ async def run_as_actor(
         await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
+
+
+async def actor_migrate() -> None:
+    logger.error("Actor is migrating!")
+    await Actor.reboot()
 
 
 def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
