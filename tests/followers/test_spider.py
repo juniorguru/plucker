@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from scrapy.http.response.html import HtmlResponse
+from scrapy.http.response.text import TextResponse
 
 from jg.plucker.followers.spider import Spider, get_domain
 
@@ -40,62 +41,65 @@ def test_spider_parse_mastodon():
 
 
 @pytest.mark.parametrize(
-    "filename, expected_count",
+    "filename, name, expected_count",
     [
-        ("linkedin.html", 935),
-        ("linkedin2.html", 935),
+        ("linkedin.html", "linkedin", 935),
+        ("linkedin2.html", "linkedin", 935),
+        ("linkedin_personal.html", "linkedin_personal", 4263),
     ],
 )
-def test_spider_parse_linkedin(filename: str, expected_count: int):
+def test_spider_parse_linkedin(filename: str, name: str, expected_count: int):
     response = HtmlResponse(
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
     spider = Spider()
-    item = spider.parse_linkedin(response, today=date(2025, 3, 18), name="linkedin")
+    item = spider.parse_linkedin(response, today=date(2025, 3, 18), name=name)
 
     assert item == {
         "date": date(2025, 3, 18),
-        "name": "linkedin",
+        "name": name,
         "count": expected_count,
     }
 
 
-def test_spider_parse_linkedin_personal():
-    filename = "linkedin_personal.html"
+@pytest.mark.parametrize(
+    "filename, name, expected_count",
+    [
+        ("facebook.html", "facebook", 413),
+        ("facebook_personal.html", "facebook_personal", 668),
+    ],
+)
+def test_spider_parse_facebook(filename: str, name: str, expected_count: int):
     response = HtmlResponse(
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
     spider = Spider()
-    item = spider.parse_linkedin(
-        response, today=date(2025, 3, 18), name="linkedin_personal"
-    )
+    item = spider.parse_facebook(response=response, today=date(2025, 3, 18), name=name)
 
     assert item == {
         "date": date(2025, 3, 18),
-        "name": "linkedin_personal",
-        "count": 4263,
+        "name": name,
+        "count": expected_count,
     }
 
 
 @pytest.mark.parametrize(
-    "filename, expected_count",
+    "filename, name, expected_count",
     [
-        ("facebook.html", 413),
-        ("facebook_personal.html", 668),
-        ("instagram.html", 652),
-        ("instagram_personal.html", 329),
+        ("instagram.json", "instagram", 652),
+        ("instagram_personal.json", "instagram_personal", 328),
     ],
 )
-def test_spider_parse_meta(filename: str, expected_count: int):
-    response = HtmlResponse(
+def test_spider_parse_instagram(filename: str, name: str, expected_count: int):
+    response = TextResponse(
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
+        encoding="utf-8",
     )
     spider = Spider()
-    name = filename.removesuffix(".html")
-    item = spider.parse_meta(response=response, today=date(2025, 3, 18), name=name)
+    item = spider.parse_instagram(response=response, today=date(2025, 3, 18), name=name)
 
     assert item == {
         "date": date(2025, 3, 18),

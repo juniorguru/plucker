@@ -1,8 +1,8 @@
 import json
 import re
-from urllib.parse import urlparse
 from datetime import date
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
@@ -10,13 +10,38 @@ from scrapy.http.response import Response
 from jg.plucker.items import Followers
 
 
-META_DESCRIPTION_RE = r"(?i)([\d.,\s]+)\s+(likes?|followers|sledujících)"
+FB_DESCRIPTION_RE = re.compile(
+    r"""
+        ([\d.,\s]+)  # group 1: number with optional commas and spaces
+        \s+          # one or more whitespace
+        (?:          # non-capturing group for count label variants
+            likes?                 # English: like or likes
+            | followers            # English: followers
+            | sledujících          # Czech: sledujících (followers)
+            | to\s+se\s+mi\s+líbí  # Czech: to se mi líbí (likes)
+        )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+INSTAGRAM_APP_ID = "936619743392459"
 
 
 class Spider(BaseSpider):
     name = "followers"
 
     min_items = 0
+
+    custom_settings = {
+        "USER_AGENT": "",
+        "DOWNLOAD_HANDLERS": {
+            "http": "scrapy_impersonate.ImpersonateDownloadHandler",
+            "https": "scrapy_impersonate.ImpersonateDownloadHandler",
+        },
+        "DOWNLOADER_MIDDLEWARES": {
+            "scrapy_impersonate.RandomBrowserMiddleware": 1000,
+        },
+    }
 
     async def start(self) -> AsyncGenerator[Request, None]:
         today = date.today()
@@ -27,23 +52,25 @@ class Spider(BaseSpider):
         )
         yield Request(
             "https://www.facebook.com/juniordotguru",
-            self.parse_meta,
+            self.parse_facebook,
             cb_kwargs={"today": today, "name": "facebook"},
         )
         yield Request(
-            "https://www.facebook.com/honzajavorek/",
-            self.parse_meta,
+            "https://www.facebook.com/honzajavorek/?__xts__=1",
+            self.parse_facebook,
             cb_kwargs={"today": today, "name": "facebook_personal"},
         )
         yield Request(
-            "https://www.instagram.com/juniordotguru",
-            self.parse_meta,
+            "https://i.instagram.com/api/v1/users/web_profile_info/?username=juniordotguru",
+            self.parse_instagram,
             cb_kwargs={"today": today, "name": "instagram"},
+            headers={"x-ig-app-id": INSTAGRAM_APP_ID},
         )
         yield Request(
-            "https://www.instagram.com/honza.javorek",
-            self.parse_meta,
+            "https://i.instagram.com/api/v1/users/web_profile_info/?username=honza.javorek",
+            self.parse_instagram,
             cb_kwargs={"today": today, "name": "instagram_personal"},
+            headers={"x-ig-app-id": INSTAGRAM_APP_ID},
         )
         yield Request(
             (
@@ -98,16 +125,28 @@ class Spider(BaseSpider):
                 self.logger.debug(f"Could not parse text: {text!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
 
-    def parse_meta(self, response: Response, today: date, name: str) -> Followers:
+    def parse_facebook(self, response: Response, today: date, name: str) -> Followers:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
         selector = 'meta[property="og:description"]::attr(content)'
         if description := response.css(selector).get():
             self.logger.info("Found og:description")
-            if match := re.search(META_DESCRIPTION_RE, description):
+            if match := FB_DESCRIPTION_RE.search(description):
                 count = int(re.sub(r"\D", "", match.group(1)))
                 return Followers(date=today, name=name, count=count)
             self.logger.error(f"Could not parse followers: {description!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
+
+    def parse_instagram(self, response: Response, today: date, name: str) -> Followers:
+        self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
+        try:
+            data = json.loads(response.text)
+            count = data["data"]["user"]["edge_followed_by"]["count"]
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                "Could not find followers count in Instagram API response:\n\n"
+                + response.text
+            ) from exc
+        return Followers(date=today, name=name, count=int(count))
 
 
 def get_domain(url: str) -> str:
