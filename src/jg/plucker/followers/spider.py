@@ -79,7 +79,17 @@ class Spider(BaseSpider):
     def parse_facebook(
         self, response: Response, today: date, name: str = "facebook"
     ) -> Followers:
-        raise NotImplementedError()
+        self.logger.info(f"Parsing Facebook ({name})")
+        selector = 'meta[property="og:description"]::attr(content)'
+        if description := response.css(selector).get():
+            self.logger.info("Found og:description")
+            if match := re.search(
+                r"(?i)([\d.,\s]+)\s+(likes?|followers|sledujících)", description
+            ):
+                count = int(re.sub(r"\D", "", match.group(1)))
+                return Followers(date=today, name=name, count=count)
+            self.logger.error(f"Could not parse followers: {description!r}")
+        raise ValueError("Could not find followers count:\n\n" + response.text)
 
     def parse_instagram(
         self, response: Response, today: date, name: str = "instagram"
