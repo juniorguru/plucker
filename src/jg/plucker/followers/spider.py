@@ -75,3 +75,13 @@ class Spider(BaseSpider):
             except ValueError:
                 self.logger.debug(f"Could not parse text: {text!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
+
+    def parse_facebook(
+        self, response: Response, today: date, name: str = "facebook"
+    ) -> Followers:
+        raise NotImplementedError()
+
+    def parse_instagram(
+        self, response: Response, today: date, name: str = "instagram"
+    ) -> Followers:
+        raise NotImplementedError()
