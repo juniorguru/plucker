@@ -88,3 +88,13 @@ class Spider(BaseSpider):
                 return Followers(date=today, name=name, count=count)
             self.logger.error(f"Could not parse followers: {description!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
+
+
+def get_domain(url: str) -> str:
+    hostname = urlparse(url).hostname or ""
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+    parts = hostname.split(".")
+    if len(parts) >= 2:
+        return ".".join(parts[-2:])
+    return hostname
