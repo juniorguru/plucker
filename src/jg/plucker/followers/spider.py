@@ -26,6 +26,26 @@ class Spider(BaseSpider):
             cb_kwargs={"today": today},
         )
         yield Request(
+            "https://www.facebook.com/juniordotguru",
+            self.parse_meta,
+            cb_kwargs={"today": today, "name": "facebook"},
+        )
+        yield Request(
+            "https://www.facebook.com/honzajavorek/",
+            self.parse_meta,
+            cb_kwargs={"today": today, "name": "facebook_personal"},
+        )
+        yield Request(
+            "https://www.instagram.com/juniordotguru",
+            self.parse_meta,
+            cb_kwargs={"today": today, "name": "instagram"},
+        )
+        yield Request(
+            "https://www.instagram.com/honza.javorek",
+            self.parse_meta,
+            cb_kwargs={"today": today, "name": "instagram_personal"},
+        )
+        yield Request(
             (
                 "https://www.linkedin.com/posts/"
                 "honzajavorek_p%C5%AFl-rok-samostudia-programov%C3%A1n%C3%AD-a-%C4%8Dlov%C4%9Bk-activity-7300443605666545664-S7yp"
@@ -41,7 +61,7 @@ class Spider(BaseSpider):
                 "?utm_source=share&utm_medium=member_desktop&rcm=ACoAAACB93ABHHj4UI2winetGMZHboHlZIZojJA"
             ),
             self.parse_linkedin,
-            cb_kwargs={"today": today},
+            cb_kwargs={"today": today, "name": "linkedin"},
         )
 
     def parse_mastodon(self, response: Response, today: date) -> Followers:
