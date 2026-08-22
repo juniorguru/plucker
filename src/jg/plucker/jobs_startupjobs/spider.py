@@ -23,6 +23,15 @@ class Spider(BaseSpider):
     def parse(self, response: Response) -> Generator[Job, None, None]:
         response = cast(TextResponse, response)
         for offer in response.json()["offers"]:
+            if (
+                not (offer.get("position") or "").strip()
+                or not (offer.get("description") or "").strip()
+            ):
+                self.logger.warning(
+                    f"Skipping offer with missing title or description: "
+                    f"{offer.get('url')!r}"
+                )
+                continue
             loader = Loader(item=Job(), response=response)
             loader.add_value("source", self.name)
             loader.add_value("source_urls", response.url)

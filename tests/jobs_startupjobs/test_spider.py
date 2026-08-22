@@ -89,6 +89,21 @@ def test_spider_parse_remote():
     assert job["remote"] is True
 
 
+def test_spider_parse_skips_empty_offers():
+    # feed_empty_offer.json is a real StartupJobs feed response containing
+    # 17 offers, one of which (nabidka/106875) has an empty position and
+    # description. That malformed record used to fail the whole nightly run.
+    response = TextResponse(
+        "https://example.com/example/",
+        body=Path(FIXTURES_DIR / "feed_empty_offer.json").read_bytes(),
+    )
+    jobs = list(Spider().parse(response))
+
+    assert len(jobs) == 16
+    assert all(job.get("title") and job.get("description_html") for job in jobs)
+    assert not any("106875" in job["url"] for job in jobs)
+
+
 @pytest.mark.parametrize(
     "types,expected",
     [
