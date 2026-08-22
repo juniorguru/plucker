@@ -260,10 +260,7 @@ def check(token: str, lookback: int, logs_dir: Path | None):
             [f"· {logs_url}" for logs_url in logs_urls]
         )
         if logs_dir:
-            message += (
-                f"\nFull logs of the failing runs were saved to {logs_dir} "
-                "(attached to this CI run as an artifact)."
-            )
+            message += f"\nFull logs of the failing runs were saved to {logs_dir}."
         logger.error(message)
         raise click.Abort()
     else:

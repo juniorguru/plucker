@@ -22,7 +22,7 @@ jobs:
       - name: Check
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: uv run plucker check --logs-dir apify-logs
+        run: uv run plucker check --logs-dir=apify-logs
 
       - name: Upload failure logs
         if: failure()
@@ -32,7 +32,7 @@ jobs:
           name: apify-failure-logs
           path: apify-logs/
           if-no-files-found: ignore
-          retention-days: 90
+          retention-days: 14
 
       - name: Announce failure logs
         if: failure() && steps.upload-logs.outputs.artifact-url != ''
