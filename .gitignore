@@ -27,6 +27,9 @@ build/
 # log files
 *.log
 
+# Apify failing-run logs gathered by `plucker check --logs-dir`
+apify-logs/
+
 # Added by Apify CLI
 storage
 node_modules

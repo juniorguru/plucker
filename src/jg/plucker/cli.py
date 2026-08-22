@@ -187,7 +187,13 @@ def build(
     type=int,
     help="How many previous runs to consider in the decision.",
 )
-def check(token: str, lookback: int):
+@click.option(
+    "--logs-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Save full logs of failing runs here (for later inspection, e.g. as a CI artifact).",
+)
+def check(token: str, lookback: int, logs_dir: Path | None):
     client = ApifyClient(token=token)
     schedules = [
         schedule
@@ -240,18 +246,53 @@ def check(token: str, lookback: int):
             else:
                 logger.error(f"{actor_name}: No successful runs found")
                 logs_urls.append(f"https://console.apify.com/actors/{actor_id}/runs/")
+                if logs_dir:
+                    paths = dump_run_logs(client, logs_dir, actor_name, latest_runs)
+                    logger.info(
+                        f"{actor_name}: saved {len(paths)} run log(s) to {logs_dir}"
+                    )
         else:
             logger.error(f"Actor {actor_id!r} not found")
             raise click.Abort()
 
     if logs_urls:
-        logger.error(
-            f"Found {len(logs_urls)} actors which didn't succeed:\n"
-            + "\n".join([f"· {logs_url}" for logs_url in logs_urls])
+        message = f"Found {len(logs_urls)} actors which didn't succeed:\n" + "\n".join(
+            [f"· {logs_url}" for logs_url in logs_urls]
         )
+        if logs_dir:
+            message += f"\nFull logs of the failing runs were saved to {logs_dir}."
+        logger.error(message)
         raise click.Abort()
     else:
         logger.info("All good!")
+
+
+def dump_run_logs(
+    client: ApifyClient,
+    logs_dir: Path,
+    actor_name: str,
+    runs: list[dict],
+) -> list[Path]:
+    """Save the full log of each given run as a text file under ``logs_dir``.
+
+    Files are written to ``<logs_dir>/<actor_name>/<run_id>-<status>.log``.
+    A failure to fetch a single run's log is recorded in place of that log
+    rather than aborting the whole dump.
+    """
+    actor_dir = logs_dir / actor_name.replace("/", "__")
+    actor_dir.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for run in runs:
+        run_id = run["id"]
+        status = run["status"]
+        try:
+            log_text = client.run(run_id).log().get() or ""
+        except Exception as e:
+            log_text = f"<failed to fetch log for run {run_id}: {e}>"
+        path = actor_dir / f"{run_id}-{status}.log"
+        path.write_text(log_text)
+        paths.append(path)
+    return paths
 
 
 @main.command()

@@ -22,4 +22,27 @@ jobs:
       - name: Check
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-        run: uv run plucker check
+        run: uv run plucker check --logs-dir=apify-logs
+
+      - name: Upload failure logs
+        if: failure()
+        id: upload-logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apify-failure-logs
+          path: apify-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Announce failure logs
+        if: failure() && steps.upload-logs.outputs.artifact-url != ''
+        run: |
+          url="${{ steps.upload-logs.outputs.artifact-url }}"
+          echo "::notice::Logs from the failing scraper runs are attached to this run as the 'apify-failure-logs' artifact: $url"
+          {
+            echo "### Apify failure logs"
+            echo ""
+            echo "Full logs from the failing scraper runs are attached to this run as the **apify-failure-logs** artifact:"
+            echo ""
+            echo "$url"
+          } >> "$GITHUB_STEP_SUMMARY"
