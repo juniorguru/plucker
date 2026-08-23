@@ -112,6 +112,7 @@ def test_spider_parse_skips_invalid_offers():
         ({"description": "<p>Hi</p>"}, True),
         ({"position": "Dev"}, True),
         ({"position": None, "description": "<p>Hi</p>"}, True),
+        ({"position": "Dev", "description": None}, True),
         ({}, True),
     ],
 )
