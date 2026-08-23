@@ -23,6 +23,9 @@ class Spider(BaseSpider):
     def parse(self, response: Response) -> Generator[Job, None, None]:
         response = cast(TextResponse, response)
         for offer in response.json()["offers"]:
+            if is_invalid(offer):
+                self.logger.warning(f"Skipping invalid offer: {offer.get('url')!r}")
+                continue
             loader = Loader(item=Job(), response=response)
             loader.add_value("source", self.name)
             loader.add_value("source_urls", response.url)
@@ -38,6 +41,13 @@ class Spider(BaseSpider):
             loader.add_value("description_html", offer["description"])
             loader.add_value("company_logo_urls", offer["startupLogo"])
             yield loader.load_item()
+
+
+def is_invalid(offer: dict) -> bool:
+    return (
+        not (offer.get("position") or "").strip()
+        or not (offer.get("description") or "").strip()
+    )
 
 
 def drop_remote(types: list[str]) -> list[str]:

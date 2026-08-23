@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from scrapy.http import TextResponse
 
-from jg.plucker.jobs_startupjobs.spider import Spider, drop_remote
+from jg.plucker.jobs_startupjobs.spider import Spider, drop_remote, is_invalid
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -87,6 +87,37 @@ def test_spider_parse_remote():
 
     assert job["employment_types"] == ["Full-time", "External collaboration"]
     assert job["remote"] is True
+
+
+def test_spider_parse_skips_invalid_offers():
+    response = TextResponse(
+        "https://example.com/example/",
+        body=Path(FIXTURES_DIR / "feed_invalid_offer.json").read_bytes(),
+    )
+    jobs = list(Spider().parse(response))
+
+    assert len(jobs) == 16
+    assert all(job.get("title") and job.get("description_html") for job in jobs)
+    assert not any("106875" in job["url"] for job in jobs)
+
+
+@pytest.mark.parametrize(
+    "offer,expected",
+    [
+        ({"position": "Dev", "description": "<p>Hi</p>"}, False),
+        ({"position": "", "description": "<p>Hi</p>"}, True),
+        ({"position": "Dev", "description": ""}, True),
+        ({"position": "   ", "description": "<p>Hi</p>"}, True),
+        ({"position": "Dev", "description": "   "}, True),
+        ({"description": "<p>Hi</p>"}, True),
+        ({"position": "Dev"}, True),
+        ({"position": None, "description": "<p>Hi</p>"}, True),
+        ({"position": "Dev", "description": None}, True),
+        ({}, True),
+    ],
+)
+def test_is_invalid(offer: dict, expected: bool):
+    assert is_invalid(offer) is expected
 
 
 @pytest.mark.parametrize(
