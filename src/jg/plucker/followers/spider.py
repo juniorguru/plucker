@@ -17,7 +17,7 @@ FB_DESCRIPTION_RE = re.compile(
         (?:          # non-capturing group for count label variants
             likes?                 # English: like or likes
             | followers            # English: followers
-            | sledujících          # Czech: sledujících (followers)
+            | sledující            # Czech: sledující/sledujících (followers)
             | to\s+se\s+mi\s+líbí  # Czech: to se mi líbí (likes)
         )
     """,
