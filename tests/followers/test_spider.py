@@ -68,6 +68,8 @@ def test_spider_parse_linkedin(filename: str, name: str, expected_count: int):
     [
         ("facebook.html", "facebook", 413),
         ("facebook_personal.html", "facebook_personal", 668),
+        ("facebook_new_wording.html", "facebook", 412),
+        ("facebook_personal_new_wording.html", "facebook_personal", 666),
     ],
 )
 def test_spider_parse_facebook(filename: str, name: str, expected_count: int):
