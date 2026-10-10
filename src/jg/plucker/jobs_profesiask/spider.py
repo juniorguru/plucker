@@ -2,7 +2,7 @@ import re
 from typing import Generator, Iterable, cast
 from urllib.parse import parse_qs, urlparse, urlunparse
 
-from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
+from itemloaders.processors import Compose, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
 from scrapy.http.response.html import HtmlResponse
@@ -13,9 +13,20 @@ from jg.plucker.processors import parse_iso_date, split
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
-LOCATION_NOTE_RE = re.compile(r"\s*\([^)]*\)$")
+LOCATION_NOTE_RE = re.compile(r"\s*\((?P<note>[^)]*)\)$")
 
-REMOTE_LOCATIONS = ["práca z domu", "práce z domu"]
+HYBRID_NOTE_RE = re.compile(r"z domu|z domova|home office|zu hause", re.IGNORECASE)
+
+REMOTE_LOCATIONS = ["práca z domu", "práce z domu", "remote work"]
+
+WAF_HTTP_CODES = [202, 405]
+
+EMPLOYMENT_TYPES_LABELS = [
+    "Druh pracovného pomeru",
+    "Type of employment",
+    "Contract type",
+    "Art des Arbeitsverhältnisses",
+]
 
 
 class Spider(BaseSpider):
@@ -24,9 +35,10 @@ class Spider(BaseSpider):
     custom_settings = {
         "RETRY_TIMES": 10,
         # AWS WAF responds with an empty '202 Accepted' and the 'x-amzn-waf-action: challenge'
-        # header when it wants the client to solve a JavaScript challenge
-        "RETRY_HTTP_CODES": [202] + RETRY_HTTP_CODES,
-        "HTTPCACHE_IGNORE_HTTP_CODES": [202],
+        # header when it wants the client to solve a JavaScript challenge, or escalates
+        # to a '405 Method Not Allowed' CAPTCHA page
+        "RETRY_HTTP_CODES": WAF_HTTP_CODES + RETRY_HTTP_CODES,
+        "HTTPCACHE_IGNORE_HTTP_CODES": WAF_HTTP_CODES,
     }
 
     start_urls = [
@@ -56,9 +68,8 @@ class Spider(BaseSpider):
             card_loader.add_value("source_urls", response.url)
             card_loader.add_value("source_urls", url)
             item = loader.load_item()
-            locations = item.get("locations_raw", [])
-            item["remote"] = is_remote(locations)
-            item["locations_raw"] = remove_remote(locations)
+            item["remote"] = is_remote(card.css(".job-location::text").getall())
+            item["locations_raw"] = remove_remote(item.get("locations_raw", []))
 
             self.logger.debug(f"Parsing card for {url}")
             yield response.follow(
@@ -91,6 +102,19 @@ class Spider(BaseSpider):
         else:
             self.logger.debug("Parsing as custom design job page")
             loader.add_css("description_html", "#detail .maintextearea")
+            loader.add_value(
+                "employment_types", parse_custom_employment_types(response)
+            )
+            loader.add_value(
+                "company_logo_urls",
+                [
+                    response.urljoin(url)
+                    for url in response.css(
+                        "#detail .maintextearea img::attr(src)"
+                    ).getall()
+                    if is_custom_logo_url(url)
+                ],
+            )
 
         yield loader.load_item()
 
@@ -100,8 +124,10 @@ class WAFChallengeError(Exception):
 
 
 def raise_for_waf_challenge(response: Response) -> None:
-    if response.headers.get("x-amzn-waf-action"):
-        raise WAFChallengeError(f"Blocked by AWS WAF: {response.url}")
+    if response.status in WAF_HTTP_CODES or response.headers.get("x-amzn-waf-action"):
+        raise WAFChallengeError(
+            f"Blocked by AWS WAF (HTTP {response.status}): {response.url}"
+        )
 
 
 def get_page(url: str) -> int:
@@ -114,12 +140,47 @@ def clean_url(url: str) -> str:
     return urlunparse(urlparse(url)._replace(query="", fragment=""))
 
 
+def parse_custom_employment_types(response: HtmlResponse) -> list[str]:
+    # custom designs have various markup, but the label and the value are always next to each other:
+    # <strong>Label:</strong> value, <p>Label:</p><p>value</p>, <div>Label</div><span>value</span>
+    employment_types = []
+    for label_text in EMPLOYMENT_TYPES_LABELS:
+        labels = response.xpath(
+            f"//*[@id='detail']//*[normalize-space(translate(text(), ':', ''))={label_text!r}]"
+        )
+        for label in labels:
+            value = label.xpath("normalize-space(following-sibling::text()[1])").get()
+            if not value:
+                value = label.xpath("normalize-space(following-sibling::*[1])").get()
+            if value:
+                employment_types.append(value)
+    return employment_types
+
+
+def parse_company_name(text: str) -> str:
+    return text.split(" | ")[0].strip()
+
+
+def is_custom_logo_url(url: str) -> bool:
+    filename = urlparse(url).path.split("/")[-1].lower()
+    return "logo" in filename and "white" not in filename
+
+
 def parse_location(text: str) -> str:
     return LOCATION_NOTE_RE.sub("", text.strip())
 
 
+def is_hybrid(location: str) -> bool:
+    if match := LOCATION_NOTE_RE.search(location.strip()):
+        return bool(HYBRID_NOTE_RE.search(match.group("note")))
+    return False
+
+
 def is_remote(locations: Iterable[str]) -> bool:
-    return any(location.lower() in REMOTE_LOCATIONS for location in locations)
+    return any(
+        parse_location(location).lower() in REMOTE_LOCATIONS or is_hybrid(location)
+        for location in locations
+    )
 
 
 def remove_remote(locations: Iterable[str]) -> list[str]:
@@ -135,9 +196,10 @@ def remove_empty(values: Iterable[str]) -> Iterable[str]:
 class Loader(ItemLoader):
     default_input_processor = MapCompose(str.strip)
     default_output_processor = TakeFirst()
+    company_name_in = MapCompose(parse_company_name)
     company_logo_urls_out = Compose(remove_empty, set, sorted)
     employment_types_in = MapCompose(str.lower, split)
-    employment_types_out = Identity()
+    employment_types_out = Compose(set, sorted)
     locations_raw_in = MapCompose(parse_location)
     locations_raw_out = Compose(remove_empty, set, sorted)
     posted_on_in = MapCompose(str.strip, parse_iso_date)
