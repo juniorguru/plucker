@@ -6,8 +6,10 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
 
 from jg.plucker.items import JobCheck
+from jg.plucker.jobs_profesiask.spider import raise_for_waf_challenge
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import Link, evaluate_stats, parse_links
+from jg.plucker.settings import RETRY_HTTP_CODES
 
 
 class Spider(BaseSpider):
@@ -19,6 +21,9 @@ class Spider(BaseSpider):
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
+        # AWS WAF on profesia.sk challenges with an empty '202 Accepted'. Its '405' CAPTCHA
+        # isn't retried, as 405 is a legit response to HEAD requests on other sites
+        "RETRY_HTTP_CODES": [202] + RETRY_HTTP_CODES,
     }
 
     min_items = 0
@@ -51,6 +56,11 @@ class Spider(BaseSpider):
                     yield request
             elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
+            elif is_profesiask_url(url):
+                # GET, not HEAD, as expired ads respond with 200 and a notice
+                yield Request(
+                    url, callback=self.check_profesiask, cb_kwargs={"job_url": url}
+                )
             else:
                 yield Request(url, method="HEAD", callback=self.check_http)
         if startupjobs_urls:
@@ -66,6 +76,20 @@ class Spider(BaseSpider):
         if response.status == 200:
             return JobCheck(url=response.url, ok=True, reason=reason)
         return JobCheck(url=response.url, ok=False, reason=reason)
+
+    def check_profesiask(self, response: Response, job_url: str) -> JobCheck:
+        self.logger.info(f"Checking {job_url} (Profesia.sk)")
+        raise_for_waf_challenge(response)  # don't report blocked request as expired job
+        if response.status in (404, 410):
+            return JobCheck(url=job_url, ok=False, reason=f"HTTP {response.status}")
+        if not is_profesiask_job_url(response.url):
+            # non-existent ads redirect to the homepage
+            return JobCheck(url=job_url, ok=False, reason="PROFESIASK")
+        if response.css('#detail .alert a[href*="similar_to="]').get(None):
+            return JobCheck(url=job_url, ok=False, reason="PROFESIASK")
+        if response.css('[itemprop="datePosted"]').get(None):
+            return JobCheck(url=job_url, ok=True, reason="PROFESIASK")
+        raise NotImplementedError(f"Failed to parse {response.url}")
 
     def _linkedin_request(self, url: str) -> Request | None:
         self.logger.warning(f"Skipping {url}, LinkedIn job checks are not supported")
@@ -110,6 +134,14 @@ def is_linkedin_url(url: str) -> bool:
 
 def is_startupjobs_url(url: str) -> bool:
     return "startupjobs.cz" in urlparse(url).netloc
+
+
+def is_profesiask_url(url: str) -> bool:
+    return "profesia.sk" in urlparse(url).netloc
+
+
+def is_profesiask_job_url(url: str) -> bool:
+    return bool(re.search(r"/O\d+/?$", urlparse(url).path))
 
 
 def parse_startupjobs_id(url: str) -> int:
