@@ -11,7 +11,9 @@ from jg.plucker.jobs_profesiask.spider import (
     WAFChallengeError,
     clean_url,
     get_page,
+    is_custom_logo_url,
     is_remote,
+    parse_company_name,
     parse_location,
     remove_remote,
 )
@@ -93,7 +95,30 @@ def test_spider_parse_location_note():
 
     assert jobs[6]["company_name"] == "EY – Ernst & Young"
     assert jobs[6]["locations_raw"] == ["Bratislava, Slovensko"]
-    assert jobs[6]["remote"] is False
+    assert jobs[6]["remote"] is True  # hybrid
+
+
+def test_spider_parse_location_without_note():
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/informacne-technologie/",
+        body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
+    )
+    requests = list(Spider().parse(response))[:-1]  # without next page
+    jobs = [request.cb_kwargs["item"] for request in requests]
+
+    assert jobs[1]["company_name"] == "Samsung SDS Global SCL Slovakia, s.r.o."
+    assert jobs[1]["locations_raw"] == ["Gáň, Gáň, Galanta"]
+    assert jobs[1]["remote"] is False
+
+
+def test_spider_parse_company_name_tagline():
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/informacne-technologie/?page_num=59",
+        body=Path(FIXTURES_DIR / "listing_page_last.html").read_bytes(),
+    )
+    jobs = [request.cb_kwargs["item"] for request in Spider().parse(response)]
+
+    assert jobs[1]["company_name"] == "CREATIVE sites, s.r.o."
 
 
 def test_spider_parse_listing_page_last():
@@ -166,9 +191,10 @@ def test_spider_parse_job_custom():
     job = cast(Job, next(Spider().parse_job(response, Job())))
 
     assert sorted(job.keys()) == sorted(
-        ["description_html", "posted_on", "source_urls", "url"]
+        ["description_html", "employment_types", "posted_on", "source_urls", "url"]
     )
     assert job["posted_on"] == date(2026, 10, 9)
+    assert job["employment_types"] == ["plný úväzok"]
     assert job["description_html"].startswith('<div class="maintextearea">')
     assert "<h1>Head of Engineering - náš líder pre vývoj SW" in job["description_html"]
     assert "AI-native development" in job["description_html"]
@@ -183,6 +209,9 @@ def test_spider_parse_job_custom_microdata():
 
     assert job["employment_types"] == ["full-time"]
     assert job["description_html"].startswith('<div class="maintextearea">')
+    assert job["company_logo_urls"] == [
+        "https://www.profesia.sk/customdesigns/GraftonSlovakia/4/6/images/logo-grafton.png"
+    ]
 
 
 def test_spider_parse_job_keeps_card_data():
@@ -218,6 +247,17 @@ def test_spider_parse_waf_challenge():
 
     with pytest.raises(WAFChallengeError):
         list(Spider().parse(response))
+
+
+def test_spider_parse_job_waf_captcha():
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/softip/O5372508",
+        status=405,
+        body=b"<html><head><title>Human Verification</title></head></html>",
+    )
+
+    with pytest.raises(WAFChallengeError):
+        list(Spider().parse_job(response, Job()))
 
 
 def test_spider_parse_job_waf_challenge():
@@ -289,6 +329,17 @@ def test_parse_location(text: str, expected: str):
     [
         (["Práca z domu"], True),
         (["Práce z domu"], True),
+        (["Remote work"], True),
+        (["Bratislava, Slovensko (Pozícia umožňuje občasnú prácu z domu)"], True),
+        (["Košice, Slovak Republic (Job with occasional home office)"], True),
+        (
+            [
+                "Bratislava, Slovensko (Die Position ermöglicht, gelegentlich "
+                "von zu Hause aus zu arbeiten )"
+            ],
+            True,
+        ),
+        (["Prešovský kraj, Košický kraj (Práca vyžaduje cestovanie)"], False),
         (["Bratislava", "Práca z domu"], True),
         (["Bratislava"], False),
         ([], False),
@@ -299,4 +350,63 @@ def test_is_remote(locations: list[str], expected: bool):
 
 
 def test_remove_remote():
-    assert remove_remote(["Bratislava", "Práca z domu"]) == ["Bratislava"]
+    assert remove_remote(["Bratislava", "Práca z domu", "Remote work"]) == [
+        "Bratislava"
+    ]
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("SOFTIP, a.s.", "SOFTIP, a.s."),
+        (
+            "CREATIVE sites, s.r.o. | platforma pre ambiciózne e-shopy",
+            "CREATIVE sites, s.r.o.",
+        ),
+    ],
+)
+def test_parse_company_name(text: str, expected: str):
+    assert parse_company_name(text) == expected
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("/customdesigns/Prohr/2/images/logo.png", True),
+        ("/customdesigns/Orange/6/4/images/logo.svg", True),
+        ("/customdesigns/IkeaIndustry/2/3/images/logo-ikea.png", True),
+        ("https://public.profesia.sk/companies/228800/custom-offer/logo.png", True),
+        ("/customdesigns/Ernstyoung/3/4/images/logo-ey-white.png", False),
+        ("/customdesigns/Softip/1/3/images/header.jpg", False),
+        ("/customdesigns/Softip/1/3/images/icons/ico-10.svg", False),
+    ],
+)
+def test_is_custom_logo_url(url: str, expected: bool):
+    assert is_custom_logo_url(url) is expected
+
+
+@pytest.mark.parametrize(
+    "fixture_basename, expected",
+    [
+        ("job_custom.html", ["plný úväzok"]),  # <div>Label</div><span>value</span>
+        (
+            "job_custom_label_paragraph.html",
+            ["plný úväzok"],
+        ),  # <p>Label:</p><p>value</p>
+        (
+            "job_custom_label_strong.html",
+            ["plný úväzok"],
+        ),  # <strong>Label:</strong> value
+        ("job_custom_label_de.html", ["vollzeitbeschäftigung"]),
+    ],
+)
+def test_spider_parse_job_custom_employment_types(
+    fixture_basename: str, expected: list[str]
+):
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/...",
+        body=Path(FIXTURES_DIR / fixture_basename).read_bytes(),
+    )
+    job = cast(Job, next(Spider().parse_job(response, Job())))
+
+    assert job["employment_types"] == expected
