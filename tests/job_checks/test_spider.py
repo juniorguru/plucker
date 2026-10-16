@@ -5,7 +5,8 @@ from scrapy.http import TextResponse
 from scrapy.http.response.html import HtmlResponse
 
 from jg.plucker.items import JobCheck
-from jg.plucker.job_checks.spider import Spider
+from jg.plucker.job_checks.spider import Spider, is_profesiask_url
+from jg.plucker.jobs_profesiask.spider import WAFChallengeError
 from jg.plucker.scrapers import StatsError
 
 
@@ -62,6 +63,67 @@ def test_spider_check_startupjobs():
             reason="STARTUPJOBS",
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    "fixture_basename, expected_ok",
+    [
+        ("profesiask_expired.html", False),
+        ("profesiask_ok.html", True),
+        ("profesiask_ok_custom.html", True),
+    ],
+)
+def test_spider_check_profesiask(fixture_basename: str, expected_ok: bool):
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
+    )
+    link = Spider().check_profesiask(response, job_url=url)
+
+    assert link == JobCheck(url=url, ok=expected_ok, reason="PROFESIASK")
+
+
+def test_spider_check_profesiask_reports_requested_url():
+    job_url = "https://www.profesia.sk/praca/old-slug/O4000000"
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/talent-solutions/O4000000",
+        body=Path(FIXTURES_DIR / "profesiask_expired.html").read_bytes(),
+    )
+    link = Spider().check_profesiask(response, job_url=job_url)
+
+    assert link == JobCheck(url=job_url, ok=False, reason="PROFESIASK")
+
+
+def test_spider_check_profesiask_redirect_to_homepage():
+    job_url = "https://www.profesia.sk/praca/softip/O9999999"
+    response = HtmlResponse(
+        "https://www.profesia.sk/", body=b"<html><body>Homepage</body></html>"
+    )
+    link = Spider().check_profesiask(response, job_url=job_url)
+
+    assert link == JobCheck(url=job_url, ok=False, reason="PROFESIASK")
+
+
+def test_spider_check_profesiask_waf_challenge():
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(
+        url, status=202, headers={"x-amzn-waf-action": "challenge"}, body=b""
+    )
+
+    with pytest.raises(WAFChallengeError):
+        Spider().check_profesiask(response, job_url=url)
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.profesia.sk/praca/softip/O5372508", True),
+        ("https://profesia.sk/praca/softip/O5372508", True),
+        ("https://www.jobs.cz/rpd/2000120375/", False),
+    ],
+)
+def test_is_profesiask_url(url: str, expected: bool):
+    assert is_profesiask_url(url) is expected
 
 
 def test_spider_linkedin_request_warns_and_skips(caplog):
