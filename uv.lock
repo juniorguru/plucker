@@ -570,7 +570,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "apify", extras = ["scrapy"], specifier = ">=4.1.0" },
-    { name = "apify-client", specifier = ">=2.5.0" },
+    { name = "apify-client", specifier = ">=3.3.0" },
     { name = "apify-shared" },
     { name = "click", specifier = ">=8.3.2" },
     { name = "diskcache", specifier = ">=5.6.3" },

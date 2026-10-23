@@ -89,6 +89,8 @@ class RunCacheStorage(ApifyCacheStorage):
     cleanup, and is accessible even to actors with limited permissions.
     """
 
+    # Mirrors ApifyCacheStorage.open_spider(), which has no way to choose
+    # the store, so this relies on its internals and may need updating with apify
     def open_spider(self, spider: Spider) -> None:
         self._spider = spider
         self._fingerprinter = spider.crawler.request_fingerprinter
@@ -106,7 +108,11 @@ class RunCacheStorage(ApifyCacheStorage):
         try:
             self._kvs = self._async_thread.run_coro(open_kvs())
         except Exception:
-            self._async_thread.close()
+            logger.exception("Failed to open the cache key-value store")
+            try:
+                self._async_thread.close()
+            except Exception:
+                logger.exception("Failed to close the cache storage's async thread")
             raise
 
 
