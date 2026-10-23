@@ -117,9 +117,36 @@ class Spider(BaseSpider):
     }
 
     start_urls = [
+        # professions
         "https://www.jobs.cz/prace/programator/",
+        "https://www.jobs.cz/prace/developer/",
         "https://www.jobs.cz/prace/tester/",
+        "https://www.jobs.cz/prace/python-vyvojar/",
+        "https://www.jobs.cz/prace/javascript-vyvojar/",
+        "https://www.jobs.cz/prace/react-vyvojar/",
+        "https://www.jobs.cz/prace/devops-vyvojar/",
+        "https://www.jobs.cz/prace/machine-learning-engineer/",
+        "https://www.jobs.cz/prace/data-scientist/",
         "https://www.jobs.cz/prace/datovy-analytik/",
+        "https://www.jobs.cz/prace/business-intelligence-specialist/",
+        "https://www.jobs.cz/prace/data-governance-specialista/",
+        "https://www.jobs.cz/prace/databazovy-specialista/",
+        "https://www.jobs.cz/prace/webovy-analytik/",
+        "https://www.jobs.cz/prace/it-analytik/",
+        "https://www.jobs.cz/prace/it-security-specialist/",
+        # AI-assisted development, which has no dedicated profession
+        "https://www.jobs.cz/prace/?q%5B0%5D=vibe%20coding",
+        "https://www.jobs.cz/prace/?q%5B0%5D=Claude%20Code",
+        "https://www.jobs.cz/prace/?q%5B0%5D=Cursor",
+        "https://www.jobs.cz/prace/?q%5B0%5D=Copilot",
+        "https://www.jobs.cz/prace/?q%5B0%5D=ChatGPT",
+        "https://www.jobs.cz/prace/?q%5B0%5D=AI%20agent",
+        "https://www.jobs.cz/prace/?q%5B0%5D=prompt%20engineering",
+        "https://www.jobs.cz/prace/?q%5B0%5D=LLM",
+        "https://www.jobs.cz/prace/?q%5B0%5D=GenAI",
+        "https://www.jobs.cz/prace/?q%5B0%5D=n8n",
+        "https://www.jobs.cz/prace/?q%5B0%5D=low-code",
+        "https://www.jobs.cz/prace/?q%5B0%5D=no-code",
     ]
 
     employment_types_labels = ["Typ pracovního poměru", "Employment form"]
