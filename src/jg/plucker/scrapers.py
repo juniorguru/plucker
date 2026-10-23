@@ -2,9 +2,13 @@ import logging
 from pathlib import Path
 from typing import Annotated, Any, Coroutine, Generator, Literal, Type
 
-from apify import Actor, Event as ApifyEvent
+from apify import Actor, Configuration, Event as ApifyEvent
 from apify.scrapy import run_scrapy_actor
+from apify.scrapy._async_thread import AsyncThread
+from apify.scrapy.extensions import ApifyCacheStorage
 from apify.scrapy.utils import apply_apify_settings
+from apify.storage_clients import ApifyStorageClient
+from apify.storages import KeyValueStore
 from pydantic import BaseModel, HttpUrl, PlainSerializer
 from scrapy import Item, Spider
 from scrapy.crawler import Crawler, CrawlerRunner
@@ -60,7 +64,9 @@ async def run_as_actor(
         logger.debug(f"Proxy config: {proxy_config!r}")
 
         settings = apply_apify_settings(proxy_config=proxy_config)
-        settings["HTTPCACHE_STORAGE"] = "apify.scrapy.extensions.ApifyCacheStorage"
+        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.RunCacheStorage"
+        # The cache lives only as long as the run, see RunCacheStorage
+        settings["HTTPCACHE_EXPIRATION_SECS"] = 0
         settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
         settings["FEEDS"] = {}
 
@@ -72,6 +78,36 @@ async def run_as_actor(
         await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
+
+
+class RunCacheStorage(ApifyCacheStorage):
+    """Caches responses in the run's default key-value store
+
+    The point of the cache is to survive the platform restarting the actor
+    in the middle of a run (e.g. migration), not to share responses between runs.
+    Unlike a named store, the default store is reset by each new run, needs no
+    cleanup, and is accessible even to actors with limited permissions.
+    """
+
+    def open_spider(self, spider: Spider) -> None:
+        self._spider = spider
+        self._fingerprinter = spider.crawler.request_fingerprinter
+
+        async def open_kvs() -> KeyValueStore:
+            configuration = Configuration.get_global_configuration()
+            if configuration.is_at_home:
+                return await KeyValueStore.open(
+                    configuration=configuration,
+                    storage_client=ApifyStorageClient(),
+                )
+            return await KeyValueStore.open()
+
+        self._async_thread = AsyncThread(default_timeout=self._async_thread_timeout)
+        try:
+            self._kvs = self._async_thread.run_coro(open_kvs())
+        except Exception:
+            self._async_thread.close()
+            raise
 
 
 async def actor_migrate() -> None:

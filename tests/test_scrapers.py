@@ -3,9 +3,13 @@ from importlib import import_module
 from pathlib import Path
 
 import pytest
-from scrapy import Field, Item, Spider
+from scrapy import Field, Item, Request, Spider
+from scrapy.http import HtmlResponse
+from scrapy.settings import Settings
+from scrapy.utils.test import get_crawler
 
 from jg.plucker.scrapers import (
+    RunCacheStorage,
     StatsError,
     evaluate_stats,
     generate_schema,
@@ -204,3 +208,30 @@ def test_generate_schema():
             }
         },
     }
+
+
+def test_run_cache_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("CRAWLEE_STORAGE_DIR", str(tmp_path))
+    spider = Spider("test")
+    spider.crawler = get_crawler(Spider)
+    storage = RunCacheStorage(Settings({"HTTPCACHE_EXPIRATION_SECS": 0}))
+    request = Request("https://example.com/")
+
+    storage.open_spider(spider)
+    try:
+        assert storage.retrieve_response(spider, request) is None
+        storage.store_response(
+            spider,
+            request,
+            HtmlResponse(request.url, status=200, body=b"<html>Hello</html>"),
+        )
+        response = storage.retrieve_response(spider, request, current_time=2**31)
+    finally:
+        storage.close_spider(spider)
+
+    assert response is not None
+    assert response.status == 200
+    assert response.body == b"<html>Hello</html>"
+    assert list((tmp_path / "key_value_stores").iterdir()) == [
+        tmp_path / "key_value_stores" / "default"
+    ]
