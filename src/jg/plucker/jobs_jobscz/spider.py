@@ -6,7 +6,7 @@ from datetime import date, datetime
 from functools import lru_cache
 from logging import Logger
 from pathlib import Path
-from typing import Any, Generator, Iterable, cast
+from typing import Any, AsyncGenerator, Generator, Iterable, cast
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -81,6 +81,15 @@ REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
+# Jobs.cz randomly assigns visitors to an A/B test bucket, and bucket A gets
+# redirected to beta.jobs.cz, which has entirely different HTML
+CLASSIC_SITE_COOKIE = {
+    "name": "beta_bucket",
+    "value": "3%3AB",
+    "domain": ".jobs.cz",
+    "path": "/",
+}
+
 
 class Spider(BaseSpider):
     name = "jobs-jobscz"
@@ -100,8 +109,15 @@ class Spider(BaseSpider):
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
 
+    async def start(self) -> AsyncGenerator[Request, None]:
+        for url in self.start_urls:
+            yield Request(url, cookies=[CLASSIC_SITE_COOKIE])
+
     def parse(self, response: Response) -> Generator[Request, None, None]:
         response = cast(HtmlResponse, response)
+        if is_beta_site(response.url):
+            self.logger.error(f"Redirected to the beta site: {response.url}")
+            return
         page = get_page(response.url)
         self.logger.debug(f"Parsing listing {response.url} (page: {page})")
 
@@ -146,6 +162,9 @@ class Spider(BaseSpider):
     ) -> Generator[Job | Request, None, None]:
         response = cast(HtmlResponse, response)
         self.logger_trk(trk).debug(f"Parsing job page {response.url}")
+        if is_beta_site(response.url):
+            self.logger_trk(trk).error(f"Redirected to the beta site: {response.url}")
+            return
 
         loader = Loader(item=item, response=response)
         loader.add_value("url", response.url)
@@ -358,6 +377,10 @@ def get_page(url: str) -> int:
     if page := get_param(url, "page"):
         return int(page)
     return 1
+
+
+def is_beta_site(url: str) -> bool:
+    return urlparse(url).hostname == "beta.jobs.cz"
 
 
 def get_trk(seed: str) -> str:
