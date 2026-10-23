@@ -10,10 +10,10 @@ from twisted.python.failure import Failure
 
 from jg.plucker.items import JobCheck
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
-from jg.plucker.scrapers import Link, evaluate_stats, parse_links
+from jg.plucker.scrapers import evaluate_stats, parse_links
 
 
-MIN_CHECKS_PER_HOST = 2
+MIN_CHECKS_PER_HOST = 5
 
 MAX_INCONCLUSIVE_RATIO = 0.5
 
@@ -41,9 +41,12 @@ class Spider(BaseSpider):
         stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
         return evaluate_stats(stats_copy, min_items)
 
-    def __init__(self, name: str | None = None, links: list[Link] | None = None):
+    def __init__(
+        self, name: str | None = None, links: list[dict[str, str]] | None = None
+    ):
         super().__init__(name)
-        self._start_urls = parse_links(links)
+        parse_links(links)  # validates, but normalizes URLs, which wouldn't match
+        self._start_urls = list(dict.fromkeys(link["url"] for link in links or []))
         self._expected_urls: set[str] = set()
         self._assessed_urls: set[str] = set()
         self._checks_by_host: Counter[str] = Counter()
@@ -57,12 +60,15 @@ class Spider(BaseSpider):
 
     def item_scraped(self, item: JobCheck) -> None:
         self._assessed_urls.add(item["url"])
-        host = urlparse(item["url"]).hostname or ""
+        host = get_site(item["url"])
         self._checks_by_host[host] += 1
         if item["ok"] is None:
             self._inconclusive_by_host[host] += 1
 
     def closed(self, reason: str) -> None:
+        if reason != "finished":
+            return  # don't bury the real cause under follow-up errors
+
         # Every link must get assessed, even if inconclusively, otherwise it's a bug
         for url in sorted(self._expected_urls - self._assessed_urls):
             self.logger.error(f"Link not assessed: {url}")
@@ -83,24 +89,20 @@ class Spider(BaseSpider):
             raise ValueError("No links provided")
         self.logger.info(f"Loading {len(self._start_urls)} links")
         startupjobs_urls = []  # StartupJobs URLs bulk
+        linkedin_urls_count = 0
         for url in self._start_urls:
             if is_linkedin_url(url):
-                if request := self._linkedin_request(url):
-                    yield request
+                linkedin_urls_count += 1
                 continue
             self._expected_urls.add(url)
             if is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
-                yield Request(
-                    url,
-                    method="HEAD",
-                    callback=self.check_http,
-                    errback=self.check_failure,
-                    cb_kwargs={"urls": [url]},
-                    # Otherwise links redirecting to the same page get dropped on Apify
-                    dont_filter=True,
-                )
+                yield self._http_request(url, "HEAD")
+        if linkedin_urls_count:
+            self.logger.info(
+                f"Skipping {linkedin_urls_count} LinkedIn links, not supported"
+            )
         if startupjobs_urls:
             yield Request(
                 STARTUPJOBS_EXPORT_URL,
@@ -110,44 +112,39 @@ class Spider(BaseSpider):
                 dont_filter=True,
             )
 
-    def check_http(self, response: Response, urls: list[str]) -> JobCheck:
+    def _http_request(self, url: str, method: str) -> Request:
+        return Request(
+            url,
+            method=method,
+            callback=self.check_http,
+            errback=self.check_failure,
+            cb_kwargs={"urls": [url]},
+            # Otherwise links redirecting to the same page get dropped on Apify
+            dont_filter=True,
+        )
+
+    def check_http(
+        self, response: Response, urls: list[str]
+    ) -> Generator[JobCheck | Request, None, None]:
         url = urls[0]
-        self.logger.info(f"Checking {url} (HTTP)")
+        self.logger.info(f"Checking {url} (HTTP {response.request.method})")
         reason = f"HTTP {response.status}"
         if response.status == 200:
-            return JobCheck(url=url, ok=True, reason=reason)
-        if response.status in (404, 410):
-            return JobCheck(url=url, ok=False, reason=reason)
-        self.logger.warning(f"Inconclusive check of {url}: {reason}")
-        return JobCheck(url=url, ok=None, reason=reason)
-
-    def check_failure(self, failure: Failure) -> Generator[JobCheck, None, None]:
-        reason = failure.type.__name__ if failure.type else "UNKNOWN"
-        for url in failure.request.cb_kwargs["urls"]:
+            yield JobCheck(url=url, ok=True, reason=reason)
+        elif response.status in (404, 410):
+            yield JobCheck(url=url, ok=False, reason=reason)
+        elif response.status in (405, 501) and response.request.method == "HEAD":
+            self.logger.info(f"HEAD not supported by {url}, trying GET")
+            yield self._http_request(url, "GET")
+        else:
             self.logger.warning(f"Inconclusive check of {url}: {reason}")
             yield JobCheck(url=url, ok=None, reason=reason)
 
-    def _linkedin_request(self, url: str) -> Request | None:
-        self.logger.warning(f"Skipping {url}, LinkedIn job checks are not supported")
-        return None
-
-    def check_linkedin(
-        self, api_response: Response, job_url: str
-    ) -> JobCheck | Request:
-        self.logger.info(f"Checking {job_url} (LinkedIn)")
-        if api_response.status == 404:
-            return JobCheck(url=job_url, ok=False, reason="HTTP 404")
-        if api_response.css(".closed-job").get(None):
-            return JobCheck(url=job_url, ok=False, reason="LINKEDIN")
-        if api_response.css(".top-card-layout__cta-container").get(None):
-            return JobCheck(url=job_url, ok=True, reason="LINKEDIN")
-        self.logger.error(
-            f"Failed to parse {api_response.url}, "
-            f"status {api_response.status}, "
-            f"content length {len(api_response.text)}"
-            f"\n\n{api_response.text}"
-        )
-        raise NotImplementedError("Failed to parse LinkedIn API response")
+    def check_failure(self, failure: Failure) -> Generator[JobCheck, None, None]:
+        reason = failure.type.__name__
+        for url in failure.request.cb_kwargs["urls"]:
+            self.logger.warning(f"Inconclusive check of {url}: {reason}")
+            yield JobCheck(url=url, ok=None, reason=reason)
 
     def check_startupjobs(
         self, response: Response, urls: list[str]
@@ -160,14 +157,27 @@ class Spider(BaseSpider):
                 yield JobCheck(url=url, ok=None, reason=reason)
             return
         data = response.json()
-        current_ids = set(
-            parse_startupjobs_id(offer["url"]) for offer in data.get("offers", [])
-        )
+        current_ids = set()
+        for offer in data.get("offers", []):
+            try:
+                current_ids.add(parse_startupjobs_id(offer["url"]))
+            except ValueError:
+                self.logger.warning(f"Skipping feed offer: {offer['url']}")
         for url in urls:
-            if parse_startupjobs_id(url) in current_ids:
+            try:
+                startupjobs_id = parse_startupjobs_id(url)
+            except ValueError:
+                self.logger.warning(f"Inconclusive check of {url}: unknown ID")
+                yield JobCheck(url=url, ok=None, reason="STARTUPJOBS UNKNOWN ID")
+                continue
+            if startupjobs_id in current_ids:
                 yield JobCheck(url=url, ok=True, reason="STARTUPJOBS")
             else:
                 yield JobCheck(url=url, ok=False, reason="STARTUPJOBS")
+
+
+def get_site(url: str) -> str:
+    return (urlparse(url).hostname or "").removeprefix("www.")
 
 
 def is_linkedin_url(url: str) -> bool:

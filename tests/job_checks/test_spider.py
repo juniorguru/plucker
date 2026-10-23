@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 from scrapy import Request, signals
 from scrapy.http import TextResponse
-from scrapy.http.response.html import HtmlResponse
 from scrapy.utils.test import get_crawler
 from twisted.internet.error import TimeoutError
 from twisted.python.failure import Failure
@@ -15,29 +14,6 @@ from jg.plucker.scrapers import StatsError
 
 
 FIXTURES_DIR = Path(__file__).parent
-
-
-@pytest.mark.parametrize(
-    "fixture_basename, expected_ok, expected_reason",
-    [
-        ("linkedin_expired.html", False, "LINKEDIN"),
-        ("linkedin_ok.html", True, "LINKEDIN"),
-    ],
-)
-def test_spider_check_linkedin(
-    fixture_basename: str, expected_ok: bool, expected_reason: str
-):
-    url = "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/"
-    response = HtmlResponse(
-        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
-    )
-    link = Spider().check_linkedin(response, job_url=url)
-
-    assert link == JobCheck(
-        url=url,
-        ok=expected_ok,
-        reason=expected_reason,
-    )
 
 
 @pytest.mark.parametrize(
@@ -52,10 +28,35 @@ def test_spider_check_linkedin(
 )
 def test_spider_check_http(status: int, expected_ok: bool | None):
     url = "https://example.com/job/"
-    response = TextResponse("https://example.com/redirected/", status=status)
-    link = Spider().check_http(response, urls=[url])
+    response = TextResponse(
+        "https://example.com/redirected/",
+        status=status,
+        request=Request(url, method="HEAD"),
+    )
+    links = list(Spider().check_http(response, urls=[url]))
 
-    assert link == JobCheck(url=url, ok=expected_ok, reason=f"HTTP {status}")
+    assert links == [JobCheck(url=url, ok=expected_ok, reason=f"HTTP {status}")]
+
+
+@pytest.mark.parametrize("status", [405, 501])
+def test_spider_check_http_head_not_supported(status: int):
+    url = "https://example.com/job/"
+    response = TextResponse(url, status=status, request=Request(url, method="HEAD"))
+    requests = list(Spider().check_http(response, urls=[url]))
+
+    assert len(requests) == 1
+    assert requests[0].method == "GET"
+    assert requests[0].url == url
+    assert requests[0].cb_kwargs == {"urls": [url]}
+    assert requests[0].dont_filter is True
+
+
+def test_spider_check_http_get_not_supported():
+    url = "https://example.com/job/"
+    response = TextResponse(url, status=405, request=Request(url, method="GET"))
+    links = list(Spider().check_http(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=None, reason="HTTP 405")]
 
 
 def test_spider_check_failure():
@@ -76,6 +77,17 @@ def test_spider_check_startupjobs_inconclusive():
     links = list(Spider().check_startupjobs(response, urls=[url]))
 
     assert links == [JobCheck(url=url, ok=None, reason="STARTUPJOBS HTTP 403")]
+
+
+def test_spider_check_startupjobs_unknown_id():
+    url = "https://www.startupjobs.cz/startup/acme"
+    response = TextResponse(
+        "https://example.com/feed.json",
+        body=Path(FIXTURES_DIR / "startupjobs.json").read_bytes(),
+    )
+    links = list(Spider().check_startupjobs(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=None, reason="STARTUPJOBS UNKNOWN ID")]
 
 
 def test_spider_check_startupjobs():
@@ -105,16 +117,6 @@ def test_spider_check_startupjobs():
             reason="STARTUPJOBS",
         ),
     ]
-
-
-def test_spider_linkedin_request_warns_and_skips(caplog):
-    url = "https://www.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/"
-
-    with caplog.at_level("WARNING"):
-        request = Spider()._linkedin_request(url)
-
-    assert request is None
-    assert f"Skipping {url}, LinkedIn job checks are not supported" in caplog.messages
 
 
 @pytest.mark.parametrize(
@@ -192,6 +194,29 @@ def test_spider_from_crawler_tracks_scraped_items():
     assert spider._assessed_urls == {url}
 
 
+def test_spider_keeps_urls_as_given():
+    urls = ["https://Example.com", "https://firma.cz/kariéra/vývojář"]
+    spider = Spider(links=[{"url": url} for url in urls + urls])
+
+    assert spider._start_urls == urls
+
+
+def test_spider_rejects_invalid_urls():
+    with pytest.raises(ValueError):
+        Spider(links=[{"url": "not a URL"}])
+
+
+def test_spider_logs_nothing_if_not_finished(caplog):
+    url = "https://example.com/job/"
+    spider = Spider(links=[{"url": url}])
+    spider._expected_urls = {url}
+
+    with caplog.at_level("ERROR"):
+        spider.closed("shutdown")
+
+    assert caplog.messages == []
+
+
 def test_spider_logs_links_not_assessed(caplog):
     urls = ["https://example.com/job1/", "https://example.com/job2/"]
     spider = Spider(links=[{"url": url} for url in urls])
@@ -204,32 +229,43 @@ def test_spider_logs_links_not_assessed(caplog):
     assert caplog.messages == [f"Link not assessed: {urls[1]}"]
 
 
+def jobs_cz_checks(*oks: bool | None) -> list[tuple[str, bool | None]]:
+    return [(f"https://www.jobs.cz/rpd/{n}/", ok) for n, ok in enumerate(oks)]
+
+
 @pytest.mark.parametrize(
     "checks, expected_messages",
     [
         pytest.param(
-            [("https://www.jobs.cz/1/", None), ("https://www.jobs.cz/2/", None)],
-            ["Checks of www.jobs.cz don't work: 2/2 inconclusive"],
+            jobs_cz_checks(None, None, None, None, None),
+            ["Checks of jobs.cz don't work: 5/5 inconclusive"],
             id="all-inconclusive",
         ),
         pytest.param(
-            [
-                ("https://www.jobs.cz/1/", None),
-                ("https://www.jobs.cz/2/", None),
-                ("https://www.jobs.cz/3/", True),
-            ],
-            ["Checks of www.jobs.cz don't work: 2/3 inconclusive"],
+            jobs_cz_checks(None, None, None, True, False),
+            ["Checks of jobs.cz don't work: 3/5 inconclusive"],
             id="mostly-inconclusive",
         ),
         pytest.param(
-            [("https://www.jobs.cz/1/", None), ("https://www.jobs.cz/2/", False)],
+            jobs_cz_checks(None, None, True, True, False),
             [],
-            id="half-inconclusive",
+            id="minority-inconclusive",
         ),
         pytest.param(
-            [("https://acme.example.com/job/", None)],
+            jobs_cz_checks(None, None, None, None),
             [],
-            id="single-link-site",
+            id="too-few-links",
+        ),
+        pytest.param(
+            [
+                ("https://www.jobs.cz/rpd/1/", None),
+                ("https://jobs.cz/rpd/2/", None),
+                ("https://www.jobs.cz/rpd/3/", None),
+                ("https://jobs.cz/rpd/4/", None),
+                ("https://www.jobs.cz/rpd/5/", None),
+            ],
+            ["Checks of jobs.cz don't work: 5/5 inconclusive"],
+            id="with-and-without-www",
         ),
     ],
 )
