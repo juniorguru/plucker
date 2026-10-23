@@ -126,7 +126,6 @@ class Spider(BaseSpider):
 
     def __init__(self, name: str | None = None, today: date | None = None):
         super().__init__(name)
-        # The same for all items, even if the run crosses midnight
         self.today = today or date.today()
 
     def logger_trk(self, trk: str) -> Logger:
