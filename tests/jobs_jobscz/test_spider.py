@@ -11,12 +11,17 @@ from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
+    JobDraft,
     Spider,
+    from_draft,
+    get_job_id,
     get_param,
     get_params,
     is_beta_site,
     select_widget,
+    to_draft,
 )
+from tests.utils import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -74,6 +79,8 @@ def test_spider_parse():
     requests = list(Spider().parse(response))
 
     assert len(requests) == 30 + 1  # jobs + next page
+    for request in requests:
+        assert is_storable_on_apify(request, Spider()) is True
 
     assert (
         requests[1].url
@@ -85,14 +92,12 @@ def test_spider_parse():
             "title",
             "company_name",
             "locations_raw",
-            "posted_on",
             "company_logo_urls",
             "source",
             "source_urls",
         ]
     )
     assert job["source"] == "jobs-jobscz"
-    assert job["posted_on"] == date.today()
     assert job["title"] == "Python vývojář(ka)"
     assert job["company_name"] == "Alma Career Czechia"
     assert job["locations_raw"] == ["Praha – Libeň"]
@@ -197,12 +202,23 @@ def test_spider_parse_job_standard():
         url,
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(
+        Job,
+        next(Spider(today=date(2026, 10, 23)).parse_job(response, JobDraft(), "123")),
+    )
 
     assert sorted(job.keys()) == sorted(
-        ["employment_types", "description_html", "locations_raw", "source_urls", "url"]
+        [
+            "employment_types",
+            "description_html",
+            "locations_raw",
+            "posted_on",
+            "source_urls",
+            "url",
+        ]
     )
     assert job["url"] == url
+    assert job["posted_on"] == date(2026, 10, 23)
     assert job["employment_types"] == [
         "práce na plný úvazek",
         "práce na zkrácený úvazek",
@@ -222,7 +238,7 @@ def test_spider_parse_job_en():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_en.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert job["employment_types"] == ["full-time work"]
 
@@ -232,7 +248,7 @@ def test_spider_parse_job_multiple_locations():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_location.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert sorted(job["locations_raw"]) == [
         "Horní náměstí 3, Vsetín",
@@ -247,13 +263,14 @@ def test_spider_parse_job_company():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_company.html").read_bytes()
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert sorted(job.keys()) == sorted(
         [
             "employment_types",
             "description_html",
             "locations_raw",
+            "posted_on",
             "source_urls",
             "url",
             "company_url",
@@ -279,8 +296,9 @@ def test_spider_parse_job_widget():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
+    assert is_storable_on_apify(request, Spider()) is True
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (
@@ -308,7 +326,7 @@ def test_spider_parse_job_widget_script_request():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes()
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -322,7 +340,7 @@ def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur(
         "https://vyrabimeletadla.jobs.cz/detail-pozice?r=detail&id=1632704350&rps=233&impressionId=1e70f565-4237-4616-95c9-4d09cbcd638a",
         body=Path(FIXTURES_DIR / "job_widget_script_multiple.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -336,7 +354,7 @@ def test_spider_parse_job_widget_script_request_when_there_is_vendor_slug_in_its
         "https://kdejinde.jobs.cz/detail-pozice?r=detail&id=1638374443&rps=233&impressionId=c0551249-e0e1-4690-9789-d638f4b824e7#fms",
         body=Path(FIXTURES_DIR / "job_widget_script_vendor.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -354,7 +372,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
         Spider().parse_job_widget_script(
             response,
             "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
-            Job(),
+            JobDraft(),
             [
                 "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
                 "https://cdn.capybara.lmc.cz/cs-framework-api/v1/build/js/api.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
@@ -387,9 +405,10 @@ def test_spider_parse_job_widget_script_response():
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
     request = next(
-        Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
+        Spider().parse_job_widget_script(response, html_url, JobDraft(), [], "123")
     )
 
+    assert is_storable_on_apify(request, Spider()) is True
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (
@@ -426,9 +445,28 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
     response = TextResponse(
         "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
-    requests = Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
+    requests = Spider().parse_job_widget_script(
+        response, html_url, JobDraft(), [], "123"
+    )
 
     assert next(requests)
+
+
+@pytest.mark.parametrize(
+    "today, expected_posted_on",
+    [
+        (date(2024, 2, 1), date(2024, 2, 1)),
+        (date(2026, 10, 23), date(2024, 2, 6)),
+    ],
+)
+def test_spider_parse_job_widget_api_posted_on(today: date, expected_posted_on: date):
+    response = TextResponse(
+        "https://api.capybara.lmc.cz/api/graphql/widget",
+        body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
+    )
+    job = next(Spider(today=today).parse_job_widget_api(response, JobDraft(), "123"))
+
+    assert job["posted_on"] == expected_posted_on
 
 
 def test_spider_parse_job_widget_api():
@@ -436,7 +474,7 @@ def test_spider_parse_job_widget_api():
         "https://api.capybara.lmc.cz/api/graphql/widget",
         body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
     )
-    job = next(Spider().parse_job_widget_api(response, Job(), "123"))
+    job = next(Spider().parse_job_widget_api(response, JobDraft(), "123"))
 
     assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
     assert job["posted_on"] == date(2024, 2, 6)
@@ -457,6 +495,61 @@ def test_spider_parse_job_widget_api():
 )
 def test_select_widget(names: list[str], expected: str):
     assert select_widget(names) == expected
+
+
+def test_spider_today_from_string():
+    assert Spider(today="2026-10-23").today == date(2026, 10, 23)
+
+
+def test_spider_parse_skips_jobs_already_seen():
+    response = HtmlResponse(
+        "https://beta.www.jobs.cz/prace/...",
+        body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
+    )
+    spider = Spider()
+    list(spider.parse(response))
+    requests = list(spider.parse(response))
+
+    assert [request.callback for request in requests] == [spider.parse]  # next page
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.jobs.cz/rpd/2000120375/?searchId=868cde40&rps=228", "2000120375"),
+        (
+            "https://www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?rps=233",
+            "2000134247",
+        ),
+    ],
+)
+def test_get_job_id(url: str, expected: str):
+    assert get_job_id(url) == expected
+
+
+def test_get_job_id_raises():
+    with pytest.raises(ValueError):
+        get_job_id("https://www.jobs.cz/prace/programator/")
+
+
+def test_job_draft_fields_are_job_fields():
+    assert JobDraft.__optional_keys__ <= Job.fields.keys()
+
+
+def test_to_draft():
+    item = Job(title="Python vývojář(ka)", source_urls=["https://www.jobs.cz/rpd/1/"])
+
+    assert to_draft(item) == JobDraft(
+        title="Python vývojář(ka)", source_urls=["https://www.jobs.cz/rpd/1/"]
+    )
+    assert from_draft(to_draft(item)) == item
+
+
+def test_to_draft_raises_on_fields_not_allowed():
+    item = Job(title="Python vývojář(ka)", posted_on=date.today())
+
+    with pytest.raises(ValueError, match="posted_on"):
+        to_draft(item)
 
 
 def test_get_param():

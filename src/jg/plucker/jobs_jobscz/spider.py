@@ -6,7 +6,7 @@ from datetime import date, datetime
 from functools import lru_cache
 from logging import Logger
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator, Iterable, cast
+from typing import Any, AsyncGenerator, Generator, Iterable, TypedDict, cast
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -81,6 +81,24 @@ REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
+
+class JobDraft(TypedDict, total=False):
+    """Job data collected so far, passed between requests
+
+    Apify stores queued requests as JSON, so unlike the Job item, this must
+    contain only JSON-serializable values.
+    """
+
+    title: str
+    company_name: str
+    company_logo_urls: list[str]
+    locations_raw: list[str]
+    source: str
+    source_urls: list[str]
+    url: str
+    company_url: str
+
+
 # Jobs.cz randomly assigns visitors to an A/B test bucket, and bucket A gets
 # redirected to beta.jobs.cz, which has entirely different HTML
 CLASSIC_SITE_COOKIE = {
@@ -106,6 +124,13 @@ class Spider(BaseSpider):
 
     employment_types_labels = ["Typ pracovního poměru", "Employment form"]
 
+    def __init__(self, name: str | None = None, today: date | str | None = None):
+        super().__init__(name)
+        if isinstance(today, str):
+            today = date.fromisoformat(today)
+        self.today = today or date.today()
+        self._job_ids: set[str] = set()
+
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
 
@@ -127,10 +152,16 @@ class Spider(BaseSpider):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
             trk = get_trk(url)  # logging track ID for each job
 
+            # The same job can be listed under multiple searches
+            job_id = get_job_id(url)
+            if job_id in self._job_ids:
+                self.logger_trk(trk).debug(f"Skipping already seen job {url}")
+                continue
+            self._job_ids.add(job_id)
+
             loader = Loader(item=Job(), response=response)
             card_loader = loader.nested_xpath(f"{card_xpath}[{n}]")
             card_loader.add_value("source", self.name)
-            card_loader.add_value("posted_on", date.today())
             card_loader.add_css("title", "h2 a::text")
             card_loader.add_css(
                 "company_name", ".SearchResultCard__footerItem:nth-child(1) span::text"
@@ -147,7 +178,7 @@ class Spider(BaseSpider):
             yield response.follow(
                 url,
                 callback=self.parse_job,
-                cb_kwargs=dict(item=item, trk=trk),
+                cb_kwargs=dict(item=to_draft(item), trk=trk),
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
@@ -158,7 +189,7 @@ class Spider(BaseSpider):
             self.logger.debug(f"No next page found for {response.url}")
 
     def parse_job(
-        self, response: Response, item: Job, trk: str
+        self, response: Response, item: JobDraft, trk: str
     ) -> Generator[Job | Request, None, None]:
         response = cast(HtmlResponse, response)
         self.logger_trk(trk).debug(f"Parsing job page {response.url}")
@@ -166,7 +197,7 @@ class Spider(BaseSpider):
             self.logger_trk(trk).error(f"Redirected to the beta site: {response.url}")
             return
 
-        loader = Loader(item=item, response=response)
+        loader = Loader(item=from_draft(item), response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
 
@@ -181,6 +212,7 @@ class Spider(BaseSpider):
                 )
             loader.add_css("locations_raw", '[data-test="jd-info-location"]::text')
             loader.add_css("description_html", '[data-jobad="body"]')
+            loader.add_value("posted_on", self.today)
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
                 self.logger_trk(trk).debug("Parsing as company job page")
@@ -198,7 +230,7 @@ class Spider(BaseSpider):
             yield loader.load_item()
 
     def parse_job_widget_data(
-        self, response: HtmlResponse, item: Job, trk: str
+        self, response: HtmlResponse, item: JobDraft, trk: str
     ) -> Generator[Request, None, None]:
         try:
             self.logger_trk(trk).debug("Looking for widget data in the HTML")
@@ -239,7 +271,7 @@ class Spider(BaseSpider):
         self,
         script_response: Response,
         url: str,
-        item: Job,
+        item: JobDraft,
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request, None, None]:
@@ -298,13 +330,13 @@ class Spider(BaseSpider):
     def parse_job_widget(
         self,
         url: str,
-        item: Job,
+        item: JobDraft,
         widget_host: str,
         widget_api_key: str,
         widget_id: str,
         trk: str,
     ) -> Generator[Request, None, None]:
-        loader = Loader(item=item)
+        loader = Loader(item=from_draft(item))
         loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
         loader.add_value("source_urls", url)
@@ -341,11 +373,11 @@ class Spider(BaseSpider):
                 )
             ),
             callback=self.parse_job_widget_api,
-            cb_kwargs=dict(item=loader.load_item(), trk=trk),
+            cb_kwargs=dict(item=to_draft(loader.load_item()), trk=trk),
         )
 
     def parse_job_widget_api(
-        self, response: Response, item: Job, trk: str
+        self, response: Response, item: JobDraft, trk: str
     ) -> Generator[Job, None, None]:
         response = cast(TextResponse, response)
         self.logger_trk(trk).debug("Parsing job widget API response")
@@ -356,11 +388,12 @@ class Spider(BaseSpider):
             raise ValueError(f"Invalid JSON: {response!r}\n{response.text!r}") from e
         job_ad = payload["data"]["widget"]["jobAd"]
 
-        loader = Loader(item=item, response=response)
+        loader = Loader(item=from_draft(item), response=response)
         loader.add_value("description_html", job_ad["content"]["htmlContent"])
 
         posted_on = datetime.fromisoformat(job_ad["validFrom"]).date()
         loader.add_value("posted_on", posted_on)
+        loader.add_value("posted_on", self.today)
 
         for location in job_ad["locations"]:
             location_parts = [location["city"], location["region"], location["country"]]
@@ -379,8 +412,28 @@ def get_page(url: str) -> int:
     return 1
 
 
+def get_job_id(url: str) -> str:
+    segments = [
+        segment for segment in urlparse(url).path.split("/") if segment.isdigit()
+    ]
+    try:
+        return segments[-1]
+    except IndexError:
+        raise ValueError(f"Could not parse job ID: {url}")
+
+
 def is_beta_site(url: str) -> bool:
     return urlparse(url).hostname == "beta.jobs.cz"
+
+
+def to_draft(item: Job) -> JobDraft:
+    if unexpected_fields := set(item.keys()) - JobDraft.__optional_keys__:
+        raise ValueError(f"Fields not allowed in a job draft: {unexpected_fields!r}")
+    return cast(JobDraft, dict(item))
+
+
+def from_draft(draft: JobDraft) -> Job:
+    return Job(draft)
 
 
 def get_trk(seed: str) -> str:

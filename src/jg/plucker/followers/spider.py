@@ -43,33 +43,37 @@ class Spider(BaseSpider):
         },
     }
 
+    def __init__(self, name: str | None = None, today: date | str | None = None):
+        super().__init__(name)
+        if isinstance(today, str):
+            today = date.fromisoformat(today)
+        self.today = today or date.today()
+
     async def start(self) -> AsyncGenerator[Request, None]:
-        today = date.today()
         yield Request(
             "https://mastodonczech.cz/@honzajavorek",
             self.parse_mastodon,
-            cb_kwargs={"today": today},
         )
         yield Request(
             "https://www.facebook.com/juniordotguru",
             self.parse_facebook,
-            cb_kwargs={"today": today, "name": "facebook"},
+            cb_kwargs={"name": "facebook"},
         )
         yield Request(
             "https://www.facebook.com/honzajavorek/?__xts__=1",
             self.parse_facebook,
-            cb_kwargs={"today": today, "name": "facebook_personal"},
+            cb_kwargs={"name": "facebook_personal"},
         )
         yield Request(
             "https://i.instagram.com/api/v1/users/web_profile_info/?username=juniordotguru",
             self.parse_instagram,
-            cb_kwargs={"today": today, "name": "instagram"},
+            cb_kwargs={"name": "instagram"},
             headers={"x-ig-app-id": INSTAGRAM_APP_ID},
         )
         yield Request(
             "https://i.instagram.com/api/v1/users/web_profile_info/?username=honza.javorek",
             self.parse_instagram,
-            cb_kwargs={"today": today, "name": "instagram_personal"},
+            cb_kwargs={"name": "instagram_personal"},
             headers={"x-ig-app-id": INSTAGRAM_APP_ID},
         )
         yield Request(
@@ -79,7 +83,7 @@ class Spider(BaseSpider):
                 "?rcm=ACoAAACB93ABHHj4UI2winetGMZHboHlZIZojJA"
             ),
             self.parse_linkedin,
-            cb_kwargs={"today": today, "name": "linkedin_personal"},
+            cb_kwargs={"name": "linkedin_personal"},
         )
         yield Request(
             (
@@ -88,21 +92,21 @@ class Spider(BaseSpider):
                 "?utm_source=share&utm_medium=member_desktop&rcm=ACoAAACB93ABHHj4UI2winetGMZHboHlZIZojJA"
             ),
             self.parse_linkedin,
-            cb_kwargs={"today": today, "name": "linkedin"},
+            cb_kwargs={"name": "linkedin"},
         )
 
-    def parse_mastodon(self, response: Response, today: date) -> Followers:
+    def parse_mastodon(self, response: Response) -> Followers:
         self.logger.info(f"Parsing mastodon from {get_domain(response.url)}")
         selector = response.css('meta[name="description"]::attr(content)')
         if match := selector.re(r"(?i)([\d,]+)\s+(followers|sledujících)"):
             return Followers(
-                date=today,
+                date=self.today,
                 name="mastodon",
                 count=int(match[0].replace(",", "")),
             )
         raise ValueError("Could not find followers count")
 
-    def parse_linkedin(self, response: Response, today: date, name: str) -> Followers:
+    def parse_linkedin(self, response: Response, name: str) -> Followers:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
         if ld_json := response.css('script[type="application/ld+json"]::text').get():
             self.logger.info("Found ld+json")
@@ -111,7 +115,7 @@ class Spider(BaseSpider):
             count = data["author"]["interactionStatistic"]["userInteractionCount"]
             self.logger.info(f"Followers count: {count}")
             if count:
-                return Followers(date=today, name=name, count=count)
+                return Followers(date=self.today, name=name, count=count)
         self.logger.info("Parsing cards")
         texts = response.css(
             ".public-post-author-card__followers::text, .base-main-feed-card__entity-lockup p::text"
@@ -120,23 +124,23 @@ class Spider(BaseSpider):
             self.logger.info(f"Parsing text: {text!r}")
             try:
                 count = int(re.sub(r"\D", "", text))
-                return Followers(date=today, name=name, count=count)
+                return Followers(date=self.today, name=name, count=count)
             except ValueError:
                 self.logger.debug(f"Could not parse text: {text!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
 
-    def parse_facebook(self, response: Response, today: date, name: str) -> Followers:
+    def parse_facebook(self, response: Response, name: str) -> Followers:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
         selector = 'meta[property="og:description"]::attr(content)'
         if description := response.css(selector).get():
             self.logger.info("Found og:description")
             if match := FB_DESCRIPTION_RE.search(description):
                 count = int(re.sub(r"\D", "", match.group(1)))
-                return Followers(date=today, name=name, count=count)
+                return Followers(date=self.today, name=name, count=count)
             self.logger.error(f"Could not parse followers: {description!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
 
-    def parse_instagram(self, response: Response, today: date, name: str) -> Followers:
+    def parse_instagram(self, response: Response, name: str) -> Followers:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
         try:
             data = json.loads(response.text)
@@ -146,7 +150,7 @@ class Spider(BaseSpider):
                 "Could not find followers count in Instagram API response:\n\n"
                 + response.text
             ) from exc
-        return Followers(date=today, name=name, count=int(count))
+        return Followers(date=self.today, name=name, count=int(count))
 
 
 def get_domain(url: str) -> str:

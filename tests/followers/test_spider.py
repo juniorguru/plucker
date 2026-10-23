@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 from pathlib import Path
 
@@ -6,6 +7,7 @@ from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.followers.spider import Spider, get_domain
+from tests.utils import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -24,14 +26,30 @@ def test_get_domain(url: str, expected_domain: str):
     assert get_domain(url) == expected_domain
 
 
+def test_spider_start_requests_are_storable_on_apify():
+    async def collect():
+        return [request async for request in spider.start()]
+
+    spider = Spider()
+    requests = asyncio.run(collect())
+
+    assert requests
+    for request in requests:
+        assert is_storable_on_apify(request, spider) is True
+
+
+def test_spider_today_from_string():
+    assert Spider(today="2025-03-18").today == date(2025, 3, 18)
+
+
 def test_spider_parse_mastodon():
     filename = "mastodon.html"
     response = HtmlResponse(
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    item = spider.parse_mastodon(response, today=date(2025, 3, 18))
+    spider = Spider(today=date(2025, 3, 18))
+    item = spider.parse_mastodon(response)
 
     assert item == {
         "date": date(2025, 3, 18),
@@ -53,8 +71,8 @@ def test_spider_parse_linkedin(filename: str, name: str, expected_count: int):
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    item = spider.parse_linkedin(response, today=date(2025, 3, 18), name=name)
+    spider = Spider(today=date(2025, 3, 18))
+    item = spider.parse_linkedin(response, name=name)
 
     assert item == {
         "date": date(2025, 3, 18),
@@ -77,8 +95,8 @@ def test_spider_parse_facebook(filename: str, name: str, expected_count: int):
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    item = spider.parse_facebook(response=response, today=date(2025, 3, 18), name=name)
+    spider = Spider(today=date(2025, 3, 18))
+    item = spider.parse_facebook(response=response, name=name)
 
     assert item == {
         "date": date(2025, 3, 18),
@@ -100,8 +118,8 @@ def test_spider_parse_instagram(filename: str, name: str, expected_count: int):
         body=Path(FIXTURES_DIR / filename).read_bytes(),
         encoding="utf-8",
     )
-    spider = Spider()
-    item = spider.parse_instagram(response=response, today=date(2025, 3, 18), name=name)
+    spider = Spider(today=date(2025, 3, 18))
+    item = spider.parse_instagram(response=response, name=name)
 
     assert item == {
         "date": date(2025, 3, 18),
