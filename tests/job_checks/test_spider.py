@@ -1,8 +1,11 @@
 from pathlib import Path
 
 import pytest
+from scrapy import Request
 from scrapy.http import TextResponse
 from scrapy.http.response.html import HtmlResponse
+from twisted.internet.error import TimeoutError
+from twisted.python.failure import Failure
 
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import Spider
@@ -33,6 +36,44 @@ def test_spider_check_linkedin(
         ok=expected_ok,
         reason=expected_reason,
     )
+
+
+@pytest.mark.parametrize(
+    "status, expected_ok",
+    [
+        (200, True),
+        (404, False),
+        (410, False),
+        (403, None),
+        (500, None),
+    ],
+)
+def test_spider_check_http(status: int, expected_ok: bool | None):
+    url = "https://example.com/job/"
+    response = TextResponse("https://example.com/redirected/", status=status)
+    link = Spider().check_http(response, urls=[url])
+
+    assert link == JobCheck(url=url, ok=expected_ok, reason=f"HTTP {status}")
+
+
+def test_spider_check_failure():
+    urls = ["https://example.com/job1/", "https://example.com/job2/"]
+    failure = Failure(TimeoutError())
+    failure.request = Request("https://example.com/", cb_kwargs={"urls": urls})
+    links = list(Spider().check_failure(failure))
+
+    assert links == [
+        JobCheck(url=urls[0], ok=None, reason="TimeoutError"),
+        JobCheck(url=urls[1], ok=None, reason="TimeoutError"),
+    ]
+
+
+def test_spider_check_startupjobs_inconclusive():
+    url = "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator"
+    response = TextResponse("https://example.com/feed.json", status=403)
+    links = list(Spider().check_startupjobs(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=None, reason="STARTUPJOBS HTTP 403")]
 
 
 def test_spider_check_startupjobs():
@@ -81,6 +122,7 @@ def test_spider_linkedin_request_warns_and_skips(caplog):
         {"log_count/ERROR": 1, "retry/max_reached": 1},
         {"log_count/ERROR": 1, "retry/max_reached": 2},  # shouldn't happen
         {"log_count/ERROR": 3, "retry/max_reached": 3},
+        {"log_count/ERROR": 40, "retry/max_reached": 40},
     ],
 )
 def test_evaluate_stats_passing(stats_override: dict):
@@ -102,7 +144,7 @@ def test_evaluate_stats_passing(stats_override: dict):
     [
         {"log_count/ERROR": 1},
         {"log_count/ERROR": 2, "retry/max_reached": 1},
-        {"log_count/ERROR": 4, "retry/max_reached": 4},
+        {"log_count/ERROR": 1, "spider_exceptions": 1},
     ],
 )
 def test_evaluate_stats_failing(stats_override: dict):

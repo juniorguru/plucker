@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
+from twisted.python.failure import Failure
 
 from jg.plucker.items import JobCheck
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
@@ -15,28 +16,23 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "HTTPCACHE_ENABLED": False,
-        "HTTPERROR_ALLOWED_CODES": [404, 410],
+        "HTTPERROR_ALLOW_ALL": True,
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
-        # One failing link shouldn't prevent checking the rest
-        "CLOSESPIDER_ERRORCOUNT": 0,
     }
 
     min_items = 0
 
     @classmethod
     def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
-        # TODO is this still needed?
+        # Giving up on retries logs an error, but such links still get assessed
+        # (as inconclusive), so it's not an error of the scraper
         max_retries = stats.get("retry/max_reached", 0)
         error_count = stats.get("log_count/ERROR", 0)
-
-        if error_count and max_retries <= 3:
-            stats_copy = stats.copy()
-            stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
-            return evaluate_stats(stats_copy, min_items)
-
-        return evaluate_stats(stats, min_items)
+        stats_copy = stats.copy()
+        stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
+        return evaluate_stats(stats_copy, min_items)
 
     def __init__(self, name: str | None = None, links: list[Link] | None = None):
         super().__init__(name)
@@ -54,20 +50,37 @@ class Spider(BaseSpider):
             elif is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
-                yield Request(url, method="HEAD", callback=self.check_http)
+                yield Request(
+                    url,
+                    method="HEAD",
+                    callback=self.check_http,
+                    errback=self.check_failure,
+                    cb_kwargs={"urls": [url]},
+                )
         if startupjobs_urls:
             yield Request(
                 STARTUPJOBS_EXPORT_URL,
                 callback=self.check_startupjobs,
+                errback=self.check_failure,
                 cb_kwargs={"urls": startupjobs_urls},
             )
 
-    def check_http(self, response: Response) -> JobCheck:
-        self.logger.info(f"Checking {response.url} (HTTP)")
+    def check_http(self, response: Response, urls: list[str]) -> JobCheck:
+        url = urls[0]
+        self.logger.info(f"Checking {url} (HTTP)")
         reason = f"HTTP {response.status}"
         if response.status == 200:
-            return JobCheck(url=response.url, ok=True, reason=reason)
-        return JobCheck(url=response.url, ok=False, reason=reason)
+            return JobCheck(url=url, ok=True, reason=reason)
+        if response.status in (404, 410):
+            return JobCheck(url=url, ok=False, reason=reason)
+        self.logger.warning(f"Inconclusive check of {url}: {reason}")
+        return JobCheck(url=url, ok=None, reason=reason)
+
+    def check_failure(self, failure: Failure) -> Generator[JobCheck, None, None]:
+        reason = failure.type.__name__ if failure.type else "UNKNOWN"
+        for url in failure.request.cb_kwargs["urls"]:
+            self.logger.warning(f"Inconclusive check of {url}: {reason}")
+            yield JobCheck(url=url, ok=None, reason=reason)
 
     def _linkedin_request(self, url: str) -> Request | None:
         self.logger.warning(f"Skipping {url}, LinkedIn job checks are not supported")
@@ -95,6 +108,12 @@ class Spider(BaseSpider):
         self, response: Response, urls: list[str]
     ) -> Generator[JobCheck, None, None]:
         self.logger.info(f"Checking {len(urls)} URLs (StartupJobs)")
+        if response.status != 200:
+            reason = f"STARTUPJOBS HTTP {response.status}"
+            for url in urls:
+                self.logger.warning(f"Inconclusive check of {url}: {reason}")
+                yield JobCheck(url=url, ok=None, reason=reason)
+            return
         data = response.json()
         current_ids = set(
             parse_startupjobs_id(offer["url"]) for offer in data.get("offers", [])
