@@ -7,6 +7,7 @@ from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.followers.spider import Spider, get_domain
+from tests.utils import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -25,7 +26,7 @@ def test_get_domain(url: str, expected_domain: str):
     assert get_domain(url) == expected_domain
 
 
-def test_spider_start_requests_are_storable_on_apify(is_storable_on_apify):
+def test_spider_start_requests_are_storable_on_apify():
     async def collect():
         return [request async for request in spider.start()]
 

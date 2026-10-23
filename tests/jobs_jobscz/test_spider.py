@@ -20,6 +20,7 @@ from jg.plucker.jobs_jobscz.spider import (
     select_widget,
     to_draft,
 )
+from tests.utils import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -69,7 +70,7 @@ def test_spider_parse_beta_site():
     assert list(Spider().parse(response)) == []
 
 
-def test_spider_parse(is_storable_on_apify):
+def test_spider_parse():
     response = HtmlResponse(
         "https://beta.www.jobs.cz/prace/...",
         body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
@@ -289,7 +290,7 @@ def test_spider_parse_job_company():
     )
 
 
-def test_spider_parse_job_widget(is_storable_on_apify):
+def test_spider_parse_job_widget():
     url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
@@ -396,7 +397,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
     ]
 
 
-def test_spider_parse_job_widget_script_response(is_storable_on_apify):
+def test_spider_parse_job_widget_script_response():
     html_url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
     response = TextResponse(
         "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c",

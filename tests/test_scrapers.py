@@ -1,8 +1,6 @@
 import json
-from datetime import date
 from importlib import import_module
 from pathlib import Path
-from typing import Callable
 
 import pytest
 from scrapy import Field, Item, Request, Spider
@@ -237,22 +235,3 @@ def test_run_cache_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert list((tmp_path / "key_value_stores").iterdir()) == [
         tmp_path / "key_value_stores" / "default"
     ]
-
-
-@pytest.mark.parametrize(
-    "cb_kwargs, expected",
-    [
-        ({"name": "facebook", "urls": ["https://example.com/"]}, True),
-        ({"item": {"title": "Python vývojář(ka)"}}, True),
-        ({"today": date(2025, 3, 18)}, False),
-        ({"item": Item()}, False),
-    ],
-)
-def test_is_storable_on_apify(
-    is_storable_on_apify: Callable[[Request, Spider], bool],
-    cb_kwargs: dict,
-    expected: bool,
-):
-    request = Request("https://example.com/", cb_kwargs=cb_kwargs)
-
-    assert is_storable_on_apify(request, Spider("test")) is expected
