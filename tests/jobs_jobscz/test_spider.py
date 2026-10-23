@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from apify.scrapy.requests import to_apify_request
+from scrapy import Request
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
@@ -20,6 +22,11 @@ from jg.plucker.jobs_jobscz.spider import (
 
 
 FIXTURES_DIR = Path(__file__).parent
+
+
+def assert_storable_on_apify(request: Request) -> None:
+    # Apify stores queued requests as JSON, unserializable ones get dropped
+    assert to_apify_request(request, Spider()) is not None
 
 
 def test_spider_start_sets_classic_site_cookie():
@@ -74,6 +81,8 @@ def test_spider_parse():
     requests = list(Spider().parse(response))
 
     assert len(requests) == 30 + 1  # jobs + next page
+    for request in requests:
+        assert_storable_on_apify(request)
 
     assert (
         requests[1].url
@@ -85,14 +94,12 @@ def test_spider_parse():
             "title",
             "company_name",
             "locations_raw",
-            "posted_on",
             "company_logo_urls",
             "source",
             "source_urls",
         ]
     )
     assert job["source"] == "jobs-jobscz"
-    assert job["posted_on"] == date.today()
     assert job["title"] == "Python vývojář(ka)"
     assert job["company_name"] == "Alma Career Czechia"
     assert job["locations_raw"] == ["Praha – Libeň"]
@@ -200,9 +207,17 @@ def test_spider_parse_job_standard():
     job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
 
     assert sorted(job.keys()) == sorted(
-        ["employment_types", "description_html", "locations_raw", "source_urls", "url"]
+        [
+            "employment_types",
+            "description_html",
+            "locations_raw",
+            "posted_on",
+            "source_urls",
+            "url",
+        ]
     )
     assert job["url"] == url
+    assert job["posted_on"] == date.today()
     assert job["employment_types"] == [
         "práce na plný úvazek",
         "práce na zkrácený úvazek",
@@ -254,6 +269,7 @@ def test_spider_parse_job_company():
             "employment_types",
             "description_html",
             "locations_raw",
+            "posted_on",
             "source_urls",
             "url",
             "company_url",
@@ -281,6 +297,7 @@ def test_spider_parse_job_widget():
     )
     request = next(Spider().parse_job(response, Job(), "123"))
 
+    assert_storable_on_apify(request)
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (
@@ -390,6 +407,7 @@ def test_spider_parse_job_widget_script_response():
         Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
     )
 
+    assert_storable_on_apify(request)
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (

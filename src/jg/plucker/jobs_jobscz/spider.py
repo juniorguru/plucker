@@ -130,7 +130,6 @@ class Spider(BaseSpider):
             loader = Loader(item=Job(), response=response)
             card_loader = loader.nested_xpath(f"{card_xpath}[{n}]")
             card_loader.add_value("source", self.name)
-            card_loader.add_value("posted_on", date.today())
             card_loader.add_css("title", "h2 a::text")
             card_loader.add_css(
                 "company_name", ".SearchResultCard__footerItem:nth-child(1) span::text"
@@ -147,7 +146,7 @@ class Spider(BaseSpider):
             yield response.follow(
                 url,
                 callback=self.parse_job,
-                cb_kwargs=dict(item=item, trk=trk),
+                cb_kwargs=dict(item=dict(item), trk=trk),
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
@@ -158,7 +157,7 @@ class Spider(BaseSpider):
             self.logger.debug(f"No next page found for {response.url}")
 
     def parse_job(
-        self, response: Response, item: Job, trk: str
+        self, response: Response, item: dict[str, Any], trk: str
     ) -> Generator[Job | Request, None, None]:
         response = cast(HtmlResponse, response)
         self.logger_trk(trk).debug(f"Parsing job page {response.url}")
@@ -166,7 +165,7 @@ class Spider(BaseSpider):
             self.logger_trk(trk).error(f"Redirected to the beta site: {response.url}")
             return
 
-        loader = Loader(item=item, response=response)
+        loader = Loader(item=Job(item), response=response)
         loader.add_value("url", response.url)
         loader.add_value("source_urls", response.url)
 
@@ -181,6 +180,7 @@ class Spider(BaseSpider):
                 )
             loader.add_css("locations_raw", '[data-test="jd-info-location"]::text')
             loader.add_css("description_html", '[data-jobad="body"]')
+            loader.add_value("posted_on", date.today())
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
                 self.logger_trk(trk).debug("Parsing as company job page")
@@ -198,7 +198,7 @@ class Spider(BaseSpider):
             yield loader.load_item()
 
     def parse_job_widget_data(
-        self, response: HtmlResponse, item: Job, trk: str
+        self, response: HtmlResponse, item: dict[str, Any], trk: str
     ) -> Generator[Request, None, None]:
         try:
             self.logger_trk(trk).debug("Looking for widget data in the HTML")
@@ -239,7 +239,7 @@ class Spider(BaseSpider):
         self,
         script_response: Response,
         url: str,
-        item: Job,
+        item: dict[str, Any],
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request, None, None]:
@@ -298,13 +298,13 @@ class Spider(BaseSpider):
     def parse_job_widget(
         self,
         url: str,
-        item: Job,
+        item: dict[str, Any],
         widget_host: str,
         widget_api_key: str,
         widget_id: str,
         trk: str,
     ) -> Generator[Request, None, None]:
-        loader = Loader(item=item)
+        loader = Loader(item=Job(item))
         loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
         loader.add_value("source_urls", url)
@@ -341,11 +341,11 @@ class Spider(BaseSpider):
                 )
             ),
             callback=self.parse_job_widget_api,
-            cb_kwargs=dict(item=loader.load_item(), trk=trk),
+            cb_kwargs=dict(item=dict(loader.load_item()), trk=trk),
         )
 
     def parse_job_widget_api(
-        self, response: Response, item: Job, trk: str
+        self, response: Response, item: dict[str, Any], trk: str
     ) -> Generator[Job, None, None]:
         response = cast(TextResponse, response)
         self.logger_trk(trk).debug("Parsing job widget API response")
@@ -356,11 +356,12 @@ class Spider(BaseSpider):
             raise ValueError(f"Invalid JSON: {response!r}\n{response.text!r}") from e
         job_ad = payload["data"]["widget"]["jobAd"]
 
-        loader = Loader(item=item, response=response)
+        loader = Loader(item=Job(item), response=response)
         loader.add_value("description_html", job_ad["content"]["htmlContent"])
 
         posted_on = datetime.fromisoformat(job_ad["validFrom"]).date()
         loader.add_value("posted_on", posted_on)
+        loader.add_value("posted_on", date.today())
 
         for location in job_ad["locations"]:
             location_parts = [location["city"], location["region"], location["country"]]
