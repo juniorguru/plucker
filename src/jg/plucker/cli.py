@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import IO, Callable, Generator, Type
+from typing import IO, TYPE_CHECKING, Callable, Generator, Type
 from urllib.parse import quote
 
 import click
@@ -24,6 +24,10 @@ from jg.plucker.scrapers import (
     run_as_spider,
     start_reactor,
 )
+
+
+if TYPE_CHECKING:
+    from apify_client._models import RunListItem
 
 
 class BuildWaitStatus(BaseModel):
@@ -137,23 +141,23 @@ def build(
     client = ApifyClient(token=token)
     success = False
     for actor_info in client.actors().list(my=True).items:
-        logger.info(f"Actor {actor_info['username']}/{actor_info['name']}")
-        actor_client = client.actor(actor_info["id"])
+        logger.info(f"Actor {actor_info.username}/{actor_info.name}")
+        actor_client = client.actor(actor_info.id)
         if actor := actor_client.get():
             try:
-                latest_version = actor["versions"][0]
+                latest_version = actor.versions[0]
             except IndexError:
                 logger.warning("No versions found")
                 raise click.Abort()
 
-            git_repo_url = latest_version.get("gitRepoUrl") or ""
+            git_repo_url = latest_version.git_repo_url or ""
             if git_repo_url.startswith(git_repo_url_match):
                 for attempt in range(1, build_attempts + 1):
                     logger.info(f"Building actor… (attempt #{attempt})")
                     build_info = actor_client.build(
-                        version_number=latest_version["versionNumber"]
+                        version_number=latest_version.version_number
                     )
-                    build = client.build(build_info["id"])
+                    build = client.build(build_info.id)
                     try:
                         for status in wait_for_build_status(
                             build.get, build_timeout, build_polling_wait
@@ -174,7 +178,7 @@ def build(
             else:
                 logger.warning("Not a plucker actor")
         else:
-            logger.error(f"Actor {actor_info['id']} not found")
+            logger.error(f"Actor {actor_info.id} not found")
             raise click.Abort()
 
 
@@ -196,25 +200,21 @@ def build(
 def check(token: str, lookback: int, logs_dir: Path | None):
     client = ApifyClient(token=token)
     schedules = [
-        schedule
-        for schedule in client.schedules().list().items
-        if schedule["isEnabled"]
+        schedule for schedule in client.schedules().list().items if schedule.is_enabled
     ]
     logger.info(f"Found {len(schedules)} enabled schedules")
 
     actor_ids = set()
     for schedule in schedules:
         schedule_actor_ids = [
-            action["actorId"]
-            for action in schedule["actions"]
-            if action["type"] == "RUN_ACTOR"
+            action.actor_id for action in schedule.actions if action.type == "RUN_ACTOR"
         ]
         logger.info(
-            f"{schedule['title']}\n"
+            f"{schedule.name}\n"
             f"· actors: {len(schedule_actor_ids)}\n"
-            f"· cron: {schedule['cronExpression']}\n"
-            f"· last: {schedule['lastRunAt']:%Y-%m-%d %H:%I} UTC\n"
-            f"· next: {schedule['nextRunAt']:%Y-%m-%d %H:%I} UTC"
+            f"· cron: {schedule.cron_expression}\n"
+            f"· last: {schedule.last_run_at:%Y-%m-%d %H:%I} UTC\n"
+            f"· next: {schedule.next_run_at:%Y-%m-%d %H:%I} UTC"
         )
         actor_ids.update(schedule_actor_ids)
     logger.info(f"Found {len(actor_ids)} scheduled actors")
@@ -223,17 +223,13 @@ def check(token: str, lookback: int, logs_dir: Path | None):
     for actor_id in actor_ids:
         actor_client = client.actor(actor_id)
         if actor_info := actor_client.get():
-            actor_name = f"{actor_info['username']}/{actor_info['name']}"
+            actor_name = f"{actor_info.username}/{actor_info.name}"
             logger.debug(f"Actor {actor_name}")
             runs = actor_client.runs()
             latest_runs = runs.list(limit=lookback, desc=True).items
             latest_runs_count = len(latest_runs)
             successful_runs_count = len(
-                [
-                    run
-                    for run in latest_runs
-                    if run["status"] == ActorJobStatus.SUCCEEDED
-                ]
+                [run for run in latest_runs if run.status == ActorJobStatus.SUCCEEDED]
             )
             if successful_runs_count == latest_runs_count:
                 logger.info(
@@ -271,7 +267,7 @@ def dump_run_logs(
     client: ApifyClient,
     logs_dir: Path,
     actor_name: str,
-    runs: list[dict],
+    runs: list["RunListItem"],
 ) -> list[Path]:
     """Save the full log of each given run as a text file under ``logs_dir``.
 
@@ -283,8 +279,8 @@ def dump_run_logs(
     actor_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for run in runs:
-        run_id = run["id"]
-        status = run["status"]
+        run_id = run.id
+        status = run.status
         try:
             log_text = client.run(run_id).log().get() or ""
         except Exception as e:
@@ -346,9 +342,9 @@ def deploy(
 
     try:
         actor_id = [
-            actor_info["id"]
+            actor_info.id
             for actor_info in client.actors().list().items
-            if actor_info["name"] == actor_config["name"]
+            if actor_info.name == actor_config["name"]
         ][0]
     except IndexError:
         if overwrite:
@@ -373,15 +369,15 @@ def deploy(
         ],
         is_public=False,
     )
-    logger.info(f"Actor {actor_info['name']} created: {actor_info['id']}")
+    logger.info(f"Actor {actor_info.name} created: {actor_info.id}")
 
     if build:
-        logger.info(f"Building actor {actor_info['name']}…")
-        build_info = client.actor(actor_info["id"]).build(
+        logger.info(f"Building actor {actor_info.name}…")
+        build_info = client.actor(actor_info.id).build(
             version_number=version, wait_for_finish=60 * 5
         )
-        if build_info["status"] != ActorJobStatus.SUCCEEDED:
-            logger.error(f"Status: {build_info['status']}")
+        if build_info.status != ActorJobStatus.SUCCEEDED:
+            logger.error(f"Status: {build_info.status}")
             raise click.Abort()
 
 
@@ -456,13 +452,13 @@ def wait_for_build_status(
         build_info = get_build_info()
         if build_info is None:
             raise RuntimeError("Build not found")
-        if build_info["status"] in [ActorJobStatus.SUCCEEDED, ActorJobStatus.FAILED]:
+        if build_info.status in [ActorJobStatus.SUCCEEDED, ActorJobStatus.FAILED]:
             break
         yield BuildWaitStatus(
             attempt=attempt,
             total_attempts=total_attempts,
-            status=build_info["status"],
+            status=build_info.status,
         )
         time.sleep(build_polling_wait)
-    if build_info["status"] != ActorJobStatus.SUCCEEDED:
-        raise RuntimeError(f"Build status: {build_info['status']}")
+    if build_info.status != ActorJobStatus.SUCCEEDED:
+        raise RuntimeError(f"Build status: {build_info.status}")

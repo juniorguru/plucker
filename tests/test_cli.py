@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from jg.plucker.cli import dump_run_logs
 
 
@@ -28,8 +30,8 @@ class FakeClient:
 def test_dump_run_logs(tmp_path):
     client = FakeClient({"run1": "log one", "run2": "log two"})
     runs = [
-        {"id": "run1", "status": "FAILED"},
-        {"id": "run2", "status": "ABORTED"},
+        SimpleNamespace(id="run1", status="FAILED"),
+        SimpleNamespace(id="run2", status="ABORTED"),
     ]
 
     paths = dump_run_logs(client, tmp_path, "apify/some-actor", runs)
@@ -42,7 +44,7 @@ def test_dump_run_logs(tmp_path):
 
 def test_dump_run_logs_missing_log(tmp_path):
     client = FakeClient({"run1": None})
-    runs = [{"id": "run1", "status": "FAILED"}]
+    runs = [SimpleNamespace(id="run1", status="FAILED")]
 
     paths = dump_run_logs(client, tmp_path, "apify/some-actor", runs)
 
@@ -54,7 +56,7 @@ def test_dump_run_logs_fetch_error(tmp_path):
         def run(self, run_id: str):
             raise RuntimeError("boom")
 
-    runs = [{"id": "run1", "status": "FAILED"}]
+    runs = [SimpleNamespace(id="run1", status="FAILED")]
 
     paths = dump_run_logs(BoomClient(), tmp_path, "apify/some-actor", runs)
 
