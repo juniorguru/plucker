@@ -13,11 +13,14 @@ from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
+    JobDraft,
     Spider,
+    from_draft,
     get_param,
     get_params,
     is_beta_site,
     select_widget,
+    to_draft,
 )
 
 
@@ -204,7 +207,7 @@ def test_spider_parse_job_standard():
         url,
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert sorted(job.keys()) == sorted(
         [
@@ -237,7 +240,7 @@ def test_spider_parse_job_en():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_en.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert job["employment_types"] == ["full-time work"]
 
@@ -247,7 +250,7 @@ def test_spider_parse_job_multiple_locations():
         "https://beta.www.jobs.cz/rpd/2000130345/?searchId=868cde40-9065-4e83-83ce-2fe2fa38d529&rps=233",
         body=Path(FIXTURES_DIR / "job_location.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert sorted(job["locations_raw"]) == [
         "Horní náměstí 3, Vsetín",
@@ -262,7 +265,7 @@ def test_spider_parse_job_company():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_company.html").read_bytes()
     )
-    job = cast(Job, next(Spider().parse_job(response, Job(), "123")))
+    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
 
     assert sorted(job.keys()) == sorted(
         [
@@ -295,7 +298,7 @@ def test_spider_parse_job_widget():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert_storable_on_apify(request)
     assert request.method == "POST"
@@ -325,7 +328,7 @@ def test_spider_parse_job_widget_script_request():
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget_script.html").read_bytes()
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -339,7 +342,7 @@ def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur(
         "https://vyrabimeletadla.jobs.cz/detail-pozice?r=detail&id=1632704350&rps=233&impressionId=1e70f565-4237-4616-95c9-4d09cbcd638a",
         body=Path(FIXTURES_DIR / "job_widget_script_multiple.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -353,7 +356,7 @@ def test_spider_parse_job_widget_script_request_when_there_is_vendor_slug_in_its
         "https://kdejinde.jobs.cz/detail-pozice?r=detail&id=1638374443&rps=233&impressionId=c0551249-e0e1-4690-9789-d638f4b824e7#fms",
         body=Path(FIXTURES_DIR / "job_widget_script_vendor.html").read_bytes(),
     )
-    request = next(Spider().parse_job(response, Job(), "123"))
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
 
     assert request.method == "GET"
     assert (
@@ -371,7 +374,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
         Spider().parse_job_widget_script(
             response,
             "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
-            Job(),
+            JobDraft(),
             [
                 "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
                 "https://cdn.capybara.lmc.cz/cs-framework-api/v1/build/js/api.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
@@ -404,7 +407,7 @@ def test_spider_parse_job_widget_script_response():
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
     request = next(
-        Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
+        Spider().parse_job_widget_script(response, html_url, JobDraft(), [], "123")
     )
 
     assert_storable_on_apify(request)
@@ -444,7 +447,9 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
     response = TextResponse(
         "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
-    requests = Spider().parse_job_widget_script(response, html_url, Job(), [], "123")
+    requests = Spider().parse_job_widget_script(
+        response, html_url, JobDraft(), [], "123"
+    )
 
     assert next(requests)
 
@@ -454,7 +459,7 @@ def test_spider_parse_job_widget_api():
         "https://api.capybara.lmc.cz/api/graphql/widget",
         body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
     )
-    job = next(Spider().parse_job_widget_api(response, Job(), "123"))
+    job = next(Spider().parse_job_widget_api(response, JobDraft(), "123"))
 
     assert "<li>služební cesty v rámci EU</li>" in job["description_html"]
     assert job["posted_on"] == date(2024, 2, 6)
@@ -475,6 +480,22 @@ def test_spider_parse_job_widget_api():
 )
 def test_select_widget(names: list[str], expected: str):
     assert select_widget(names) == expected
+
+
+def test_to_draft():
+    item = Job(title="Python vývojář(ka)", source_urls=["https://www.jobs.cz/rpd/1/"])
+
+    assert to_draft(item) == JobDraft(
+        title="Python vývojář(ka)", source_urls=["https://www.jobs.cz/rpd/1/"]
+    )
+    assert from_draft(to_draft(item)) == item
+
+
+def test_to_draft_raises_on_fields_not_allowed():
+    item = Job(title="Python vývojář(ka)", posted_on=date.today())
+
+    with pytest.raises(ValueError, match="posted_on"):
+        to_draft(item)
 
 
 def test_get_param():
