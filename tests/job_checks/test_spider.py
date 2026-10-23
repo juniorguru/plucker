@@ -160,3 +160,15 @@ def test_evaluate_stats_failing(stats_override: dict):
             | stats_override,
             min_items=10,
         )
+
+
+def test_spider_logs_links_not_assessed(caplog):
+    urls = ["https://example.com/job1/", "https://example.com/job2/"]
+    spider = Spider(links=[{"url": url} for url in urls])
+    spider._expected_urls = set(urls)
+    spider.item_scraped(JobCheck(url=urls[0], ok=True, reason="HTTP 200"))
+
+    with caplog.at_level("ERROR"):
+        spider.closed("finished")
+
+    assert caplog.messages == [f"Link not assessed: {urls[1]}"]

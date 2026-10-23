@@ -2,7 +2,8 @@ import re
 from typing import Any, AsyncGenerator, Generator
 from urllib.parse import urlparse
 
-from scrapy import Request, Spider as BaseSpider
+from scrapy import Request, Spider as BaseSpider, signals
+from scrapy.crawler import Crawler
 from scrapy.http.response import Response
 from twisted.python.failure import Failure
 
@@ -37,6 +38,22 @@ class Spider(BaseSpider):
     def __init__(self, name: str | None = None, links: list[Link] | None = None):
         super().__init__(name)
         self._start_urls = parse_links(links)
+        self._expected_urls: set[str] = set()
+        self._assessed_urls: set[str] = set()
+
+    @classmethod
+    def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> "Spider":
+        spider = super().from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.item_scraped, signal=signals.item_scraped)
+        return spider
+
+    def item_scraped(self, item: JobCheck) -> None:
+        self._assessed_urls.add(item["url"])
+
+    def closed(self, reason: str) -> None:
+        # Every link must get assessed, even if inconclusively, otherwise it's a bug
+        for url in sorted(self._expected_urls - self._assessed_urls):
+            self.logger.error(f"Link not assessed: {url}")
 
     async def start(self) -> AsyncGenerator[Request, None]:
         if not self._start_urls:
@@ -47,7 +64,9 @@ class Spider(BaseSpider):
             if is_linkedin_url(url):
                 if request := self._linkedin_request(url):
                     yield request
-            elif is_startupjobs_url(url):
+                continue
+            self._expected_urls.add(url)
+            if is_startupjobs_url(url):
                 startupjobs_urls.append(url)
             else:
                 yield Request(
