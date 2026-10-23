@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from typing import Any, AsyncGenerator, Generator
 from urllib.parse import urlparse
 
@@ -10,6 +11,11 @@ from twisted.python.failure import Failure
 from jg.plucker.items import JobCheck
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import Link, evaluate_stats, parse_links
+
+
+MIN_CHECKS_PER_HOST = 2
+
+MAX_INCONCLUSIVE_RATIO = 0.5
 
 
 class Spider(BaseSpider):
@@ -40,6 +46,8 @@ class Spider(BaseSpider):
         self._start_urls = parse_links(links)
         self._expected_urls: set[str] = set()
         self._assessed_urls: set[str] = set()
+        self._checks_by_host: Counter[str] = Counter()
+        self._inconclusive_by_host: Counter[str] = Counter()
 
     @classmethod
     def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> "Spider":
@@ -49,11 +57,26 @@ class Spider(BaseSpider):
 
     def item_scraped(self, item: JobCheck) -> None:
         self._assessed_urls.add(item["url"])
+        host = urlparse(item["url"]).hostname or ""
+        self._checks_by_host[host] += 1
+        if item["ok"] is None:
+            self._inconclusive_by_host[host] += 1
 
     def closed(self, reason: str) -> None:
         # Every link must get assessed, even if inconclusively, otherwise it's a bug
         for url in sorted(self._expected_urls - self._assessed_urls):
             self.logger.error(f"Link not assessed: {url}")
+
+        # Mostly inconclusive checks of a site mean checking the site doesn't work
+        for host, count in sorted(self._checks_by_host.items()):
+            inconclusive_count = self._inconclusive_by_host[host]
+            if (
+                count >= MIN_CHECKS_PER_HOST
+                and inconclusive_count / count > MAX_INCONCLUSIVE_RATIO
+            ):
+                self.logger.error(
+                    f"Checks of {host} don't work: {inconclusive_count}/{count} inconclusive"
+                )
 
     async def start(self) -> AsyncGenerator[Request, None]:
         if not self._start_urls:

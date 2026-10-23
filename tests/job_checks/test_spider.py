@@ -172,3 +172,45 @@ def test_spider_logs_links_not_assessed(caplog):
         spider.closed("finished")
 
     assert caplog.messages == [f"Link not assessed: {urls[1]}"]
+
+
+@pytest.mark.parametrize(
+    "checks, expected_messages",
+    [
+        pytest.param(
+            [("https://www.jobs.cz/1/", None), ("https://www.jobs.cz/2/", None)],
+            ["Checks of www.jobs.cz don't work: 2/2 inconclusive"],
+            id="all-inconclusive",
+        ),
+        pytest.param(
+            [
+                ("https://www.jobs.cz/1/", None),
+                ("https://www.jobs.cz/2/", None),
+                ("https://www.jobs.cz/3/", True),
+            ],
+            ["Checks of www.jobs.cz don't work: 2/3 inconclusive"],
+            id="mostly-inconclusive",
+        ),
+        pytest.param(
+            [("https://www.jobs.cz/1/", None), ("https://www.jobs.cz/2/", False)],
+            [],
+            id="half-inconclusive",
+        ),
+        pytest.param(
+            [("https://acme.example.com/job/", None)],
+            [],
+            id="single-link-site",
+        ),
+    ],
+)
+def test_spider_logs_sites_with_inconclusive_checks(
+    caplog, checks: list[tuple[str, bool | None]], expected_messages: list[str]
+):
+    spider = Spider()
+    for url, ok in checks:
+        spider.item_scraped(JobCheck(url=url, ok=ok, reason="HTTP 403"))
+
+    with caplog.at_level("ERROR"):
+        spider.closed("finished")
+
+    assert caplog.messages == expected_messages
