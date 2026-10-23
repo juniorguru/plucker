@@ -46,9 +46,8 @@ class Spider(BaseSpider):
     }
 
     async def start(self) -> AsyncGenerator[Request, None]:
-        self.today = (
-            date.today()
-        )  # the same for all items, even if the run crosses midnight
+        # The same for all items, even if the run crosses midnight
+        self.today = date.today()
         yield Request(
             "https://mastodonczech.cz/@honzajavorek",
             self.parse_mastodon,
