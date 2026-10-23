@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from apify.scrapy.requests import to_apify_request
-from scrapy import Request
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
@@ -22,14 +20,10 @@ from jg.plucker.jobs_jobscz.spider import (
     select_widget,
     to_draft,
 )
+from jg.plucker.scrapers import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
-
-
-def assert_storable_on_apify(request: Request) -> None:
-    # Apify stores queued requests as JSON, unserializable ones get dropped
-    assert to_apify_request(request, Spider()) is not None
 
 
 def test_spider_start_sets_classic_site_cookie():
@@ -85,7 +79,7 @@ def test_spider_parse():
 
     assert len(requests) == 30 + 1  # jobs + next page
     for request in requests:
-        assert_storable_on_apify(request)
+        assert is_storable_on_apify(request, Spider()) is True
 
     assert (
         requests[1].url
@@ -300,7 +294,7 @@ def test_spider_parse_job_widget():
     )
     request = next(Spider().parse_job(response, JobDraft(), "123"))
 
-    assert_storable_on_apify(request)
+    assert is_storable_on_apify(request, Spider()) is True
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (
@@ -410,7 +404,7 @@ def test_spider_parse_job_widget_script_response():
         Spider().parse_job_widget_script(response, html_url, JobDraft(), [], "123")
     )
 
-    assert_storable_on_apify(request)
+    assert is_storable_on_apify(request, Spider()) is True
     assert request.method == "POST"
     assert request.headers["Content-Type"] == b"application/json"
     assert (

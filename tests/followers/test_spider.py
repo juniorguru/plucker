@@ -3,11 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from apify.scrapy.requests import to_apify_request
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.followers.spider import Spider, get_domain
+from jg.plucker.scrapers import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -35,8 +35,7 @@ def test_spider_start_requests_are_storable_on_apify():
 
     assert requests
     for request in requests:
-        # Apify stores queued requests as JSON, unserializable ones get dropped
-        assert to_apify_request(request, spider) is not None
+        assert is_storable_on_apify(request, spider) is True
 
 
 def test_spider_parse_mastodon():

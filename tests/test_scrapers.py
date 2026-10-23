@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from importlib import import_module
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from jg.plucker.scrapers import (
     evaluate_stats,
     generate_schema,
     get_spider_module_name,
+    is_storable_on_apify,
 )
 
 
@@ -235,3 +237,18 @@ def test_run_cache_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert list((tmp_path / "key_value_stores").iterdir()) == [
         tmp_path / "key_value_stores" / "default"
     ]
+
+
+@pytest.mark.parametrize(
+    "cb_kwargs, expected",
+    [
+        ({"name": "facebook", "urls": ["https://example.com/"]}, True),
+        ({"item": {"title": "Python vývojář(ka)"}}, True),
+        ({"today": date(2025, 3, 18)}, False),
+        ({"item": Item()}, False),
+    ],
+)
+def test_is_storable_on_apify(cb_kwargs: dict, expected: bool):
+    request = Request("https://example.com/", cb_kwargs=cb_kwargs)
+
+    assert is_storable_on_apify(request, Spider("test")) is expected
