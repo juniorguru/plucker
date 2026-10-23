@@ -124,6 +124,11 @@ class Spider(BaseSpider):
 
     employment_types_labels = ["Typ pracovního poměru", "Employment form"]
 
+    def __init__(self, name: str | None = None, today: date | None = None):
+        super().__init__(name)
+        # The same for all items, even if the run crosses midnight
+        self.today = today or date.today()
+
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
 
@@ -198,7 +203,7 @@ class Spider(BaseSpider):
                 )
             loader.add_css("locations_raw", '[data-test="jd-info-location"]::text')
             loader.add_css("description_html", '[data-jobad="body"]')
-            loader.add_value("posted_on", date.today())
+            loader.add_value("posted_on", self.today)
 
             if response.css('[class*="CompanyProfileNavigation"]').get():
                 self.logger_trk(trk).debug("Parsing as company job page")
@@ -379,7 +384,7 @@ class Spider(BaseSpider):
 
         posted_on = datetime.fromisoformat(job_ad["validFrom"]).date()
         loader.add_value("posted_on", posted_on)
-        loader.add_value("posted_on", date.today())
+        loader.add_value("posted_on", self.today)
 
         for location in job_ad["locations"]:
             location_parts = [location["city"], location["region"], location["country"]]

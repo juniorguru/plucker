@@ -20,7 +20,6 @@ from jg.plucker.jobs_jobscz.spider import (
     select_widget,
     to_draft,
 )
-from jg.plucker.scrapers import is_storable_on_apify
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -70,7 +69,7 @@ def test_spider_parse_beta_site():
     assert list(Spider().parse(response)) == []
 
 
-def test_spider_parse():
+def test_spider_parse(is_storable_on_apify):
     response = HtmlResponse(
         "https://beta.www.jobs.cz/prace/...",
         body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
@@ -201,7 +200,10 @@ def test_spider_parse_job_standard():
         url,
         body=Path(FIXTURES_DIR / "job_standard.html").read_bytes(),
     )
-    job = cast(Job, next(Spider().parse_job(response, JobDraft(), "123")))
+    job = cast(
+        Job,
+        next(Spider(today=date(2026, 10, 23)).parse_job(response, JobDraft(), "123")),
+    )
 
     assert sorted(job.keys()) == sorted(
         [
@@ -214,7 +216,7 @@ def test_spider_parse_job_standard():
         ]
     )
     assert job["url"] == url
-    assert job["posted_on"] == date.today()
+    assert job["posted_on"] == date(2026, 10, 23)
     assert job["employment_types"] == [
         "práce na plný úvazek",
         "práce na zkrácený úvazek",
@@ -287,7 +289,7 @@ def test_spider_parse_job_company():
     )
 
 
-def test_spider_parse_job_widget():
+def test_spider_parse_job_widget(is_storable_on_apify):
     url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
@@ -394,7 +396,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
     ]
 
 
-def test_spider_parse_job_widget_script_response():
+def test_spider_parse_job_widget_script_response(is_storable_on_apify):
     html_url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
     response = TextResponse(
         "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c",
@@ -446,6 +448,23 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
     )
 
     assert next(requests)
+
+
+@pytest.mark.parametrize(
+    "today, expected_posted_on",
+    [
+        (date(2024, 2, 1), date(2024, 2, 1)),
+        (date(2026, 10, 23), date(2024, 2, 6)),
+    ],
+)
+def test_spider_parse_job_widget_api_posted_on(today: date, expected_posted_on: date):
+    response = TextResponse(
+        "https://api.capybara.lmc.cz/api/graphql/widget",
+        body=Path(FIXTURES_DIR / "job_widget_api.json").read_bytes(),
+    )
+    job = next(Spider(today=today).parse_job_widget_api(response, JobDraft(), "123"))
+
+    assert job["posted_on"] == expected_posted_on
 
 
 def test_spider_parse_job_widget_api():

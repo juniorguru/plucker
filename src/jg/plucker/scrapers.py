@@ -6,12 +6,11 @@ from apify import Actor, Configuration, Event as ApifyEvent
 from apify.scrapy import run_scrapy_actor
 from apify.scrapy._async_thread import AsyncThread
 from apify.scrapy.extensions import ApifyCacheStorage
-from apify.scrapy.requests import to_apify_request
 from apify.scrapy.utils import apply_apify_settings
 from apify.storage_clients import ApifyStorageClient
 from apify.storages import KeyValueStore
 from pydantic import BaseModel, HttpUrl, PlainSerializer
-from scrapy import Item, Request, Spider
+from scrapy import Item, Spider
 from scrapy.crawler import Crawler, CrawlerRunner
 from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
@@ -211,12 +210,3 @@ def evaluate_stats(stats: StatsT, min_items: int):
 
 def parse_links(links: list[Link] | None) -> list[str]:
     return list(set(str(link.url) for link in map(Link.model_validate, links or [])))
-
-
-def is_storable_on_apify(request: Request, spider: Spider) -> bool:
-    """Whether Apify can store the request in its request queue
-
-    Apify stores queued requests as JSON and drops those it can't serialize,
-    e.g. if meta or cb_kwargs contain dates or Scrapy items.
-    """
-    return to_apify_request(request, spider) is not None
