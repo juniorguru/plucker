@@ -32,8 +32,6 @@ class Spider(BaseSpider):
 
     min_items = 0
 
-    today: date
-
     custom_settings = {
         "USER_AGENT": "",
         "DOWNLOAD_HANDLERS": {
@@ -45,9 +43,12 @@ class Spider(BaseSpider):
         },
     }
 
-    async def start(self) -> AsyncGenerator[Request, None]:
+    def __init__(self, name: str | None = None, today: date | None = None):
+        super().__init__(name)
         # The same for all items, even if the run crosses midnight
-        self.today = date.today()
+        self.today = today or date.today()
+
+    async def start(self) -> AsyncGenerator[Request, None]:
         yield Request(
             "https://mastodonczech.cz/@honzajavorek",
             self.parse_mastodon,

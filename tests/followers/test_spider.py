@@ -45,8 +45,7 @@ def test_spider_parse_mastodon():
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    spider.today = date(2025, 3, 18)
+    spider = Spider(today=date(2025, 3, 18))
     item = spider.parse_mastodon(response)
 
     assert item == {
@@ -69,8 +68,7 @@ def test_spider_parse_linkedin(filename: str, name: str, expected_count: int):
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    spider.today = date(2025, 3, 18)
+    spider = Spider(today=date(2025, 3, 18))
     item = spider.parse_linkedin(response, name=name)
 
     assert item == {
@@ -94,8 +92,7 @@ def test_spider_parse_facebook(filename: str, name: str, expected_count: int):
         f"https://example.com/{filename}",
         body=Path(FIXTURES_DIR / filename).read_bytes(),
     )
-    spider = Spider()
-    spider.today = date(2025, 3, 18)
+    spider = Spider(today=date(2025, 3, 18))
     item = spider.parse_facebook(response=response, name=name)
 
     assert item == {
@@ -118,8 +115,7 @@ def test_spider_parse_instagram(filename: str, name: str, expected_count: int):
         body=Path(FIXTURES_DIR / filename).read_bytes(),
         encoding="utf-8",
     )
-    spider = Spider()
-    spider.today = date(2025, 3, 18)
+    spider = Spider(today=date(2025, 3, 18))
     item = spider.parse_instagram(response=response, name=name)
 
     assert item == {
