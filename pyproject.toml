@@ -8,7 +8,7 @@ license = {text = "AGPL-3.0-only"}
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "apify[scrapy]>=4.1.0",
-    "apify-client>=2.5.0",  # deployment of actors, monitoring, automation
+    "apify-client>=3.3.0",  # deployment of actors, monitoring, automation
     "apify-shared",  # importing a few enums
     "click>=8.3.2",
     "diskcache>=5.6.3",
