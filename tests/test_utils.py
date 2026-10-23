@@ -13,6 +13,8 @@ from tests.utils import is_storable_on_apify
         ({"item": {"title": "Python vývojář(ka)"}}, True),
         ({"today": date(2025, 3, 18)}, False),
         ({"item": Item()}, False),
+        ({"urls": ("https://example.com/",)}, False),
+        ({"counts": {1: "one"}}, False),
     ],
 )
 def test_is_storable_on_apify(cb_kwargs: dict, expected: bool):

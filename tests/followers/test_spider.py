@@ -38,6 +38,10 @@ def test_spider_start_requests_are_storable_on_apify():
         assert is_storable_on_apify(request, spider) is True
 
 
+def test_spider_today_from_string():
+    assert Spider(today="2025-03-18").today == date(2025, 3, 18)
+
+
 def test_spider_parse_mastodon():
     filename = "mastodon.html"
     response = HtmlResponse(

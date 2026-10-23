@@ -14,6 +14,7 @@ from jg.plucker.jobs_jobscz.spider import (
     JobDraft,
     Spider,
     from_draft,
+    get_job_id,
     get_param,
     get_params,
     is_beta_site,
@@ -494,6 +495,45 @@ def test_spider_parse_job_widget_api():
 )
 def test_select_widget(names: list[str], expected: str):
     assert select_widget(names) == expected
+
+
+def test_spider_today_from_string():
+    assert Spider(today="2026-10-23").today == date(2026, 10, 23)
+
+
+def test_spider_parse_skips_jobs_already_seen():
+    response = HtmlResponse(
+        "https://beta.www.jobs.cz/prace/...",
+        body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
+    )
+    spider = Spider()
+    list(spider.parse(response))
+    requests = list(spider.parse(response))
+
+    assert [request.callback for request in requests] == [spider.parse]  # next page
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.jobs.cz/rpd/2000120375/?searchId=868cde40&rps=228", "2000120375"),
+        (
+            "https://www.jobs.cz/fp/alza-cz-a-s-7910630/2000134247/?rps=233",
+            "2000134247",
+        ),
+    ],
+)
+def test_get_job_id(url: str, expected: str):
+    assert get_job_id(url) == expected
+
+
+def test_get_job_id_raises():
+    with pytest.raises(ValueError):
+        get_job_id("https://www.jobs.cz/prace/programator/")
+
+
+def test_job_draft_fields_are_job_fields():
+    assert JobDraft.__optional_keys__ <= Job.fields.keys()
 
 
 def test_to_draft():

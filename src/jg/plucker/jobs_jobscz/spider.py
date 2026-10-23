@@ -124,9 +124,12 @@ class Spider(BaseSpider):
 
     employment_types_labels = ["Typ pracovního poměru", "Employment form"]
 
-    def __init__(self, name: str | None = None, today: date | None = None):
+    def __init__(self, name: str | None = None, today: date | str | None = None):
         super().__init__(name)
+        if isinstance(today, str):
+            today = date.fromisoformat(today)
         self.today = today or date.today()
+        self._job_ids: set[str] = set()
 
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
@@ -148,6 +151,13 @@ class Spider(BaseSpider):
         for n, card in enumerate(cards, start=1):
             url = cast(str, card.css('a[data-link="jd-detail"]::attr(href)').get())
             trk = get_trk(url)  # logging track ID for each job
+
+            # The same job can be listed under multiple searches
+            job_id = get_job_id(url)
+            if job_id in self._job_ids:
+                self.logger_trk(trk).debug(f"Skipping already seen job {url}")
+                continue
+            self._job_ids.add(job_id)
 
             loader = Loader(item=Job(), response=response)
             card_loader = loader.nested_xpath(f"{card_xpath}[{n}]")
@@ -400,6 +410,16 @@ def get_page(url: str) -> int:
     if page := get_param(url, "page"):
         return int(page)
     return 1
+
+
+def get_job_id(url: str) -> str:
+    segments = [
+        segment for segment in urlparse(url).path.split("/") if segment.isdigit()
+    ]
+    try:
+        return segments[-1]
+    except IndexError:
+        raise ValueError(f"Could not parse job ID: {url}")
 
 
 def is_beta_site(url: str) -> bool:

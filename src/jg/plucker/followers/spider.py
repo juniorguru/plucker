@@ -43,8 +43,10 @@ class Spider(BaseSpider):
         },
     }
 
-    def __init__(self, name: str | None = None, today: date | None = None):
+    def __init__(self, name: str | None = None, today: date | str | None = None):
         super().__init__(name)
+        if isinstance(today, str):
+            today = date.fromisoformat(today)
         self.today = today or date.today()
 
     async def start(self) -> AsyncGenerator[Request, None]:
