@@ -138,15 +138,9 @@ class Spider(BaseSpider):
         "https://www.jobs.cz/prace/?q%5B0%5D=vibe%20coding",
         "https://www.jobs.cz/prace/?q%5B0%5D=Claude%20Code",
         "https://www.jobs.cz/prace/?q%5B0%5D=Cursor",
-        "https://www.jobs.cz/prace/?q%5B0%5D=Copilot",
-        "https://www.jobs.cz/prace/?q%5B0%5D=ChatGPT",
-        "https://www.jobs.cz/prace/?q%5B0%5D=AI%20agent",
+        "https://www.jobs.cz/prace/?q%5B0%5D=agentic%20engineering",
         "https://www.jobs.cz/prace/?q%5B0%5D=prompt%20engineering",
         "https://www.jobs.cz/prace/?q%5B0%5D=LLM",
-        "https://www.jobs.cz/prace/?q%5B0%5D=GenAI",
-        "https://www.jobs.cz/prace/?q%5B0%5D=n8n",
-        "https://www.jobs.cz/prace/?q%5B0%5D=low-code",
-        "https://www.jobs.cz/prace/?q%5B0%5D=no-code",
     ]
 
     employment_types_labels = ["Typ pracovního poměru", "Employment form"]
