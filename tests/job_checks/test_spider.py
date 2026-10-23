@@ -1,9 +1,11 @@
+import asyncio
 from pathlib import Path
 
 import pytest
-from scrapy import Request
+from scrapy import Request, signals
 from scrapy.http import TextResponse
 from scrapy.http.response.html import HtmlResponse
+from scrapy.utils.test import get_crawler
 from twisted.internet.error import TimeoutError
 from twisted.python.failure import Failure
 
@@ -131,7 +133,7 @@ def test_evaluate_stats_passing(stats_override: dict):
             "item_scraped_count": 10,
             "finish_reason": "finished",
             "item_dropped_reasons_count/MissingRequiredFields": 0,
-            "spider_exceptions": 0,
+            "spider_exceptions/count": 0,
             "log_count/ERROR": 0,
         }
         | stats_override,
@@ -144,7 +146,7 @@ def test_evaluate_stats_passing(stats_override: dict):
     [
         {"log_count/ERROR": 1},
         {"log_count/ERROR": 2, "retry/max_reached": 1},
-        {"log_count/ERROR": 1, "spider_exceptions": 1},
+        {"log_count/ERROR": 1, "spider_exceptions/count": 1},
     ],
 )
 def test_evaluate_stats_failing(stats_override: dict):
@@ -154,12 +156,40 @@ def test_evaluate_stats_failing(stats_override: dict):
                 "item_scraped_count": 10,
                 "finish_reason": "finished",
                 "item_dropped_reasons_count/MissingRequiredFields": 0,
-                "spider_exceptions": 0,
+                "spider_exceptions/count": 0,
                 "log_count/ERROR": 0,
             }
             | stats_override,
             min_items=10,
         )
+
+
+def test_spider_start_expects_links_to_be_assessed():
+    urls = [
+        "https://www.jobs.cz/rpd/2001440830/",
+        "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator",
+        "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/",
+    ]
+    spider = Spider(links=[{"url": url} for url in urls])
+
+    async def collect():
+        return [request async for request in spider.start()]
+
+    requests = asyncio.run(collect())
+
+    assert spider._expected_urls == set(urls[:2])  # LinkedIn links are skipped
+    assert all(request.dont_filter for request in requests)
+
+
+def test_spider_from_crawler_tracks_scraped_items():
+    url = "https://example.com/job/"
+    crawler = get_crawler(Spider)
+    spider = Spider.from_crawler(crawler, links=[{"url": url}])
+    item = JobCheck(url=url, ok=True, reason="HTTP 200")
+
+    crawler.signals.send_catch_log(signals.item_scraped, item=item, spider=spider)
+
+    assert spider._assessed_urls == {url}
 
 
 def test_spider_logs_links_not_assessed(caplog):

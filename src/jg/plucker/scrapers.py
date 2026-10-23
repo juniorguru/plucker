@@ -193,7 +193,7 @@ class StatsError(RuntimeError):
 
 def evaluate_stats(stats: StatsT, min_items: int):
     item_count = stats.get("item_scraped_count", 0)
-    if exc_count := stats.get("spider_exceptions"):
+    if exc_count := stats.get("spider_exceptions/count"):
         raise StatsError(f"Exceptions raised: {exc_count}")
     if critical_count := stats.get("log_count/CRITICAL"):
         raise StatsError(f"Critical errors logged: {critical_count}")

@@ -98,6 +98,8 @@ class Spider(BaseSpider):
                     callback=self.check_http,
                     errback=self.check_failure,
                     cb_kwargs={"urls": [url]},
+                    # Otherwise links redirecting to the same page get dropped on Apify
+                    dont_filter=True,
                 )
         if startupjobs_urls:
             yield Request(
@@ -105,6 +107,7 @@ class Spider(BaseSpider):
                 callback=self.check_startupjobs,
                 errback=self.check_failure,
                 cb_kwargs={"urls": startupjobs_urls},
+                dont_filter=True,
             )
 
     def check_http(self, response: Response, urls: list[str]) -> JobCheck:
