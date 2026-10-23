@@ -260,12 +260,12 @@ def jobs_cz_checks(*oks: bool | None) -> list[tuple[str, bool | None]]:
             [
                 ("https://www.jobs.cz/rpd/1/", None),
                 ("https://jobs.cz/rpd/2/", None),
-                ("https://www.jobs.cz/rpd/3/", None),
-                ("https://jobs.cz/rpd/4/", None),
+                ("https://acme.jobs.cz/pd/3/", None),
+                ("https://beta.jobs.cz/rpd/4/", None),
                 ("https://www.jobs.cz/rpd/5/", None),
             ],
             ["Checks of jobs.cz don't work: 5/5 inconclusive"],
-            id="with-and-without-www",
+            id="subdomains",
         ),
     ],
 )

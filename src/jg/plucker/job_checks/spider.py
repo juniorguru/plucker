@@ -177,7 +177,8 @@ class Spider(BaseSpider):
 
 
 def get_site(url: str) -> str:
-    return (urlparse(url).hostname or "").removeprefix("www.")
+    # Good enough for .cz and .com, groups e.g. company subdomains of jobs.cz
+    return ".".join((urlparse(url).hostname or "").split(".")[-2:])
 
 
 def is_linkedin_url(url: str) -> bool:
