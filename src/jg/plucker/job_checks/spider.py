@@ -19,6 +19,8 @@ class Spider(BaseSpider):
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
+        # One failing link shouldn't prevent checking the rest
+        "CLOSESPIDER_ERRORCOUNT": 0,
     }
 
     min_items = 0
