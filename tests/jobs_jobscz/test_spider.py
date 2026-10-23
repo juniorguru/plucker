@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import json
 from datetime import date
@@ -9,10 +10,60 @@ from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 
 from jg.plucker.items import Job
-from jg.plucker.jobs_jobscz.spider import Spider, get_param, get_params, select_widget
+from jg.plucker.jobs_jobscz.spider import (
+    Spider,
+    get_param,
+    get_params,
+    is_beta_site,
+    select_widget,
+)
 
 
 FIXTURES_DIR = Path(__file__).parent
+
+
+def test_spider_start_sets_classic_site_cookie():
+    async def collect():
+        return [request async for request in Spider().start()]
+
+    requests = asyncio.run(collect())
+
+    assert [request.url for request in requests] == Spider.start_urls
+    assert all(
+        request.cookies
+        == [
+            {
+                "name": "beta_bucket",
+                "value": "3%3AB",
+                "domain": ".jobs.cz",
+                "path": "/",
+            }
+        ]
+        for request in requests
+    )
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://beta.jobs.cz/prace/programator/", True),
+        ("https://beta.jobs.cz/rpd/2001334033/?rps=228", True),
+        ("https://www.jobs.cz/prace/programator/", False),
+        ("https://beta.www.jobs.cz/prace/...", False),
+        ("https://atlascopcoservices.jobs.cz/pd/2001334033/", False),
+    ],
+)
+def test_is_beta_site(url: str, expected: bool):
+    assert is_beta_site(url) is expected
+
+
+def test_spider_parse_beta_site():
+    response = HtmlResponse(
+        "https://beta.jobs.cz/prace/programator/",
+        body=Path(FIXTURES_DIR / "listing.html").read_bytes(),
+    )
+
+    assert list(Spider().parse(response)) == []
 
 
 def test_spider_parse():

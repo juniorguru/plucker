@@ -14,16 +14,10 @@
         "type": "object",
         "editor": "proxy",
         "prefill": {
-          "useApifyProxy": true,
-          "apifyProxyGroups": [
-            "RESIDENTIAL"
-          ]
+          "useApifyProxy": true
         },
         "default": {
-          "useApifyProxy": true,
-          "apifyProxyGroups": [
-            "RESIDENTIAL"
-          ]
+          "useApifyProxy": true
         }
       }
     }

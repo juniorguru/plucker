@@ -27,6 +27,9 @@ HTTPCACHE_ENABLED = True
 
 HTTPCACHE_EXPIRATION_SECS = 43200  # 12 hours
 
+# Caching these would make retries and subsequent runs replay the error
+HTTPCACHE_IGNORE_HTTP_CODES = RETRY_HTTP_CODES
+
 SPIDER_LOADER_CLASS = "jg.plucker.scrapers.SpiderLoader"
 
 SPIDER_LOADER_SPIDERS_PATH = "./src/jg/plucker"
