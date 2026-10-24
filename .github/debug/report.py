@@ -1,6 +1,7 @@
 # Build jobs-jobscz from perf/jobscz-throttle and run it for 10 minutes
 import os
 import re
+from datetime import timedelta
 
 from apify_client import ApifyClient
 
@@ -18,7 +19,7 @@ actor = client.actor(actor_info.id)
 try:
     build = actor.build(version_number="0.0", wait_for_finish=600)
     print("BUILD", build.status, flush=True)
-    run = actor.call(timeout_secs=600, wait_secs=720, logger=None)
+    run = actor.call(run_timeout=timedelta(seconds=600), wait_duration=timedelta(seconds=720), logger=None)
     log = client.run(run.id).log().get() or ""
     items = client.dataset(run.default_dataset_id).get().item_count
     print(f"RUN {run.status} items={items} run={run.id}", flush=True)
