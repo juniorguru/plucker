@@ -1,0 +1,16 @@
+name: tmp-check-runs
+
+on:
+  push:
+    branches: [tmp/check-runs]
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Report
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+        run: uv run python .github/debug/report.py
