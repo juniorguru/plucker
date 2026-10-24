@@ -114,6 +114,7 @@ class Spider(BaseSpider):
 
     custom_settings = {
         "RETRY_TIMES": 5,
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 4,
     }
 
     start_urls = [
