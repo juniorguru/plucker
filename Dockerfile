@@ -1,4 +1,4 @@
-FROM apify/actor-python:3.13
+FROM apify/actor-python:3.15
 ARG ACTOR_PATH_IN_DOCKER_CONTEXT
 
 RUN rm -rf /usr/src/app/*
