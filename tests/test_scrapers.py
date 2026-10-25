@@ -1,8 +1,10 @@
+import asyncio
 import json
 from importlib import import_module
 from pathlib import Path
 
 import pytest
+from apify.storages import KeyValueStore
 from scrapy import Field, Item, Request, Spider
 from scrapy.http import HtmlResponse
 from scrapy.settings import Settings
@@ -233,5 +235,24 @@ def test_run_cache_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert response.status == 200
     assert response.body == b"<html>Hello</html>"
     assert list((tmp_path / "key_value_stores").iterdir()) == [
-        tmp_path / "key_value_stores" / "default"
+        tmp_path / "key_value_stores" / "httpcache"
     ]
+
+
+def test_run_cache_storage_does_not_share_default_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # ImagePipeline uses the default store on the reactor's event loop, while
+    # the cache runs on its own AsyncThread loop. Sharing the store means sharing
+    # its client's asyncio lock across loops, which deadlocks on the platform.
+    monkeypatch.setenv("CRAWLEE_STORAGE_DIR", str(tmp_path))
+    spider = Spider("test")
+    spider.crawler = get_crawler(Spider)
+    storage = RunCacheStorage(Settings({"HTTPCACHE_EXPIRATION_SECS": 0}))
+
+    storage.open_spider(spider)
+    try:
+        default_kvs = asyncio.run(KeyValueStore.open())
+        assert default_kvs is not storage._kvs
+    finally:
+        storage.close_spider(spider)
