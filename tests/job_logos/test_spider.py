@@ -24,27 +24,7 @@ from jg.plucker.scrapers import StatsError
 
 PROJECT_DIR = Path(__file__).parent.parent.parent
 
-CRAWL_SCRIPT = """
-import json, sys
-from scrapy import signals
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
-from jg.plucker.job_logos.spider import Spider
-
-settings = get_project_settings()
-settings.setdict({"HTTPCACHE_ENABLED": False, "FEEDS": {}}, priority="cmdline")
-# Spider settings have priority over project settings, so patch them
-Spider.custom_settings = (Spider.custom_settings or {}) | {"DOWNLOAD_TIMEOUT": 1}
-items = []
-process = CrawlerProcess(settings, install_root_handler=False)
-crawler = process.create_crawler(Spider)
-crawler.signals.connect(lambda item: items.append(item), signal=signals.item_scraped)
-process.crawl(crawler, links=[{"url": sys.argv[1]}])
-process.start()
-stats = crawler.stats.get_stats()
-print(json.dumps({"stats": {k: v for k, v in stats.items() if isinstance(v, int)},
-                  "items_count": len(items)}))
-"""
+CRAWL_SCRIPT = Path(__file__).parent / "crawl.py"
 
 
 @pytest.fixture
@@ -65,7 +45,7 @@ def refusing_url() -> str:
 
 def crawl(url: str) -> dict[str, Any]:
     process = subprocess.run(
-        [sys.executable, "-c", CRAWL_SCRIPT, url],
+        [sys.executable, CRAWL_SCRIPT, url],
         cwd=PROJECT_DIR,
         capture_output=True,
         text=True,
