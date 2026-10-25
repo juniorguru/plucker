@@ -39,7 +39,7 @@ dev = [
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"
-testpaths = "tests"
+testpaths = ["tests", "src"]  # src for ruff checks
 pythonpath = ["."]  # allows importing helpers from tests.utils
 addopts = "--import-mode=importlib --ff --ruff --ruff-format"
 

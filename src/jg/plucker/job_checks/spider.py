@@ -54,7 +54,7 @@ class Spider(BaseSpider):
         self._inconclusive_by_host: Counter[str] = Counter()
 
     @classmethod
-    def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> "Spider":
+    def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> Spider:
         spider = super().from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.item_scraped, signal=signals.item_scraped)
         return spider

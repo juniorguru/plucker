@@ -44,7 +44,7 @@ class Spider(BaseSpider):
                 startup_url,
                 callback=self.parse_startup,
                 errback=self.handle_startup_error,
-                cb_kwargs=dict(offers=offers, feed_url=response.url),
+                cb_kwargs={"offers": offers, "feed_url": response.url},
             )
 
     def parse_startup(
