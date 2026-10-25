@@ -242,9 +242,7 @@ def test_run_cache_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 def test_run_cache_storage_does_not_share_default_store(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    # ImagePipeline uses the default store on the reactor's event loop, while
-    # the cache runs on its own AsyncThread loop. Sharing the store means sharing
-    # its client's asyncio lock across loops, which deadlocks on the platform.
+    # see https://github.com/juniorguru/plucker/issues/190
     monkeypatch.setenv("CRAWLEE_STORAGE_DIR", str(tmp_path))
     spider = Spider("test")
     spider.crawler = get_crawler(Spider)
