@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from datetime import date
-from typing import Generator
 
 from ics import Calendar
 from lxml import html
@@ -22,7 +22,7 @@ class Spider(BaseSpider):
 
     def parse(
         self, response: TextResponse, today: date | None = None
-    ) -> Generator[Request | Meetup, None, None]:
+    ) -> Generator[Request | Meetup]:
         today = today or date.today()
         self.logger.info(f"Parsing {response.url}, today is {today}")
         events = Calendar(response.text).events

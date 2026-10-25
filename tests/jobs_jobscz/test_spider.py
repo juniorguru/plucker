@@ -561,9 +561,9 @@ def test_get_param():
 def test_get_params():
     url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=a653a2a6-05c9-49fb-b391-96b185355f2d"
 
-    assert get_params(url) == dict(
-        r="detail",
-        id="2000142365",
-        rps="228",
-        impressionId="a653a2a6-05c9-49fb-b391-96b185355f2d",
-    )
+    assert get_params(url) == {
+        "r": "detail",
+        "id": "2000142365",
+        "rps": "228",
+        "impressionId": "a653a2a6-05c9-49fb-b391-96b185355f2d",
+    }

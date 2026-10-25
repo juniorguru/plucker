@@ -1,5 +1,5 @@
-from datetime import date, timedelta, timezone
-from typing import Generator
+from collections.abc import Generator
+from datetime import UTC, date, timedelta
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
@@ -15,9 +15,7 @@ class Spider(BaseSpider):
 
     min_items = 0
 
-    def parse(
-        self, response: Response, today: date | None = None
-    ) -> Generator[Meetup, None, None]:
+    def parse(self, response: Response, today: date | None = None) -> Generator[Meetup]:
         today = today or date.today()
         self.logger.info(f"Parsing {response.url}, today is {today}")
         events = Calendar(response.text).events
@@ -34,10 +32,10 @@ class Spider(BaseSpider):
             raise ValueError(f"Event without start time: {event}")
 
         self.logger.info(f"Event: {event.summary} {event.begin}")
-        starts_at = event.begin.replace(tzinfo=timezone.utc)
+        starts_at = event.begin.replace(tzinfo=UTC)
         default_ends_at = starts_at + timedelta(hours=3)
         ends_at = max(
-            (event.end.replace(tzinfo=timezone.utc) if event.end else default_ends_at),
+            (event.end.replace(tzinfo=UTC) if event.end else default_ends_at),
             default_ends_at,
         )
 

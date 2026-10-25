@@ -1,6 +1,6 @@
+from collections.abc import Generator
 from enum import StrEnum
 from io import BytesIO
-from typing import Generator
 from urllib.parse import urljoin
 
 from favicon import Icon, favicon
@@ -53,7 +53,7 @@ class Spider(BaseSpider):
 
     def parse(
         self, response: Response, source_url: str | None = None
-    ) -> Generator[Request | JobLogo, None, None]:
+    ) -> Generator[Request | JobLogo]:
         if not response.request:
             raise ValueError("Response does not have a request")
         request = response.request

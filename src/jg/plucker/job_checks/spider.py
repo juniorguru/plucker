@@ -1,6 +1,7 @@
 import re
 from collections import Counter
-from typing import Any, AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider, signals
@@ -84,7 +85,7 @@ class Spider(BaseSpider):
                     f"Checks of {host} don't work: {inconclusive_count}/{count} inconclusive"
                 )
 
-    async def start(self) -> AsyncGenerator[Request, None]:
+    async def start(self) -> AsyncGenerator[Request]:
         if not self._start_urls:
             raise ValueError("No links provided")
         self.logger.info(f"Loading {len(self._start_urls)} links")
@@ -125,7 +126,7 @@ class Spider(BaseSpider):
 
     def check_http(
         self, response: Response, urls: list[str]
-    ) -> Generator[JobCheck | Request, None, None]:
+    ) -> Generator[JobCheck | Request]:
         url = urls[0]
         self.logger.info(f"Checking {url} (HTTP {response.request.method})")
         reason = f"HTTP {response.status}"
@@ -140,7 +141,7 @@ class Spider(BaseSpider):
             self.logger.warning(f"Inconclusive check of {url}: {reason}")
             yield JobCheck(url=url, ok=None, reason=reason)
 
-    def check_failure(self, failure: Failure) -> Generator[JobCheck, None, None]:
+    def check_failure(self, failure: Failure) -> Generator[JobCheck]:
         reason = failure.type.__name__
         for url in failure.request.cb_kwargs["urls"]:
             self.logger.warning(f"Inconclusive check of {url}: {reason}")
@@ -148,7 +149,7 @@ class Spider(BaseSpider):
 
     def check_startupjobs(
         self, response: Response, urls: list[str]
-    ) -> Generator[JobCheck, None, None]:
+    ) -> Generator[JobCheck]:
         self.logger.info(f"Checking {len(urls)} URLs (StartupJobs)")
         if response.status != 200:
             reason = f"STARTUPJOBS HTTP {response.status}"

@@ -1,6 +1,6 @@
+from collections.abc import AsyncGenerator, Generator
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import AsyncGenerator, Generator
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http import TextResponse
@@ -11,7 +11,7 @@ from jg.plucker.items import ExchangeRate
 class Spider(BaseSpider):
     name = "exchange-rates"
 
-    async def start(self) -> AsyncGenerator[Request, None]:
+    async def start(self) -> AsyncGenerator[Request]:
         monday = get_last_monday(date.today())
         yield Request(
             "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/"
@@ -19,7 +19,7 @@ class Spider(BaseSpider):
             f"?date={monday:%d.%m.%Y}"
         )
 
-    def parse(self, response: TextResponse) -> Generator[ExchangeRate, None, None]:
+    def parse(self, response: TextResponse) -> Generator[ExchangeRate]:
         for line in parse_lines(response.text):
             yield ExchangeRate(**parse_exchange_rate(line))
 
@@ -29,9 +29,10 @@ def get_last_monday(today) -> date:
 
 
 def parse_exchange_rate(line) -> dict[str, str | Decimal]:
-    return dict(
-        code=line.split("|")[3], rate=Decimal(line.split("|")[4].replace(",", "."))
-    )
+    return {
+        "code": line.split("|")[3],
+        "rate": Decimal(line.split("|")[4].replace(",", ".")),
+    }
 
 
 def parse_lines(text: str) -> list[str]:
