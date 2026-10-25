@@ -1,5 +1,7 @@
+import json
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from scrapy import Request
@@ -15,6 +17,18 @@ from jg.plucker.jobs_startupjobs.spider import (
 
 
 FIXTURES_DIR = Path(__file__).parent
+
+OFFER = {
+    "position": "Developer",
+    "url": "https://www.startupjobs.cz/nabidka/1/developer",
+    "startup": "Air Bank a.s.",
+    "startupURL": "https://www.startupjobs.cz/startup/air-bank-a-s-1",
+    "startupLogo": "https://www.startupjobs.cz/uploads/2025/08/eb01aefe2378836a08ab2554d6bc61ab.png",
+    "cities": ["Praha, Česko"],
+    "jobtypes": ["Full-time"],
+    "lastUpdate": "2025-11-05",
+    "description": "<p>Hi</p>",
+}
 
 
 def parse_jobs(response: TextResponse) -> list[Job]:
@@ -137,19 +151,9 @@ def test_spider_parse_startup():
         "https://www.startupjobs.cz/startup/air-bank-a-s-1",
         body=Path(FIXTURES_DIR / "startup.html").read_bytes(),
     )
-    offer = {
-        "position": "Developer",
-        "url": "https://www.startupjobs.cz/nabidka/1/developer",
-        "startup": "Air Bank a.s.",
-        "startupLogo": "https://www.startupjobs.cz/uploads/2025/08/eb01aefe2378836a08ab2554d6bc61ab.png",
-        "cities": ["Praha, Česko"],
-        "jobtypes": ["Full-time"],
-        "lastUpdate": "2025-11-05",
-        "description": "<p>Hi</p>",
-    }
     jobs = list(
         Spider().parse_startup(
-            response, offers=[offer], feed_url="https://example.com/example/"
+            response, offers=[OFFER], feed_url="https://example.com/example/"
         )
     )
 
@@ -158,6 +162,34 @@ def test_spider_parse_startup():
         "https://assets.startupjobs.cz/LOGO/13035/eb01aefe2378836a08ab2554d6bc61ab.png"
     ]
     assert jobs[0]["source_urls"] == ["https://example.com/example/"]
+
+
+def test_spider_parse_offer_without_startup_url():
+    offer = {key: value for key, value in OFFER.items() if key != "startupURL"}
+    response = TextResponse(
+        "https://example.com/example/",
+        body=json.dumps({"offers": [offer]}).encode(),
+    )
+    jobs = list(Spider().parse(response))
+
+    assert len(jobs) == 1
+    assert isinstance(jobs[0], Job)
+    assert jobs[0]["url"] == "https://www.startupjobs.cz/nabidka/1/developer"
+    assert "company_logo_urls" not in jobs[0]
+
+
+def test_spider_handle_startup_error():
+    request = Request(
+        "https://www.startupjobs.cz/startup/air-bank-a-s-1",
+        cb_kwargs={"offers": [OFFER, OFFER], "feed_url": "https://example.com/"},
+    )
+    failure = SimpleNamespace(request=request, value=Exception("404"))
+    jobs = list(Spider().handle_startup_error(failure))
+
+    assert len(jobs) == 2
+    assert jobs[0]["url"] == "https://www.startupjobs.cz/nabidka/1/developer"
+    assert jobs[0]["source_urls"] == ["https://example.com/"]
+    assert "company_logo_urls" not in jobs[0]
 
 
 @pytest.mark.parametrize(
