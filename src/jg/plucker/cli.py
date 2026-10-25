@@ -284,7 +284,7 @@ def dump_run_logs(
         status = run.status
         try:
             log_text = client.run(run_id).log().get() or ""
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log_text = f"<failed to fetch log for run {run_id}: {e}>"
         path = actor_dir / f"{run_id}-{status}.log"
         path.write_text(log_text)

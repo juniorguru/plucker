@@ -48,12 +48,10 @@ target-version = "py313"
 extend-exclude = ["scraper_template"]
 
 [tool.ruff.lint]
-# Rely on Ruff's default rule set, plus isort ("I"). The ignored families
-# clash with intentional patterns here: DTZ (deliberately naive datetimes),
-# BLE001 (broad excepts in sync scripts), RUF012 (mutable class defaults used
-# as config), ASYNC210/221/251 (blocking calls in async setup code).
 extend-select = ["I"]
-ignore = ["ASYNC210", "ASYNC221", "ASYNC251", "BLE001", "DTZ", "RUF012"]
+ignore = [
+    "RUF012",  # Scrapy configures spiders through mutable class attributes
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
