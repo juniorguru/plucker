@@ -1,9 +1,12 @@
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator, Iterable
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from io import BytesIO
 from typing import Any
 from urllib.parse import urljoin
 
+from apify import Actor
+from apify_client.errors import ApifyClientError
 from favicon import Icon, favicon
 from PIL import Image
 from scrapy import Request, Spider as BaseSpider
@@ -46,6 +49,9 @@ class Format(StrEnum):
 
 TIMEOUT_EXCEPTIONS = (DownloadTimeoutError, TimeoutError, TCPTimedOutError)
 
+# Keeps logos fresh and every reused image URL inside the data retention period
+REUSE_MAX_AGE = timedelta(days=14)
+
 
 class Spider(BaseSpider):
     name = "job-logos"
@@ -74,8 +80,15 @@ class Spider(BaseSpider):
         parse_links(links)  # validates, but normalizes URLs, which wouldn't match
         self._start_urls = list(dict.fromkeys(link["url"] for link in links or []))
 
-    async def start(self) -> AsyncGenerator[Request]:
+    async def start(self) -> AsyncGenerator[Request | JobLogo]:
+        reusable_logos = await self._load_reusable_logos()
         for url in self._start_urls:
+            if logos := reusable_logos.get(url):
+                self.logger.info(f"Reusing {len(logos)} logos of {url}")
+                self.crawler.stats.inc_value("job_logos/reused", len(logos))
+                for logo in logos:
+                    yield logo
+                continue
             # The input URL as given, so that it matches on the junior.guru side
             yield Request(
                 url,
@@ -84,6 +97,24 @@ class Spider(BaseSpider):
                 cb_kwargs={"source_url": url},
                 dont_filter=True,
             )
+
+    async def _load_reusable_logos(self) -> dict[str, list[JobLogo]]:
+        if not Actor.is_at_home():
+            self.logger.info("Not on Apify, nothing to reuse")
+            return {}
+        try:
+            run_client = Actor.apify_client.actor(Actor.configuration.actor_id)
+            run = await run_client.last_run(status="SUCCEEDED").get()
+            if not run:
+                self.logger.info("No previous successful run, nothing to reuse")
+                return {}
+            self.logger.info(f"Loading logos from previous run {run.id}")
+            dataset_client = Actor.apify_client.dataset(run.default_dataset_id)
+            items = [item async for item in dataset_client.iterate_items()]
+        except ApifyClientError as e:
+            self.logger.warning(f"Failed to load logos from previous run: {e}")
+            return {}
+        return select_reusable_logos(items, self._start_urls, datetime.now(UTC))
 
     def on_error(self, failure: Failure) -> Failure | None:
         # The site not responding isn't our problem, junior.guru falls back
@@ -134,6 +165,7 @@ class Spider(BaseSpider):
                 height=height,
                 format=Format.from_content_type(content_type),
                 source_url=source_url,
+                fetched_at=datetime.now(UTC).isoformat(),
             )
         else:
             self.logger.debug("Assuming company homepage URL")
@@ -164,3 +196,22 @@ class Spider(BaseSpider):
                     errback=self.on_error,
                     cb_kwargs={"source_url": source_url},
                 )
+
+
+def select_reusable_logos(
+    items: Iterable[dict[str, Any]], urls: Iterable[str], now: datetime
+) -> dict[str, list[JobLogo]]:
+    urls = set(urls)
+    logos: dict[str, list[JobLogo]] = {}
+    for item in items:
+        if item.get("source_url") not in urls:
+            continue
+        try:
+            fetched_at = datetime.fromisoformat(item["fetched_at"])
+        except KeyError, TypeError, ValueError:
+            continue  # from before fetched_at existed
+        if now - fetched_at > REUSE_MAX_AGE:
+            continue
+        logo = JobLogo(**{key: item[key] for key in JobLogo.fields if key in item})
+        logos.setdefault(item["source_url"], []).append(logo)
+    return logos

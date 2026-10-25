@@ -6,6 +6,7 @@
             "title": "JobLogo",
             "transformation": {
                 "fields": [
+                    "fetched_at",
                     "format",
                     "height",
                     "image_url",
@@ -17,6 +18,10 @@
             "display": {
                 "component": "table",
                 "properties": {
+                    "fetched_at": {
+                        "label": "fetched_at",
+                        "format": "date"
+                    },
                     "format": {
                         "label": "format",
                         "format": "string"

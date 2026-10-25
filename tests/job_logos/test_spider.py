@@ -4,11 +4,14 @@ import socket
 import subprocess
 import sys
 from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from apify_client.errors import ApifyClientError
 from PIL import Image
 from scrapy import Request
 from scrapy.exceptions import DownloadTimeoutError
@@ -18,11 +21,30 @@ from twisted.internet.error import DNSLookupError, TCPTimedOutError, TimeoutErro
 from twisted.python.failure import Failure
 
 from jg.plucker.items import JobLogo
-from jg.plucker.job_logos.spider import Spider
+from jg.plucker.job_logos import spider as spider_module
+from jg.plucker.job_logos.spider import Spider, select_reusable_logos
 from jg.plucker.scrapers import StatsError
 
 
 PROJECT_DIR = Path(__file__).parent.parent.parent
+
+
+class FakeActor:
+    apify_client = None
+    configuration = SimpleNamespace(actor_id="abc")
+
+    @staticmethod
+    def is_at_home() -> bool:
+        return False
+
+
+@pytest.fixture(autouse=True)
+def fake_actor(monkeypatch: pytest.MonkeyPatch) -> type[FakeActor]:
+    # The real Actor would create and cache the global configuration,
+    # which would then leak to other tests
+    monkeypatch.setattr(spider_module, "Actor", FakeActor)
+    return FakeActor
+
 
 CRAWL_SCRIPT = Path(__file__).parent / "crawl.py"
 
@@ -161,3 +183,106 @@ def test_spider_parse_image_keeps_source_url_after_redirect():
     assert len(items) == 1
     assert isinstance(items[0], JobLogo)
     assert items[0]["source_url"] == source_url
+
+
+NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
+
+
+def logo_item(
+    source_url: str, fetched_at: datetime | str | None = None, **kwargs
+) -> dict:
+    item = {
+        "image_url": "https://api.apify.com/v2/key-value-stores/abc/records/123",
+        "original_image_url": f"{source_url}/favicon.ico",
+        "width": 16,
+        "height": 16,
+        "format": "png",
+        "source_url": source_url,
+    }
+    if isinstance(fetched_at, datetime):
+        item["fetched_at"] = fetched_at.isoformat()
+    elif fetched_at:
+        item["fetched_at"] = fetched_at
+    return item | kwargs
+
+
+def test_select_reusable_logos():
+    items = [
+        logo_item("https://a.example.com", NOW - timedelta(days=1)),
+        logo_item("https://a.example.com", NOW - timedelta(days=1), width=32),
+        logo_item("https://b.example.com", NOW - timedelta(days=1)),
+    ]
+    logos = select_reusable_logos(items, ["https://a.example.com"], NOW)
+
+    assert list(logos) == ["https://a.example.com"]
+    assert [logo["width"] for logo in logos["https://a.example.com"]] == [16, 32]
+    assert all(isinstance(logo, JobLogo) for logo in logos["https://a.example.com"])
+    assert dict(logos["https://a.example.com"][0]) == items[0]
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        logo_item("https://a.example.com", NOW - timedelta(days=15)),
+        logo_item("https://a.example.com"),
+        logo_item("https://a.example.com", fetched_at="not a date"),
+    ],
+)
+def test_select_reusable_logos_skips_stale_or_unknown_age(item: dict):
+    assert select_reusable_logos([item], ["https://a.example.com"], NOW) == {}
+
+
+def test_select_reusable_logos_ignores_unknown_fields():
+    item = logo_item("https://a.example.com", NOW, unknown="value")
+    logos = select_reusable_logos([item], ["https://a.example.com"], NOW)
+
+    assert "unknown" not in logos["https://a.example.com"][0]
+
+
+def test_spider_start_reuses_logos(monkeypatch):
+    urls = ["https://a.example.com", "https://b.example.com"]
+    crawler = get_crawler(Spider)
+    spider = Spider.from_crawler(crawler, links=[{"url": url} for url in urls])
+    logo = JobLogo(**logo_item(urls[0], NOW))
+
+    async def load_reusable_logos():
+        return {urls[0]: [logo]}
+
+    monkeypatch.setattr(spider, "_load_reusable_logos", load_reusable_logos)
+
+    async def collect():
+        return [request async for request in spider.start()]
+
+    results = asyncio.run(collect())
+
+    assert results[0] is logo
+    assert isinstance(results[1], Request)
+    assert results[1].url == urls[1]
+    assert len(results) == 2
+    assert crawler.stats.get_value("job_logos/reused") == 1
+
+
+def test_spider_load_reusable_logos_not_on_apify():
+    spider = Spider(links=[{"url": "https://a.example.com"}])
+
+    assert asyncio.run(spider._load_reusable_logos()) == {}
+
+
+def test_spider_load_reusable_logos_failure(
+    monkeypatch, caplog, fake_actor: type[FakeActor]
+):
+    spider = Spider(links=[{"url": "https://a.example.com"}])
+
+    class FailingClient:
+        def actor(self, actor_id: str):
+            raise ApifyClientError("Insufficient permissions")
+
+    monkeypatch.setattr(fake_actor, "apify_client", FailingClient())
+    monkeypatch.setattr(fake_actor, "is_at_home", staticmethod(lambda: True))
+
+    with caplog.at_level("WARNING"):
+        assert asyncio.run(spider._load_reusable_logos()) == {}
+
+    assert caplog.messages == [
+        "Failed to load logos from previous run: Insufficient permissions"
+    ]

@@ -35,6 +35,7 @@ class JobLogo(Item):
     height = Field(apify_format="number")
     format = Field(required=True, apify_format="string")
     source_url = Field(required=True, apify_format="link")
+    fetched_at = Field(required=True, apify_format="date")
 
 
 class JobCheck(Item):
