@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -34,7 +34,7 @@ def test_parse_filters_past_events(response: TextResponse):
 
 
 def test_parse_event_fields(response: TextResponse):
-    meetup = list(Spider().parse(response, today=TODAY))[0]
+    meetup = next(iter(Spider().parse(response, today=TODAY)))
 
     assert isinstance(meetup, Meetup)
     assert meetup["title"] == "AI mění (nejen) svět IT"
@@ -43,7 +43,7 @@ def test_parse_event_fields(response: TextResponse):
     assert meetup["series_name"] == "NePyvo"
     assert meetup["series_org"] == "komunita kolem Pythonu"
     assert meetup["series_url"] == "https://nepyvo.cz/"
-    assert meetup["starts_at"] == datetime(2026, 4, 16, 17, 0, tzinfo=timezone.utc)
-    assert meetup["ends_at"] == datetime(2026, 4, 16, 20, 0, tzinfo=timezone.utc)
+    assert meetup["starts_at"] == datetime(2026, 4, 16, 17, 0, tzinfo=UTC)
+    assert meetup["ends_at"] == datetime(2026, 4, 16, 20, 0, tzinfo=UTC)
     assert "Hostinec Pod Schody" in meetup["location"]
     assert meetup["description"] is not None

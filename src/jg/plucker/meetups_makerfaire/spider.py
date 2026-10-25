@@ -1,6 +1,6 @@
 import re
+from collections.abc import Generator
 from datetime import date, datetime, time
-from typing import Generator
 from zoneinfo import ZoneInfo
 
 from scrapy import Request, Spider as BaseSpider
@@ -22,7 +22,7 @@ class Spider(BaseSpider):
 
     default_end_time = time(18, 0)
 
-    def parse(self, response: TextResponse) -> Generator[Request, None, None]:
+    def parse(self, response: TextResponse) -> Generator[Request]:
         self.logger.debug(f"Parsing {response.url}")
         # Extract city URLs from the index page
         city_links = response.xpath(
@@ -35,7 +35,7 @@ class Spider(BaseSpider):
             self.logger.debug(f"Following city link: {url}")
             yield Request(url=url, callback=self.parse_city)
 
-    def parse_city(self, response: TextResponse) -> Generator[Meetup, None, None]:
+    def parse_city(self, response: TextResponse) -> Generator[Meetup]:
         # Extract city name from heading
         city_title = response.xpath('//h1[@class="brxe-heading"]/text()').get()
         if not city_title:
@@ -92,7 +92,7 @@ class Spider(BaseSpider):
         title: str,
         location: str,
         source_url: str,
-    ) -> Generator[Meetup, None, None]:
+    ) -> Generator[Meetup]:
         """Parse date text and create meetup items for each day."""
         self.logger.debug(f"Parsing dates: {date_text}, time: {time_text}")
 

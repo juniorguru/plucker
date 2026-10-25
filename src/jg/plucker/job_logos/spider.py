@@ -1,6 +1,6 @@
+from collections.abc import AsyncGenerator, Generator
 from enum import StrEnum
 from io import BytesIO
-from typing import Generator
 from urllib.parse import urljoin
 
 from favicon import Icon, favicon
@@ -9,7 +9,7 @@ from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
 
 from jg.plucker.items import JobLogo
-from jg.plucker.scrapers import Link, parse_links
+from jg.plucker.scrapers import parse_links
 
 
 class Format(StrEnum):
@@ -43,17 +43,28 @@ class Format(StrEnum):
 class Spider(BaseSpider):
     name = "job-logos"
 
-    start_urls = []
-
     min_items = 1
 
-    def __init__(self, name: str | None = None, links: list[Link] | None = None):
+    def __init__(
+        self, name: str | None = None, links: list[dict[str, str]] | None = None
+    ):
         super().__init__(name)
-        self.start_urls = parse_links(links)
+        parse_links(links)  # validates, but normalizes URLs, which wouldn't match
+        self._start_urls = list(dict.fromkeys(link["url"] for link in links or []))
+
+    async def start(self) -> AsyncGenerator[Request]:
+        for url in self._start_urls:
+            # The input URL as given, so that it matches on the junior.guru side
+            yield Request(
+                url,
+                callback=self.parse,
+                cb_kwargs={"source_url": url},
+                dont_filter=True,
+            )
 
     def parse(
-        self, response: Response, source_url: str | None = None
-    ) -> Generator[Request | JobLogo, None, None]:
+        self, response: Response, source_url: str
+    ) -> Generator[Request | JobLogo]:
         if not response.request:
             raise ValueError("Response does not have a request")
         request = response.request
@@ -61,7 +72,7 @@ class Spider(BaseSpider):
         details = []
         if response.url != request.url:
             details.append(f"redirected from {request.url}")
-        if source_url:
+        if source_url != request.url:
             details.append(f"originally {source_url}")
         details = f" ({' '.join(details)})" if details else ""
         self.logger.info(f"Processing {response.url}{details}")
@@ -90,7 +101,7 @@ class Spider(BaseSpider):
                 width=width,
                 height=height,
                 format=Format.from_content_type(content_type),
-                source_url=source_url or request.url,
+                source_url=source_url,
             )
         else:
             self.logger.debug("Assuming company homepage URL")
@@ -102,7 +113,7 @@ class Spider(BaseSpider):
             yield Request(
                 favicon_url,
                 callback=self.parse,
-                cb_kwargs={"source_url": source_url or request.url},
+                cb_kwargs={"source_url": source_url},
             )
             icons: set[Icon] = {
                 icon
@@ -117,5 +128,5 @@ class Spider(BaseSpider):
                 yield Request(
                     icon.url,
                     callback=self.parse,
-                    cb_kwargs={"source_url": source_url or request.url},
+                    cb_kwargs={"source_url": source_url},
                 )

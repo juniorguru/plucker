@@ -1,6 +1,7 @@
 import json
+from collections.abc import Generator
 from pprint import pformat
-from typing import Generator, cast
+from typing import cast
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
@@ -20,7 +21,7 @@ class Spider(BaseSpider):
         "RETRY_TIMES": 5,
     }
 
-    def parse(self, response: Response) -> Generator[Request, None, None]:
+    def parse(self, response: Response) -> Generator[Request]:
         self.logger.info("Acquiring cookies")
         response = cast(TextResponse, response)
         business_ids = [
@@ -36,7 +37,7 @@ class Spider(BaseSpider):
 
     def parse_cookies(
         self, response: Response, business_ids: list[str]
-    ) -> Generator[Request, None, None]:
+    ) -> Generator[Request]:
         self.logger.info("Acquired cookies")
         self.logger.info(f"Querying courses provided by {len(business_ids)}")
         for business_id in business_ids:
@@ -91,7 +92,7 @@ class Spider(BaseSpider):
         response: Response,
         business_id: str,
         next_start: int,
-    ) -> Generator[CourseProvider | Request, None, None]:
+    ) -> Generator[CourseProvider | Request]:
         data = json.loads(response.body)
         if count := len(data["list"]):
             self.logger.info(

@@ -1,7 +1,7 @@
 import json
 import re
+from collections.abc import AsyncGenerator
 from datetime import date
-from typing import AsyncGenerator
 from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider
@@ -49,7 +49,7 @@ class Spider(BaseSpider):
             today = date.fromisoformat(today)
         self.today = today or date.today()
 
-    async def start(self) -> AsyncGenerator[Request, None]:
+    async def start(self) -> AsyncGenerator[Request]:
         yield Request(
             "https://mastodonczech.cz/@honzajavorek",
             self.parse_mastodon,
@@ -155,8 +155,7 @@ class Spider(BaseSpider):
 
 def get_domain(url: str) -> str:
     hostname = urlparse(url).hostname or ""
-    if hostname.startswith("www."):
-        hostname = hostname[4:]
+    hostname = hostname.removeprefix("www.")
     parts = hostname.split(".")
     if len(parts) >= 2:
         return ".".join(parts[-2:])

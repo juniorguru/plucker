@@ -1,6 +1,6 @@
 import json
+from collections.abc import Generator
 from datetime import date, datetime
-from typing import Generator
 from zoneinfo import ZoneInfo
 
 from scrapy import Spider as BaseSpider
@@ -18,7 +18,7 @@ class Spider(BaseSpider):
 
     def parse(
         self, response: TextResponse, today: date | None = None
-    ) -> Generator[Meetup, None, None]:
+    ) -> Generator[Meetup]:
         today = today or date.today()
         self.logger.info(f"Parsing {response.url}, today is {today}")
         events = json.loads(response.text)["data"]

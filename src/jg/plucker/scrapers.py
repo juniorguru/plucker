@@ -1,6 +1,7 @@
 import logging
+from collections.abc import Coroutine, Generator
 from pathlib import Path
-from typing import Annotated, Any, Coroutine, Generator, Literal, Type
+from typing import Annotated, Any, Literal
 
 from apify import Actor, Configuration, Event as ApifyEvent
 from apify.scrapy import run_scrapy_actor
@@ -37,7 +38,7 @@ def start_reactor(coroutine: Coroutine) -> None:
 
 
 async def run_as_spider(
-    spider_class: Type[Spider], spider_params: dict[str, Any] | None
+    spider_class: type[Spider], spider_params: dict[str, Any] | None
 ) -> None:
     params = spider_params or {}
     settings = get_project_settings()
@@ -53,7 +54,7 @@ async def run_as_spider(
 
 
 async def run_as_actor(
-    spider_class: Type[Spider], spider_params: dict[str, Any] | None
+    spider_class: type[Spider], spider_params: dict[str, Any] | None
 ):
     async with Actor:
         logger.info(f"Starting actor for spider {spider_class.name}")
@@ -129,7 +130,7 @@ async def actor_migrate() -> None:
     await Actor.reboot()
 
 
-def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
+def iter_actor_paths(path: Path | str) -> Generator[Path]:
     for actor_spec in Path(path).rglob(".actor/actor.json"):
         yield actor_spec.parent.parent.relative_to(".")
 
@@ -149,7 +150,7 @@ class SpiderLoader(BaseSpiderLoader):
         self._load_all_spiders()
 
 
-def generate_schema(item_class: Type[Item]) -> dict:
+def generate_schema(item_class: type[Item]) -> dict:
     properties = {
         name: (
             {
@@ -209,12 +210,11 @@ def evaluate_stats(stats: StatsT, min_items: int):
         raise StatsError(f"Errors logged: {error_count}")
     if item_count < min_items:
         raise StatsError(f"Few items scraped: {item_count}")
-    if reason := stats.get("finish_reason"):
-        if reason != "finished":
-            raise StatsError(f"Scraping finished with reason {reason!r}")
+    if (reason := stats.get("finish_reason")) and reason != "finished":
+        raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
 
 
 def parse_links(links: list[Link] | None) -> list[str]:
-    return list(set(str(link.url) for link in map(Link.model_validate, links or [])))
+    return list({str(link.url) for link in map(Link.model_validate, links or [])})

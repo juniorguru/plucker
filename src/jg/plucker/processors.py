@@ -1,6 +1,7 @@
 import re
+from collections.abc import Iterable, Mapping
 from datetime import date, datetime, timedelta
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 
 def absolute_url(url: str, loader_context: Mapping):
@@ -47,10 +48,11 @@ def parse_relative_date(text, today=None) -> date:
             months_ago = int(match.group(0))
             return today - timedelta(days=months_ago * 30)
         raise ValueError(text)
-    if "year" in text or "rok" in text or "let" in text:
-        if match := re.search(r"\d+", text):
-            years_ago = int(match.group(0))
-            return today - timedelta(days=years_ago * 365)
+    if ("year" in text or "rok" in text or "let" in text) and (
+        match := re.search(r"\d+", text)
+    ):
+        years_ago = int(match.group(0))
+        return today - timedelta(days=years_ago * 365)
     if "now" in text or "teď" in text or "nyní" in text:
         return today
     raise ValueError(text)

@@ -14,9 +14,9 @@ from jg.plucker.exchange_rates.spider import (
 @pytest.mark.parametrize(
     "line, expected",
     [
-        ("Izrael|nový šekel|1|ILS|6,179", dict(code="ILS", rate=Decimal("6.179"))),
-        ("USA|dolar|1|USD|22,030", dict(code="USD", rate=Decimal("22.030"))),
-        ("EMU|euro|1|EUR|23,735", dict(code="EUR", rate=Decimal("23.735"))),
+        ("Izrael|nový šekel|1|ILS|6,179", {"code": "ILS", "rate": Decimal("6.179")}),
+        ("USA|dolar|1|USD|22,030", {"code": "USD", "rate": Decimal("22.030")}),
+        ("EMU|euro|1|EUR|23,735", {"code": "EUR", "rate": Decimal("23.735")}),
     ],
 )
 def test_parse_exchange_rate(line, expected):

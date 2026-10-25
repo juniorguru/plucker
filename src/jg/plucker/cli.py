@@ -4,8 +4,9 @@ import logging
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Callable, Generator, Type
+from typing import IO, TYPE_CHECKING
 from urllib.parse import quote
 
 import click
@@ -283,7 +284,7 @@ def dump_run_logs(
         status = run.status
         try:
             log_text = client.run(run_id).log().get() or ""
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log_text = f"<failed to fetch log for run {run_id}: {e}>"
         path = actor_dir / f"{run_id}-{status}.log"
         path.write_text(log_text)
@@ -341,12 +342,12 @@ def deploy(
     actor_config = json.loads((actor_path / ".actor/actor.json").read_text())
 
     try:
-        actor_id = [
+        actor_id = next(
             actor_info.id
             for actor_info in client.actors().list().items
             if actor_info.name == actor_config["name"]
-        ][0]
-    except IndexError:
+        )
+    except StopIteration:
         if overwrite:
             logger.info(f"Actor {actor_config['name']} not found, nothing to overwrite")
     else:
@@ -361,11 +362,11 @@ def deploy(
         name=actor_config["name"],
         title=actor_config["title"],
         versions=[
-            dict(
-                versionNumber=version,
-                sourceType=ActorSourceType.GIT_REPO,
-                gitRepoUrl=f"{git_repo_url}:{actor_path}",
-            )
+            {
+                "versionNumber": version,
+                "sourceType": ActorSourceType.GIT_REPO,
+                "gitRepoUrl": f"{git_repo_url}:{actor_path}",
+            }
         ],
         is_public=False,
     )
@@ -430,7 +431,7 @@ def get_scraper(
     raise click.BadParameter("Either spider_name or actor_path must be specified")
 
 
-def item_types(items_module_name: str) -> Generator[Type[Item], None, None]:
+def item_types(items_module_name: str) -> Generator[type[Item]]:
     items_module = importlib.import_module(items_module_name)
     for member_name in dir(items_module):
         member = getattr(items_module, member_name)
@@ -445,7 +446,7 @@ def item_types(items_module_name: str) -> Generator[Type[Item], None, None]:
 
 def wait_for_build_status(
     get_build_info: Callable, build_timeout: int, build_polling_wait: int
-) -> Generator[BuildWaitStatus, None, None]:
+) -> Generator[BuildWaitStatus]:
     total_attempts = build_timeout // build_polling_wait
     time.sleep(build_polling_wait)
     for attempt in range(1, total_attempts):

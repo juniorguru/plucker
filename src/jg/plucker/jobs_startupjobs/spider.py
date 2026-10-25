@@ -1,6 +1,7 @@
 import html
 import re
-from typing import Generator, cast
+from collections.abc import Generator
+from typing import cast
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Request, Spider as BaseSpider
@@ -23,7 +24,7 @@ class Spider(BaseSpider):
 
     min_items = 1
 
-    def parse(self, response: Response) -> Generator[Job | Request, None, None]:
+    def parse(self, response: Response) -> Generator[Job | Request]:
         response = cast(TextResponse, response)
         offers_by_startup: dict[str, list[dict]] = {}
         for offer in response.json()["offers"]:
@@ -48,7 +49,7 @@ class Spider(BaseSpider):
 
     def parse_startup(
         self, response: Response, offers: list[dict], feed_url: str
-    ) -> Generator[Job, None, None]:
+    ) -> Generator[Job]:
         response = cast(TextResponse, response)
         logo_urls = set(LOGO_URL_RE.findall(response.text))
         for offer in offers:
@@ -59,7 +60,7 @@ class Spider(BaseSpider):
                 )
             yield load_job(offer, self.name, feed_url, logo_url)
 
-    def handle_startup_error(self, failure) -> Generator[Job, None, None]:
+    def handle_startup_error(self, failure) -> Generator[Job]:
         request = failure.request
         self.logger.warning(f"Failed to fetch {request.url}: {failure.value!r}")
         for offer in request.cb_kwargs["offers"]:
