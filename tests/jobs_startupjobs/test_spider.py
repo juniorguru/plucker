@@ -1,13 +1,48 @@
+import json
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-from scrapy.http import TextResponse
+from scrapy import Request
+from scrapy.http import HtmlResponse, TextResponse
 
-from jg.plucker.jobs_startupjobs.spider import Spider, drop_remote, is_invalid
+from jg.plucker.items import Job
+from jg.plucker.jobs_startupjobs.spider import (
+    Spider,
+    drop_remote,
+    is_invalid,
+    select_logo_url,
+)
 
 
 FIXTURES_DIR = Path(__file__).parent
+
+OFFER = {
+    "position": "Developer",
+    "url": "https://www.startupjobs.cz/nabidka/1/developer",
+    "startup": "Air Bank a.s.",
+    "startupURL": "https://www.startupjobs.cz/startup/air-bank-a-s-1",
+    "startupLogo": "https://www.startupjobs.cz/uploads/2025/08/eb01aefe2378836a08ab2554d6bc61ab.png",
+    "cities": ["Praha, Česko"],
+    "jobtypes": ["Full-time"],
+    "lastUpdate": "2025-11-05",
+    "description": "<p>Hi</p>",
+}
+
+
+def parse_jobs(response: TextResponse) -> list[Job]:
+    spider = Spider()
+    jobs = []
+    for item in spider.parse(response):
+        if isinstance(item, Request):
+            startup_response = HtmlResponse(
+                item.url, body=b"<html></html>", request=item
+            )
+            jobs.extend(spider.parse_startup(startup_response, **item.cb_kwargs))
+        else:
+            jobs.append(item)
+    return jobs
 
 
 def test_spider_parse():
@@ -15,7 +50,7 @@ def test_spider_parse():
         "https://example.com/example/",
         body=Path(FIXTURES_DIR / "feed.json").read_bytes(),
     )
-    jobs = list(Spider().parse(response))
+    jobs = parse_jobs(response)
 
     assert len(jobs) == 5
 
@@ -30,7 +65,6 @@ def test_spider_parse():
             "employment_types",
             "posted_on",
             "description_html",
-            "company_logo_urls",
             "remote",
             "source",
             "source_urls",
@@ -46,9 +80,7 @@ def test_spider_parse():
     assert job["remote"] is False
     assert job["employment_types"] == ["Full-time"]
     assert job["posted_on"] == date(2025, 11, 5)
-    assert job["company_logo_urls"] == [
-        "https://www.startupjobs.cz/uploads/2025/09/0c66d6d229700c7df91f059eabdec561.png"
-    ]
+    assert "company_logo_urls" not in job
     assert job["source"] == "jobs-startupjobs"
     assert job["source_urls"] == ["https://example.com/example/"]
     assert (
@@ -62,7 +94,7 @@ def test_spider_parse_cities():
         "https://example.com/example/",
         body=Path(FIXTURES_DIR / "feed_cities.json").read_bytes(),
     )
-    job = next(Spider().parse(response))
+    job = parse_jobs(response)[0]
 
     assert job["locations_raw"] == ["Ostrava, Česko", "Olomouc, Česko"]
 
@@ -72,7 +104,7 @@ def test_spider_parse_job_types():
         "https://example.com/example/",
         body=Path(FIXTURES_DIR / "feed_job_types.json").read_bytes(),
     )
-    job = next(Spider().parse(response))
+    job = parse_jobs(response)[0]
 
     assert job["employment_types"] == ["Full-time", "External collaboration"]
     assert job["remote"] is False
@@ -83,7 +115,7 @@ def test_spider_parse_remote():
         "https://example.com/example/",
         body=Path(FIXTURES_DIR / "feed_remote.json").read_bytes(),
     )
-    job = next(Spider().parse(response))
+    job = parse_jobs(response)[0]
 
     assert job["employment_types"] == ["Full-time", "External collaboration"]
     assert job["remote"] is True
@@ -94,11 +126,90 @@ def test_spider_parse_skips_invalid_offers():
         "https://example.com/example/",
         body=Path(FIXTURES_DIR / "feed_invalid_offer.json").read_bytes(),
     )
-    jobs = list(Spider().parse(response))
+    jobs = parse_jobs(response)
 
     assert len(jobs) == 16
     assert all(job.get("title") and job.get("description_html") for job in jobs)
     assert not any("106875" in job["url"] for job in jobs)
+
+
+def test_spider_parse_requests_each_startup_once():
+    response = TextResponse(
+        "https://example.com/example/",
+        body=Path(FIXTURES_DIR / "feed_invalid_offer.json").read_bytes(),
+    )
+    requests = list(Spider().parse(response))
+    urls = [request.url for request in requests]
+
+    assert all(isinstance(request, Request) for request in requests)
+    assert len(urls) == len(set(urls))
+    assert sum(len(request.cb_kwargs["offers"]) for request in requests) == 16
+
+
+def test_spider_parse_startup():
+    response = HtmlResponse(
+        "https://www.startupjobs.cz/startup/air-bank-a-s-1",
+        body=Path(FIXTURES_DIR / "startup.html").read_bytes(),
+    )
+    jobs = list(
+        Spider().parse_startup(
+            response, offers=[OFFER], feed_url="https://example.com/example/"
+        )
+    )
+
+    assert len(jobs) == 1
+    assert jobs[0]["company_logo_urls"] == [
+        "https://assets.startupjobs.cz/LOGO/13035/eb01aefe2378836a08ab2554d6bc61ab.png"
+    ]
+    assert jobs[0]["source_urls"] == ["https://example.com/example/"]
+
+
+def test_spider_parse_offer_without_startup_url():
+    offer = {key: value for key, value in OFFER.items() if key != "startupURL"}
+    response = TextResponse(
+        "https://example.com/example/",
+        body=json.dumps({"offers": [offer]}).encode(),
+    )
+    jobs = list(Spider().parse(response))
+
+    assert len(jobs) == 1
+    assert isinstance(jobs[0], Job)
+    assert jobs[0]["url"] == "https://www.startupjobs.cz/nabidka/1/developer"
+    assert "company_logo_urls" not in jobs[0]
+
+
+def test_spider_handle_startup_error():
+    request = Request(
+        "https://www.startupjobs.cz/startup/air-bank-a-s-1",
+        cb_kwargs={"offers": [OFFER, OFFER], "feed_url": "https://example.com/"},
+    )
+    failure = SimpleNamespace(request=request, value=Exception("404"))
+    jobs = list(Spider().handle_startup_error(failure))
+
+    assert len(jobs) == 2
+    assert jobs[0]["url"] == "https://www.startupjobs.cz/nabidka/1/developer"
+    assert jobs[0]["source_urls"] == ["https://example.com/"]
+    assert "company_logo_urls" not in jobs[0]
+
+
+@pytest.mark.parametrize(
+    "feed_logo_url,expected",
+    [
+        (
+            "https://www.startupjobs.cz/uploads/2025/08/eb01aefe2378836a08ab2554d6bc61ab.png",
+            "https://assets.startupjobs.cz/LOGO/13035/eb01aefe2378836a08ab2554d6bc61ab.png",
+        ),
+        ("https://www.startupjobs.cz/uploads/2025/08/0c66d6d229700c7df91f.png", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_select_logo_url(feed_logo_url: str | None, expected: str | None):
+    logo_urls = {
+        "https://assets.startupjobs.cz/LOGO/13035/eb01aefe2378836a08ab2554d6bc61ab.png"
+    }
+
+    assert select_logo_url(logo_urls, feed_logo_url) == expected
 
 
 @pytest.mark.parametrize(
