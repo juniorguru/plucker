@@ -32,7 +32,7 @@ class ImagePipeline:
         self._kvs = None
 
     @classmethod
-    def from_crawler(cls, crawler: Crawler) -> "ImagePipeline":
+    def from_crawler(cls, crawler: Crawler) -> ImagePipeline:
         return cls(crawler)
 
     async def process_item(self, item: Item) -> Item:

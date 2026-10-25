@@ -22,7 +22,7 @@ class Format(StrEnum):
     AVIF = "avif"
 
     @classmethod
-    def from_content_type(cls, content_type: str) -> "Format":
+    def from_content_type(cls, content_type: str) -> Format:
         if content_type.startswith("image/png"):
             return cls.PNG
         elif content_type.startswith("image/jpeg"):

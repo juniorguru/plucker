@@ -268,7 +268,7 @@ def dump_run_logs(
     client: ApifyClient,
     logs_dir: Path,
     actor_name: str,
-    runs: list["RunListItem"],
+    runs: list[RunListItem],
 ) -> list[Path]:
     """Save the full log of each given run as a text file under ``logs_dir``.
 
