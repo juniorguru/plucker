@@ -81,13 +81,20 @@ async def run_as_actor(
 
 
 class RunCacheStorage(ApifyCacheStorage):
-    """Caches responses in the run's default key-value store
+    """Caches responses in a run-scoped key-value store opened by alias
 
     The point of the cache is to survive the platform restarting the actor
     in the middle of a run (e.g. migration), not to share responses between runs.
-    Unlike a named store, the default store is reset by each new run, needs no
-    cleanup, and is accessible even to actors with limited permissions.
+    Unlike a named store, an unnamed one follows the account's data retention,
+    needs no cleanup, and is accessible even to actors with limited permissions.
+    The alias makes the same store reopen after a migration or reboot.
+
+    It's not the default store, because the default store's client is also used
+    by ImagePipeline on the reactor's event loop, while the cache runs on its own
+    AsyncThread loop, and the client's asyncio lock can't be shared across loops.
     """
+
+    kvs_alias = "httpcache"
 
     # Mirrors ApifyCacheStorage.open_spider(), which has no way to choose
     # the store, so this relies on its internals and may need updating with apify
@@ -99,10 +106,11 @@ class RunCacheStorage(ApifyCacheStorage):
             configuration = Configuration.get_global_configuration()
             if configuration.is_at_home:
                 return await KeyValueStore.open(
+                    alias=self.kvs_alias,
                     configuration=configuration,
                     storage_client=ApifyStorageClient(),
                 )
-            return await KeyValueStore.open()
+            return await KeyValueStore.open(alias=self.kvs_alias)
 
         self._async_thread = AsyncThread(default_timeout=self._async_thread_timeout)
         try:
@@ -127,7 +135,7 @@ def iter_actor_paths(path: Path | str) -> Generator[Path, None, None]:
 
 
 def get_spider_module_name(actor_path: Path | str) -> str:
-    return f"{str(actor_path).replace('/', '.').removeprefix("src.")}.spider"
+    return f"{str(actor_path).replace('/', '.').removeprefix('src.')}.spider"
 
 
 class SpiderLoader(BaseSpiderLoader):
