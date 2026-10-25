@@ -1,5 +1,6 @@
 import json
-from typing import Generator, cast
+from collections.abc import Generator
+from typing import cast
 
 from scrapy import Request, Spider as BaseSpider
 from scrapy.http.response import Response
@@ -11,15 +12,13 @@ from jg.plucker.items import Company
 class Spider(BaseSpider):
     name = "companies"
 
-    start_urls = []
-
     start_urls = ["https://junior.guru/api/course-providers.json"]
 
     custom_settings = {
         "USER_AGENT": "JuniorGuruBot (+https://junior.guru)",
     }
 
-    def parse(self, response: Response) -> Generator[Request, None, None]:
+    def parse(self, response: Response) -> Generator[Request]:
         if api_key := self.settings.get("MERK_API_KEY"):
             response = cast(TextResponse, response)
             course_providers: list[dict] = response.json()
@@ -57,7 +56,7 @@ class Spider(BaseSpider):
 
     def parse_companies(
         self, response: Response, country_code: str
-    ) -> Generator[Company, None, None]:
+    ) -> Generator[Company]:
         response = cast(TextResponse, response)
         for data in response.json():
             yield Company(

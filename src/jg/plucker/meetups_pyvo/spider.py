@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from datetime import date, timedelta
-from typing import Generator
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
@@ -15,9 +15,7 @@ class Spider(BaseSpider):
 
     min_items = 0
 
-    def parse(
-        self, response: Response, today: date | None = None
-    ) -> Generator[Meetup, None, None]:
+    def parse(self, response: Response, today: date | None = None) -> Generator[Meetup]:
         today = today or date.today()
         self.logger.info(f"Parsing {response.url}, today is {today}")
         events = Calendar(response.text).events

@@ -1,5 +1,6 @@
 import html
-from typing import Generator, cast
+from collections.abc import Generator
+from typing import cast
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
 from scrapy import Spider as BaseSpider
@@ -20,7 +21,7 @@ class Spider(BaseSpider):
 
     min_items = 1
 
-    def parse(self, response: Response) -> Generator[Job, None, None]:
+    def parse(self, response: Response) -> Generator[Job]:
         response = cast(TextResponse, response)
         for offer in response.json()["offers"]:
             if is_invalid(offer):

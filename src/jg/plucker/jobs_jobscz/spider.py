@@ -2,11 +2,12 @@ import hashlib
 import json
 import re
 import uuid
+from collections.abc import AsyncGenerator, Generator, Iterable
 from datetime import date, datetime
 from functools import lru_cache
 from logging import Logger
 from pathlib import Path
-from typing import Any, AsyncGenerator, Generator, Iterable, TypedDict, cast
+from typing import Any, TypedDict, cast
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from itemloaders.processors import Compose, Identity, MapCompose, TakeFirst
@@ -156,11 +157,11 @@ class Spider(BaseSpider):
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
 
-    async def start(self) -> AsyncGenerator[Request, None]:
+    async def start(self) -> AsyncGenerator[Request]:
         for url in self.start_urls:
             yield Request(url, cookies=[CLASSIC_SITE_COOKIE])
 
-    def parse(self, response: Response) -> Generator[Request, None, None]:
+    def parse(self, response: Response) -> Generator[Request]:
         response = cast(HtmlResponse, response)
         if is_beta_site(response.url):
             self.logger.error(f"Redirected to the beta site: {response.url}")
@@ -200,7 +201,7 @@ class Spider(BaseSpider):
             yield response.follow(
                 url,
                 callback=self.parse_job,
-                cb_kwargs=dict(item=to_draft(item), trk=trk),
+                cb_kwargs={"item": to_draft(item), "trk": trk},
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
@@ -212,7 +213,7 @@ class Spider(BaseSpider):
 
     def parse_job(
         self, response: Response, item: JobDraft, trk: str
-    ) -> Generator[Job | Request, None, None]:
+    ) -> Generator[Job | Request]:
         response = cast(HtmlResponse, response)
         self.logger_trk(trk).debug(f"Parsing job page {response.url}")
         if is_beta_site(response.url):
@@ -253,7 +254,7 @@ class Spider(BaseSpider):
 
     def parse_job_widget_data(
         self, response: HtmlResponse, item: JobDraft, trk: str
-    ) -> Generator[Request, None, None]:
+    ) -> Generator[Request]:
         try:
             self.logger_trk(trk).debug("Looking for widget data in the HTML")
             widget_data = json.loads(response.css("script::text").re(WIDGET_DATA_RE)[0])
@@ -272,12 +273,12 @@ class Spider(BaseSpider):
             yield response.follow(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
-                cb_kwargs=dict(
-                    item=item,
-                    url=response.url,
-                    script_urls=script_urls,
-                    trk=trk,
-                ),
+                cb_kwargs={
+                    "item": item,
+                    "url": response.url,
+                    "script_urls": script_urls,
+                    "trk": trk,
+                },
             )
         else:
             yield from self.parse_job_widget(
@@ -296,7 +297,7 @@ class Spider(BaseSpider):
         item: JobDraft,
         script_urls: list[str],
         trk: str,
-    ) -> Generator[Request, None, None]:
+    ) -> Generator[Request]:
         script_response = cast(TextResponse, script_response)
 
         if data := parse_widget_script_json(script_response.text):
@@ -327,24 +328,24 @@ class Spider(BaseSpider):
             yield Request(
                 chunk_urls.pop(0),
                 callback=self.parse_job_widget_script,
-                cb_kwargs=dict(
-                    item=item,
-                    url=url,
-                    script_urls=chunk_urls,
-                    trk=trk,
-                ),
+                cb_kwargs={
+                    "item": item,
+                    "url": url,
+                    "script_urls": chunk_urls,
+                    "trk": trk,
+                },
             )
         elif script_urls:
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             yield Request(
                 script_urls.pop(0),
                 callback=self.parse_job_widget_script,
-                cb_kwargs=dict(
-                    item=item,
-                    url=url,
-                    script_urls=script_urls,
-                    trk=trk,
-                ),
+                cb_kwargs={
+                    "item": item,
+                    "url": url,
+                    "script_urls": script_urls,
+                    "trk": trk,
+                },
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -357,7 +358,7 @@ class Spider(BaseSpider):
         widget_api_key: str,
         widget_id: str,
         trk: str,
-    ) -> Generator[Request, None, None]:
+    ) -> Generator[Request]:
         loader = Loader(item=from_draft(item))
         loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
@@ -373,34 +374,34 @@ class Spider(BaseSpider):
                 "X-Api-Key": widget_api_key,
             },
             body=json.dumps(
-                dict(
-                    operationName="DETAIL_QUERY",
-                    variables=dict(
-                        jobAdId=params["id"],
-                        gaId=None,
-                        lmcVisitorId=None,
-                        rps=int(params["rps"]),
-                        impressionId=params["impressionId"],
-                        cookieConsent=[],
-                        matejId="",
-                        jobsUserId="",
-                        timeId=str(uuid.uuid4()),
-                        widgetId=widget_id,
-                        host=widget_host,
-                        referer=url,
-                        version="v3.49.1",
-                        pageReferer="https://www.jobs.cz/",
-                    ),
-                    query=load_gql(WIDGET_QUERY_PATH),
-                )
+                {
+                    "operationName": "DETAIL_QUERY",
+                    "variables": {
+                        "jobAdId": params["id"],
+                        "gaId": None,
+                        "lmcVisitorId": None,
+                        "rps": int(params["rps"]),
+                        "impressionId": params["impressionId"],
+                        "cookieConsent": [],
+                        "matejId": "",
+                        "jobsUserId": "",
+                        "timeId": str(uuid.uuid4()),
+                        "widgetId": widget_id,
+                        "host": widget_host,
+                        "referer": url,
+                        "version": "v3.49.1",
+                        "pageReferer": "https://www.jobs.cz/",
+                    },
+                    "query": load_gql(WIDGET_QUERY_PATH),
+                }
             ),
             callback=self.parse_job_widget_api,
-            cb_kwargs=dict(item=to_draft(loader.load_item()), trk=trk),
+            cb_kwargs={"item": to_draft(loader.load_item()), "trk": trk},
         )
 
     def parse_job_widget_api(
         self, response: Response, item: JobDraft, trk: str
-    ) -> Generator[Job, None, None]:
+    ) -> Generator[Job]:
         response = cast(TextResponse, response)
         self.logger_trk(trk).debug("Parsing job widget API response")
 

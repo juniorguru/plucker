@@ -1,4 +1,5 @@
-from typing import AsyncGenerator, Generator, NotRequired, TypedDict
+from collections.abc import AsyncGenerator, Generator
+from typing import NotRequired, TypedDict
 
 import teemup
 from scrapy import Spider as BaseSpider
@@ -83,17 +84,17 @@ class Spider(BaseSpider):
 
     min_items = 1
 
-    async def start(self) -> AsyncGenerator[Request, None]:
-        for series_url in GROUPS:
+    async def start(self) -> AsyncGenerator[Request]:
+        for series_url, group in GROUPS.items():
             yield Request(
                 f"{series_url.rstrip('/')}/events/",
                 callback=self.parse,
-                cb_kwargs={"series_url": series_url, "group": GROUPS[series_url]},
+                cb_kwargs={"series_url": series_url, "group": group},
             )
 
     def parse(
         self, response: Response, series_url: str, group: GroupSpec
-    ) -> Generator[Meetup, None, None]:
+    ) -> Generator[Meetup]:
         self.logger.info(f"Parsing {response.url}")
         events = teemup.parse(response.text)
         self.logger.debug(f"Total events: {len(events)}")

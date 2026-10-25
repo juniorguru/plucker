@@ -49,6 +49,9 @@ extend-exclude = ["scraper_template"]
 
 [tool.ruff.lint]
 extend-select = ["I"]
+ignore = [
+    "RUF012",  # Scrapy configures spiders through mutable class attributes
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
