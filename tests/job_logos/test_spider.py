@@ -3,14 +3,18 @@ import json
 import socket
 import subprocess
 import sys
+import threading
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
+from apify_client import ApifyClientAsync
 from apify_client.errors import ApifyClientError
 from PIL import Image
 from scrapy import Request
@@ -286,3 +290,109 @@ def test_spider_load_reusable_logos_failure(
     assert caplog.messages == [
         "Failed to load logos from previous run: Insufficient permissions"
     ]
+
+
+LAST_RUN = {
+    "id": "run123",
+    "actId": "abc",
+    "userId": "user123",
+    "startedAt": "2026-10-24T12:00:00.000Z",
+    "status": "SUCCEEDED",
+    "meta": {"origin": "SCHEDULER"},
+    "stats": {},
+    "options": {
+        "build": "latest",
+        "timeoutSecs": 600,
+        "memoryMbytes": 1024,
+        "diskMbytes": 2048,
+    },
+    "buildId": "build123",
+    "defaultKeyValueStoreId": "kvs123",
+    "defaultDatasetId": "dataset123",
+    "defaultRequestQueueId": "queue123",
+}
+
+
+@pytest.fixture
+def apify_api(fake_actor: type[FakeActor], monkeypatch: pytest.MonkeyPatch):
+    """Real Apify client talking to a local stub of the Apify API"""
+    state: dict[str, Any] = {"last_run": LAST_RUN, "items": [], "paths": []}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            url = urlparse(self.path)
+            state["paths"].append(url.path)
+            if url.path == "/v2/actors/abc/runs/last":
+                assert parse_qs(url.query)["status"] == ["SUCCEEDED"]
+                if state["last_run"]:
+                    self.send_json({"data": state["last_run"]})
+                else:
+                    error = {"type": "record-not-found", "message": "Not found"}
+                    self.send_json({"error": error}, status=404)
+            elif url.path == "/v2/datasets/dataset123/items":
+                offset = int(parse_qs(url.query).get("offset", ["0"])[0])
+                items = state["items"][offset:]
+                self.send_json(
+                    items,
+                    headers={
+                        "X-Apify-Pagination-Total": str(len(state["items"])),
+                        "X-Apify-Pagination-Offset": str(offset),
+                        "X-Apify-Pagination-Count": str(len(items)),
+                        "X-Apify-Pagination-Limit": "1000",
+                        "X-Apify-Pagination-Desc": "false",
+                    },
+                )
+            else:
+                self.send_json({"error": {"type": "page-not-found"}}, status=404)
+
+        def send_json(self, data: Any, status: int = 200, headers=None):
+            body = json.dumps(data).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), Handler) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        api_url = f"http://127.0.0.1:{server.server_address[1]}"
+        client = ApifyClientAsync(token="token123", api_url=api_url, max_retries=1)
+        monkeypatch.setattr(fake_actor, "apify_client", client)
+        monkeypatch.setattr(fake_actor, "is_at_home", staticmethod(lambda: True))
+        yield state
+        server.shutdown()
+
+
+def test_spider_load_reusable_logos(apify_api: dict[str, Any]):
+    fetched_at = datetime.now(UTC) - timedelta(days=1)
+    apify_api["items"] = [
+        logo_item("https://a.example.com", fetched_at),
+        logo_item("https://b.example.com", fetched_at),
+    ]
+    spider = Spider(links=[{"url": "https://a.example.com"}])
+
+    logos = asyncio.run(spider._load_reusable_logos())
+
+    assert list(logos) == ["https://a.example.com"]
+    assert dict(logos["https://a.example.com"][0]) == apify_api["items"][0]
+    assert apify_api["paths"][:2] == [
+        "/v2/actors/abc/runs/last",
+        "/v2/datasets/dataset123/items",
+    ]
+
+
+def test_spider_load_reusable_logos_no_previous_run(apify_api: dict[str, Any], caplog):
+    apify_api["last_run"] = None
+    spider = Spider(links=[{"url": "https://a.example.com"}])
+
+    with caplog.at_level("INFO"):
+        assert asyncio.run(spider._load_reusable_logos()) == {}
+
+    assert "No previous successful run, nothing to reuse" in caplog.messages
+    assert apify_api["paths"] == ["/v2/actors/abc/runs/last"]
