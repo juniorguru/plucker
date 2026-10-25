@@ -5,7 +5,7 @@ description = "Junior Guru scrapers"
 readme = "README.md"
 authors = [{name = "Honza Javorek", email = "honza@junior.guru"}]
 license = {text = "AGPL-3.0-only"}
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.15,<3.16"
 dependencies = [
     "apify[scrapy]>=4.1.0",
     "apify-client>=3.3.0",  # deployment of actors, monitoring, automation
@@ -44,7 +44,7 @@ pythonpath = ["."]  # allows importing helpers from tests.utils
 addopts = "--import-mode=importlib --ff --ruff --ruff-format"
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py315"
 extend-exclude = ["scraper_template"]
 
 [tool.ruff.lint]
@@ -63,3 +63,8 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "jg.plucker"
+
+[tool.uv]
+# apify-client 3.3.0 pins impit~=0.14.0, which has no Python 3.15 wheels;
+# remove once a stable apify-client allows impit>=0.15
+override-dependencies = ["impit>=0.15.0"]
