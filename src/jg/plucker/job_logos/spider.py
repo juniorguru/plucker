@@ -1,15 +1,19 @@
 from collections.abc import AsyncGenerator, Generator
 from enum import StrEnum
 from io import BytesIO
+from typing import Any
 from urllib.parse import urljoin
 
 from favicon import Icon, favicon
 from PIL import Image
 from scrapy import Request, Spider as BaseSpider
+from scrapy.exceptions import DownloadTimeoutError
 from scrapy.http.response import Response
+from twisted.internet.error import TCPTimedOutError, TimeoutError
+from twisted.python.failure import Failure
 
 from jg.plucker.items import JobLogo
-from jg.plucker.scrapers import parse_links
+from jg.plucker.scrapers import evaluate_stats, parse_links
 
 
 class Format(StrEnum):
@@ -40,10 +44,28 @@ class Format(StrEnum):
         raise ValueError(f"Unsupported content type: {content_type!r}")
 
 
+TIMEOUT_EXCEPTIONS = (DownloadTimeoutError, TimeoutError, TCPTimedOutError)
+
+
 class Spider(BaseSpider):
     name = "job-logos"
 
+    custom_settings = {
+        # Logos and favicons are small, no need to wait for long
+        "DOWNLOAD_TIMEOUT": 30,
+    }
+
     min_items = 1
+
+    @classmethod
+    def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
+        # Giving up on retrying a timed out request logs an error, but such
+        # requests get skipped, so it's not an error of the scraper
+        timeouts_count = stats.get("job_logos/timeouts_skipped", 0)
+        error_count = stats.get("log_count/ERROR", 0)
+        stats_copy = stats.copy()
+        stats_copy["log_count/ERROR"] = max(0, error_count - timeouts_count)
+        return evaluate_stats(stats_copy, min_items)
 
     def __init__(
         self, name: str | None = None, links: list[dict[str, str]] | None = None
@@ -58,9 +80,19 @@ class Spider(BaseSpider):
             yield Request(
                 url,
                 callback=self.parse,
+                errback=self.on_error,
                 cb_kwargs={"source_url": url},
                 dont_filter=True,
             )
+
+    def on_error(self, failure: Failure) -> Failure | None:
+        # The site not responding isn't our problem, junior.guru falls back
+        # to a generated logo
+        if failure.check(*TIMEOUT_EXCEPTIONS):
+            self.logger.warning(f"Skipping {failure.request.url}: timed out")
+            self.crawler.stats.inc_value("job_logos/timeouts_skipped")
+            return None
+        return failure
 
     def parse(
         self, response: Response, source_url: str
@@ -113,6 +145,7 @@ class Spider(BaseSpider):
             yield Request(
                 favicon_url,
                 callback=self.parse,
+                errback=self.on_error,
                 cb_kwargs={"source_url": source_url},
             )
             icons: set[Icon] = {
@@ -128,5 +161,6 @@ class Spider(BaseSpider):
                 yield Request(
                     icon.url,
                     callback=self.parse,
+                    errback=self.on_error,
                     cb_kwargs={"source_url": source_url},
                 )
