@@ -2,7 +2,7 @@ name: nightly
 
 on:
   schedule:
-    - cron: "0 4 * * *"  # every day at 4am
+    - cron: "17 17 * * *"  # every day at 17:17 UTC, GitHub often starts it hours late
   workflow_dispatch:  # allows manual triggering of the workflow
 
 jobs:
