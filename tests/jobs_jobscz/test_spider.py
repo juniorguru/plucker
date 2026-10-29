@@ -6,9 +6,13 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from scrapy.downloadermiddlewares.redirect import RedirectMiddleware
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
+from scrapy.spidermiddlewares.httperror import HttpErrorMiddleware
+from scrapy.utils.test import get_crawler
 
+from jg.plucker import settings
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
     JobDraft,
@@ -39,6 +43,41 @@ def test_spider_start_probes_beta_bucket():
     assert requests[0].meta["dont_redirect"] is True
     assert requests[0].meta["dont_merge_cookies"] is True
     assert requests[0].meta["dont_cache"] is True
+    assert requests[0].meta["handle_httpstatus_list"] == [301, 302]
+
+
+def test_spider_beta_bucket_probe_passes_middlewares():
+    crawler = get_crawler(
+        Spider,
+        {name: value for name, value in vars(settings).items() if name.isupper()},
+    )
+    crawler.spider = Spider()
+
+    async def collect():
+        return [request async for request in crawler.spider.start()]
+
+    probe = asyncio.run(collect())[0]
+    response = HtmlResponse(
+        probe.url,
+        status=302,
+        headers=[
+            ("Location", "https://beta.jobs.cz/"),
+            ("Set-Cookie", "beta_bucket=5%3AA; path=/; domain=.jobs.cz"),
+        ],
+        request=probe,
+    )
+
+    assert (
+        RedirectMiddleware.from_crawler(crawler).process_response(probe, response)
+        is response
+    )
+    HttpErrorMiddleware.from_crawler(crawler).process_spider_input(response)
+
+    assert probe.callback is not None
+    requests = list(probe.callback(response))
+
+    assert [request.url for request in requests] == Spider.start_urls
+    assert requests[0].cookies[0]["value"] == "5%3AB"
 
 
 def test_spider_parse_beta_bucket_sets_classic_site_cookie():
