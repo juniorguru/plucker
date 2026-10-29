@@ -334,8 +334,10 @@ def test_parse_location(text: str, expected: str):
         (["Košice, Slovak Republic (Job with occasional home office)"], True),
         (
             [
-                "Bratislava, Slovensko (Die Position ermöglicht, gelegentlich "
-                "von zu Hause aus zu arbeiten )"
+                (
+                    "Bratislava, Slovensko (Die Position ermöglicht, gelegentlich "
+                    "von zu Hause aus zu arbeiten )"
+                )
             ],
             True,
         ),

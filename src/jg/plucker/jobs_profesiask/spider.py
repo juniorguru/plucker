@@ -1,5 +1,6 @@
 import re
-from typing import Generator, Iterable, cast
+from collections.abc import Generator, Iterable
+from typing import cast
 from urllib.parse import parse_qs, urlparse, urlunparse
 
 from itemloaders.processors import Compose, MapCompose, TakeFirst
@@ -45,7 +46,7 @@ class Spider(BaseSpider):
         "https://www.profesia.sk/praca/informacne-technologie/",
     ]
 
-    def parse(self, response: Response) -> Generator[Request, None, None]:
+    def parse(self, response: Response) -> Generator[Request]:
         response = cast(HtmlResponse, response)
         raise_for_waf_challenge(response)
         page = get_page(response.url)
@@ -73,7 +74,7 @@ class Spider(BaseSpider):
 
             self.logger.debug(f"Parsing card for {url}")
             yield response.follow(
-                url, callback=self.parse_job, cb_kwargs=dict(item=item)
+                url, callback=self.parse_job, cb_kwargs={"item": item}
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
@@ -84,7 +85,7 @@ class Spider(BaseSpider):
         else:
             self.logger.debug(f"No next page found for {response.url}")
 
-    def parse_job(self, response: Response, item: Job) -> Generator[Job, None, None]:
+    def parse_job(self, response: Response, item: Job) -> Generator[Job]:
         response = cast(HtmlResponse, response)
         raise_for_waf_challenge(response)
         self.logger.debug(f"Parsing job page {response.url}")
