@@ -445,6 +445,10 @@ def test_get_page(url: str, expected: int):
             "Slovak Republic, Hungary, Poland (The job requires travelling)",
             "Slovak Republic, Hungary, Poland",
         ),
+        (
+            "Slovenská republika, Česká republika (Práce vyžaduje cestování)",
+            "Slovenská republika, Česká republika",
+        ),
         ("Lenovo (Slovakia), Bratislava", "Lenovo (Slovakia), Bratislava"),
     ],
 )
@@ -585,11 +589,11 @@ def test_spider_start():
 
 def test_spider_parse_job_collects_unknown_location_notes():
     spider = Spider()
-    card = make_card(locations=["Brno, Česko (Práce vyžaduje cestování)"])
+    card = make_card(locations=["Brno, Česko (Práce vyžaduje létání)"])
     jobs = list(spider.parse_job(job_response("job_custom.html"), card.to_dict()))
 
     assert jobs == []
-    assert spider._unknown_location_notes == {"Práce vyžaduje cestování"}
+    assert spider._unknown_location_notes == {"Práce vyžaduje létání"}
 
 
 def test_spider_closed_reports_unknown_location_notes():
@@ -607,10 +611,10 @@ def test_spider_evaluate_stats_unknown_location_notes():
     stats = {
         "item_scraped_count": 1000,
         "finish_reason": "finished",
-        "profesiask/unknown_location_notes": ["Práce vyžaduje cestování"],
+        "profesiask/unknown_location_notes": ["Práce vyžaduje létání"],
     }
 
-    with pytest.raises(StatsError, match="Práce vyžaduje cestování"):
+    with pytest.raises(StatsError, match="Práce vyžaduje létání"):
         Spider.evaluate_stats(stats, min_items=10)
 
 
