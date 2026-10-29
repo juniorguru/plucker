@@ -1,6 +1,6 @@
 import re
-from collections.abc import Generator, Iterable
-from dataclasses import dataclass, field
+from collections.abc import AsyncGenerator, Generator, Iterable
+from dataclasses import asdict, dataclass, field
 from typing import Any, cast
 from urllib.parse import parse_qs, urlparse, urlunparse
 
@@ -11,6 +11,7 @@ from scrapy.exceptions import DontCloseSpider
 from scrapy.http.response import Response
 from scrapy.http.response.html import HtmlResponse
 from scrapy.loader import ItemLoader
+from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
@@ -58,6 +59,10 @@ class WAFChallengeError(Exception):
     pass
 
 
+class RequestFailedError(Exception):
+    pass
+
+
 @dataclass
 class Card:
     url: str
@@ -68,6 +73,26 @@ class Card:
     listing_urls: set[str] = field(default_factory=set)
     employment_types: set[str] = field(default_factory=set)
     remote: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Returns the card as a JSON-serializable dict, because the Apify
+        request queue can't store anything else in cb_kwargs
+        """
+        data = asdict(self)
+        data["listing_urls"] = sorted(self.listing_urls)
+        data["employment_types"] = sorted(self.employment_types)
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Card:
+        return cls(
+            **data
+            | {
+                "listing_urls": set(data["listing_urls"]),
+                "employment_types": set(data["employment_types"]),
+            }
+        )
 
 
 class Spider(BaseSpider):
@@ -86,10 +111,9 @@ class Spider(BaseSpider):
         # header when it wants the client to solve a JavaScript challenge, or escalates
         # to a '405 Method Not Allowed' CAPTCHA page
         "RETRY_HTTP_CODES": WAF_HTTP_CODES + RETRY_HTTP_CODES,
-        "HTTPCACHE_IGNORE_HTTP_CODES": WAF_HTTP_CODES,
+        # Otherwise retries would get the cached failed response
+        "HTTPCACHE_IGNORE_HTTP_CODES": WAF_HTTP_CODES + RETRY_HTTP_CODES,
     }
-
-    start_urls = [LISTING_URL]
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -101,6 +125,16 @@ class Spider(BaseSpider):
         crawler.signals.connect(spider.spider_idle, signal=signals.spider_idle)
         return spider
 
+    async def start(self) -> AsyncGenerator[Request]:
+        yield Request(LISTING_URL, callback=self.parse, errback=self.request_failed)
+
+    def request_failed(self, failure: Failure) -> None:
+        """
+        Fails the run if a request fails even after retries, as a missing
+        listing page means missing or incomplete jobs
+        """
+        raise RequestFailedError(f"{failure.request.url}: {failure.value!r}")
+
     def parse(self, response: Response) -> Generator[Request]:
         response = cast(HtmlResponse, response)
         raise_for_waf_challenge(response)
@@ -109,6 +143,7 @@ class Spider(BaseSpider):
             yield response.follow(
                 f"{LISTING_URL}{slug}/",
                 callback=self.parse_listing,
+                errback=self.request_failed,
                 cb_kwargs={"employment_type": employment_type},
             )
         for value, remote in REMOTE_WORK.items():
@@ -116,6 +151,7 @@ class Spider(BaseSpider):
                 yield response.follow(
                     f"{LISTING_URL}?remote_work={value}",
                     callback=self.parse_listing,
+                    errback=self.request_failed,
                     cb_kwargs={"remote": True},
                 )
 
@@ -146,6 +182,7 @@ class Spider(BaseSpider):
             yield response.follow(
                 next_page_link,
                 callback=self.parse_listing,
+                errback=self.request_failed,
                 cb_kwargs={"employment_type": employment_type, "remote": remote},
             )
         else:
@@ -163,14 +200,25 @@ class Spider(BaseSpider):
                 self.logger.warning(f"No employment types, skipping {card.url}")
                 continue
             self.crawler.engine.crawl(
-                Request(card.url, callback=self.parse_job, cb_kwargs={"card": card})
+                Request(
+                    card.url,
+                    callback=self.parse_job,
+                    errback=self.request_failed,
+                    cb_kwargs={"card": card.to_dict()},
+                )
             )
         raise DontCloseSpider
 
-    def parse_job(self, response: Response, card: Card) -> Generator[Job]:
+    def parse_job(self, response: Response, card: dict[str, Any]) -> Generator[Job]:
         response = cast(HtmlResponse, response)
         raise_for_waf_challenge(response)
         self.logger.debug(f"Parsing job page {response.url}")
+        card = Card.from_dict(card)
+
+        if response.css('#detail .alert a[href*="similar_to="]'):
+            # the ad expired after the listings were crawled
+            self.logger.info(f"Skipping expired job: {response.url}")
+            return
 
         lang = parse_language(response)
         if lang not in LANGUAGES:
