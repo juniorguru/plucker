@@ -15,7 +15,11 @@ from jg.plucker.jobs_jobscz.spider import (
     get_classic_site_cookie,
     is_beta_site,
 )
-from jg.plucker.jobs_profesiask.spider import WAFChallengeError, raise_for_waf_challenge
+from jg.plucker.jobs_profesiask.spider import (
+    WAFChallengeError,
+    get_gone_reason,
+    raise_for_waf_challenge,
+)
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import evaluate_stats, parse_links
 from jg.plucker.settings import RETRY_HTTP_CODES
@@ -232,13 +236,9 @@ class Spider(BaseSpider):
             self.logger.warning(f"Inconclusive check of {url}: {e}")
             yield JobCheck(url=url, ok=None, reason="PROFESIASK WAF")
         else:
-            if response.status in (404, 410):
-                yield JobCheck(url=url, ok=False, reason=f"HTTP {response.status}")
-            elif not is_profesiask_job_url(response.url):
-                # non-existent ads redirect to the homepage
-                yield JobCheck(url=url, ok=False, reason="PROFESIASK")
-            elif response.css('#detail .alert a[href*="similar_to="]').get(None):
-                yield JobCheck(url=url, ok=False, reason="PROFESIASK")
+            if gone_reason := get_gone_reason(response):
+                reason = f"PROFESIASK {gone_reason.upper()}"
+                yield JobCheck(url=url, ok=False, reason=reason)
             elif response.css('[itemprop="datePosted"]').get(None):
                 yield JobCheck(url=url, ok=True, reason="PROFESIASK")
             else:
@@ -322,10 +322,6 @@ def is_startupjobs_url(url: str) -> bool:
 
 def is_profesiask_url(url: str) -> bool:
     return "profesia.sk" in urlparse(url).netloc
-
-
-def is_profesiask_job_url(url: str) -> bool:
-    return bool(re.search(r"/O\d+/?$", urlparse(url).path))
 
 
 def parse_startupjobs_id(url: str) -> int:

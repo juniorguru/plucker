@@ -269,21 +269,23 @@ def test_spider_check_startupjobs():
 
 
 @pytest.mark.parametrize(
-    "fixture_basename, expected_ok",
+    "fixture_basename, expected_ok, expected_reason",
     [
-        ("profesiask_expired.html", False),
-        ("profesiask_ok.html", True),
-        ("profesiask_ok_custom.html", True),
+        ("profesiask_expired.html", False, "PROFESIASK EXPIRED"),
+        ("profesiask_ok.html", True, "PROFESIASK"),
+        ("profesiask_ok_custom.html", True, "PROFESIASK"),
     ],
 )
-def test_spider_check_profesiask(fixture_basename: str, expected_ok: bool):
+def test_spider_check_profesiask(
+    fixture_basename: str, expected_ok: bool, expected_reason: str
+):
     url = "https://www.profesia.sk/praca/softip/O5372508"
     response = HtmlResponse(
         url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
     links = list(Spider().check_profesiask(response, urls=[url]))
 
-    assert links == [JobCheck(url=url, ok=expected_ok, reason="PROFESIASK")]
+    assert links == [JobCheck(url=url, ok=expected_ok, reason=expected_reason)]
 
 
 def test_spider_check_profesiask_reports_requested_url():
@@ -294,7 +296,16 @@ def test_spider_check_profesiask_reports_requested_url():
     )
     links = list(Spider().check_profesiask(response, urls=[url]))
 
-    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK")]
+    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK EXPIRED")]
+
+
+def test_spider_check_profesiask_deleted():
+    url = "https://www.profesia.sk/praca/financne-riaditelstvo-sr/O5374331"
+    body = (FIXTURES_DIR.parent / "jobs_profesiask" / "job_deleted.html").read_bytes()
+    response = HtmlResponse(url, body=body)
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK DELETED")]
 
 
 def test_spider_check_profesiask_redirect_to_homepage():
@@ -304,7 +315,7 @@ def test_spider_check_profesiask_redirect_to_homepage():
     )
     links = list(Spider().check_profesiask(response, urls=[url]))
 
-    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK")]
+    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK REDIRECTED")]
 
 
 @pytest.mark.parametrize(
