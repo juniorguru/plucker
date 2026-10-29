@@ -82,6 +82,8 @@ REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
+BETA_BUCKET_RE = re.compile(r"beta_bucket=(?P<version>\d+)%3A")
+
 
 class JobDraft(TypedDict, total=False):
     """Job data collected so far, passed between requests
@@ -101,13 +103,10 @@ class JobDraft(TypedDict, total=False):
 
 
 # Jobs.cz randomly assigns visitors to an A/B test bucket, and bucket A gets
-# redirected to beta.jobs.cz, which has entirely different HTML
-CLASSIC_SITE_COOKIE = {
-    "name": "beta_bucket",
-    "value": "3%3AB",
-    "domain": ".jobs.cz",
-    "path": "/",
-}
+# redirected to beta.jobs.cz, which has entirely different HTML. The cookie
+# value is prefixed with a version, which jobs.cz bumps from time to time,
+# and then it ignores cookies with the old version and assigns a new bucket.
+BETA_BUCKET_PROBE_URL = "https://www.jobs.cz/"
 
 
 class Spider(BaseSpider):
@@ -158,8 +157,23 @@ class Spider(BaseSpider):
         return self.logger.logger.getChild(trk)
 
     async def start(self) -> AsyncGenerator[Request]:
+        yield Request(
+            BETA_BUCKET_PROBE_URL,
+            callback=self.parse_beta_bucket,
+            dont_filter=True,
+            meta={
+                "dont_redirect": True,
+                "dont_merge_cookies": True,
+                "dont_cache": True,
+                "handle_httpstatus_list": [301, 302],
+            },
+        )
+
+    def parse_beta_bucket(self, response: Response) -> Generator[Request]:
+        cookie = get_classic_site_cookie(response.headers.getlist("Set-Cookie"))
+        self.logger.debug(f"Using classic site cookie: {cookie['value']}")
         for url in self.start_urls:
-            yield Request(url, cookies=[CLASSIC_SITE_COOKIE])
+            yield Request(url, cookies=[cookie])
 
     def parse(self, response: Response) -> Generator[Request]:
         response = cast(HtmlResponse, response)
@@ -381,7 +395,7 @@ class Spider(BaseSpider):
                         "gaId": None,
                         "lmcVisitorId": None,
                         "rps": int(params["rps"]),
-                        "impressionId": params["impressionId"],
+                        "impressionId": params.get("impressionId"),
                         "cookieConsent": [],
                         "matejId": "",
                         "jobsUserId": "",
@@ -443,6 +457,18 @@ def get_job_id(url: str) -> str:
         return segments[-1]
     except IndexError:
         raise ValueError(f"Could not parse job ID: {url}")
+
+
+def get_classic_site_cookie(set_cookie_headers: list[bytes]) -> dict[str, str]:
+    for header in set_cookie_headers:
+        if match := BETA_BUCKET_RE.search(header.decode()):
+            return {
+                "name": "beta_bucket",
+                "value": f"{match.group('version')}%3AB",
+                "domain": ".jobs.cz",
+                "path": "/",
+            }
+    raise ValueError(f"Beta bucket cookie not found: {set_cookie_headers!r}")
 
 
 def is_beta_site(url: str) -> bool:
