@@ -440,6 +440,10 @@ def test_get_page(url: str, expected: int):
             "Prešovský kraj, Košický kraj (Práca vyžaduje cestovanie)",
             "Prešovský kraj, Košický kraj",
         ),
+        (
+            "Slovak Republic, Hungary, Poland (The job requires travelling)",
+            "Slovak Republic, Hungary, Poland",
+        ),
         ("Lenovo (Slovakia), Bratislava", "Lenovo (Slovakia), Bratislava"),
     ],
 )

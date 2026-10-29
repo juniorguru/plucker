@@ -45,6 +45,7 @@ LOCATION_NOTES = [
     "Pozice umožňuje občasnou práci z domu",
     "Job with occasional home office",
     "Práca vyžaduje cestovanie",
+    "The job requires travelling",
 ]
 
 REMOTE_LOCATIONS = ["Práca z domu", "Remote work"]
