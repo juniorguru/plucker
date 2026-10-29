@@ -6,14 +6,20 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from scrapy import Request
+from scrapy.downloadermiddlewares.redirect import RedirectMiddleware
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
+from scrapy.spidermiddlewares.httperror import HttpErrorMiddleware
+from scrapy.utils.test import get_crawler
 
+from jg.plucker import settings
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
     JobDraft,
     Spider,
     from_draft,
+    get_classic_site_cookie,
     get_job_id,
     get_param,
     get_params,
@@ -27,11 +33,67 @@ from tests.utils import is_storable_on_apify
 FIXTURES_DIR = Path(__file__).parent
 
 
-def test_spider_start_sets_classic_site_cookie():
+def test_spider_start_probes_beta_bucket():
     async def collect():
         return [request async for request in Spider().start()]
 
     requests = asyncio.run(collect())
+
+    assert len(requests) == 1
+    assert requests[0].url == "https://www.jobs.cz/"
+    assert requests[0].meta["dont_redirect"] is True
+    assert requests[0].meta["dont_merge_cookies"] is True
+    assert requests[0].meta["dont_cache"] is True
+    assert requests[0].meta["handle_httpstatus_list"] == [301, 302]
+
+
+def test_spider_beta_bucket_probe_passes_middlewares():
+    crawler = get_crawler(
+        Spider,
+        {name: value for name, value in vars(settings).items() if name.isupper()},
+    )
+    crawler.spider = Spider()
+
+    async def collect():
+        return [request async for request in crawler.spider.start()]
+
+    probe = asyncio.run(collect())[0]
+    response = HtmlResponse(
+        probe.url,
+        status=302,
+        headers=[
+            ("Location", "https://beta.jobs.cz/"),
+            ("Set-Cookie", "beta_bucket=5%3AA; path=/; domain=.jobs.cz"),
+        ],
+        request=probe,
+    )
+
+    assert (
+        RedirectMiddleware.from_crawler(crawler).process_response(probe, response)
+        is response
+    )
+    HttpErrorMiddleware.from_crawler(crawler).process_spider_input(response)
+
+    assert probe.callback is not None
+    requests = list(probe.callback(response))
+
+    assert [request.url for request in requests] == Spider.start_urls
+    assert requests[0].cookies[0]["value"] == "5%3AB"
+
+
+def test_spider_parse_beta_bucket_sets_classic_site_cookie():
+    response = HtmlResponse(
+        "https://www.jobs.cz/",
+        status=302,
+        headers=[
+            (
+                "Set-Cookie",
+                "beta_bucket=5%3AA; expires=Wed, 29-Oct-2036 07:59:49 GMT; path=/; domain=.jobs.cz",
+            ),
+            ("Set-Cookie", "APJOBS72ID=a4f52830d497298d; path=/; HttpOnly"),
+        ],
+    )
+    requests = list(Spider().parse_beta_bucket(response))
 
     assert [request.url for request in requests] == Spider.start_urls
     assert all(
@@ -39,13 +101,40 @@ def test_spider_start_sets_classic_site_cookie():
         == [
             {
                 "name": "beta_bucket",
-                "value": "3%3AB",
+                "value": "5%3AB",
                 "domain": ".jobs.cz",
                 "path": "/",
             }
         ]
         for request in requests
     )
+
+
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        (b"beta_bucket=5%3AA; path=/; domain=.jobs.cz", "5%3AB"),
+        (b"beta_bucket=5%3AB; path=/; domain=.jobs.cz", "5%3AB"),
+        (b"beta_bucket=12%3AA; path=/; domain=.jobs.cz", "12%3AB"),
+    ],
+)
+def test_get_classic_site_cookie(header: bytes, expected: str):
+    cookie = get_classic_site_cookie([b"JOBSSID=abc; path=/", header])
+
+    assert cookie["value"] == expected
+
+
+def test_get_classic_site_cookie_ignores_non_utf8_headers():
+    cookie = get_classic_site_cookie(
+        [b"JOBSSID=\xff; path=/", b"beta_bucket=5%3AA; path=/"]
+    )
+
+    assert cookie["value"] == "5%3AB"
+
+
+def test_get_classic_site_cookie_raises():
+    with pytest.raises(ValueError):
+        get_classic_site_cookie([b"JOBSSID=abc; path=/"])
 
 
 @pytest.mark.parametrize(
@@ -113,6 +202,27 @@ def test_spider_parse():
         requests[-1].url
         == "https://beta.www.jobs.cz/prace/programator/?profession%5B0%5D=201100249&page=2"
     )
+
+
+def test_spider_parse_passes_classic_site_cookie_on():
+    cookie = {
+        "name": "beta_bucket",
+        "value": "5%3AB",
+        "domain": ".jobs.cz",
+        "path": "/",
+    }
+    url = "https://www.jobs.cz/prace/programator/?page=1"
+    response = HtmlResponse(
+        url,
+        body=Path(FIXTURES_DIR / "listing_page_first.html").read_bytes(),
+        request=Request(url, cookies=[cookie]),
+    )
+
+    spider = Spider()
+    requests = list(spider.parse(response))
+
+    assert any(request.callback == spider.parse for request in requests)
+    assert all(request.cookies == [cookie] for request in requests)
 
 
 def test_spider_parse_listing_page():
@@ -319,6 +429,17 @@ def test_spider_parse_job_widget():
         body["variables"]["referer"]
         == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
     )
+
+
+def test_spider_parse_job_widget_without_impression_id():
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "job_widget.html").read_bytes()
+    )
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
+    body = json.loads(request.body)
+
+    assert body["variables"]["impressionId"] is None
 
 
 def test_spider_parse_job_widget_script_request():
