@@ -12,7 +12,12 @@ from twisted.python.failure import Failure
 
 from jg.plucker import settings
 from jg.plucker.items import JobCheck
-from jg.plucker.job_checks.spider import Spider, UnexpectedPageError, is_jobscz_url
+from jg.plucker.job_checks.spider import (
+    Spider,
+    UnexpectedPageError,
+    is_jobscz_url,
+    is_profesiask_url,
+)
 from jg.plucker.scrapers import StatsError
 
 
@@ -264,6 +269,80 @@ def test_spider_check_startupjobs():
 
 
 @pytest.mark.parametrize(
+    "fixture_basename, expected_ok",
+    [
+        ("profesiask_expired.html", False),
+        ("profesiask_ok.html", True),
+        ("profesiask_ok_custom.html", True),
+    ],
+)
+def test_spider_check_profesiask(fixture_basename: str, expected_ok: bool):
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
+    )
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=expected_ok, reason="PROFESIASK")]
+
+
+def test_spider_check_profesiask_reports_requested_url():
+    url = "https://www.profesia.sk/praca/old-slug/O4000000"
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/talent-solutions/O4000000",
+        body=Path(FIXTURES_DIR / "profesiask_expired.html").read_bytes(),
+    )
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK")]
+
+
+def test_spider_check_profesiask_redirect_to_homepage():
+    url = "https://www.profesia.sk/praca/softip/O9999999"
+    response = HtmlResponse(
+        "https://www.profesia.sk/", body=b"<html><body>Homepage</body></html>"
+    )
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=False, reason="PROFESIASK")]
+
+
+@pytest.mark.parametrize(
+    "status, headers",
+    [
+        (202, {"x-amzn-waf-action": "challenge"}),
+        (405, {}),
+    ],
+)
+def test_spider_check_profesiask_waf_challenge(status: int, headers: dict[str, str]):
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(url, status=status, headers=headers, body=b"")
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=None, reason="PROFESIASK WAF")]
+
+
+def test_spider_check_profesiask_unknown_page():
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(url, body=b"<html><body>Something else</body></html>")
+
+    with pytest.raises(UnexpectedPageError):
+        list(Spider().check_profesiask(response, urls=[url]))
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.profesia.sk/praca/softip/O5372508", True),
+        ("https://profesia.sk/praca/softip/O5372508", True),
+        ("https://www.jobs.cz/rpd/2000120375/", False),
+    ],
+)
+def test_is_profesiask_url(url: str, expected: bool):
+    assert is_profesiask_url(url) is expected
+
+
+@pytest.mark.parametrize(
     "stats_override",
     [
         {"log_count/ERROR": 0, "retry/max_reached": 1},  # shouldn't happen
@@ -315,6 +394,7 @@ def test_spider_start_expects_links_to_be_assessed():
         "https://www.jobs.cz/rpd/2001440830/",
         "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator",
         "https://cz.linkedin.com/jobs/view/tester-at-coolpeople-4015921370/",
+        "https://www.profesia.sk/praca/softip/O5372508",
     ]
     spider = Spider(links=[{"url": url} for url in urls])
 
@@ -323,8 +403,12 @@ def test_spider_start_expects_links_to_be_assessed():
 
     requests = asyncio.run(collect())
 
-    assert spider._expected_urls == set(urls[:2])  # LinkedIn links are skipped
+    assert spider._expected_urls == {urls[0], urls[1], urls[3]}  # LinkedIn skipped
     assert all(request.dont_filter for request in requests)
+    profesiask_request = next(r for r in requests if r.url == urls[3])
+    assert profesiask_request.method == "GET"
+    assert profesiask_request.callback == spider.check_profesiask
+    assert profesiask_request.cb_kwargs == {"urls": [urls[3]]}
 
 
 def test_spider_start_probes_jobscz_beta_bucket():

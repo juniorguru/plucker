@@ -15,8 +15,10 @@ from jg.plucker.jobs_jobscz.spider import (
     get_classic_site_cookie,
     is_beta_site,
 )
+from jg.plucker.jobs_profesiask.spider import WAFChallengeError, raise_for_waf_challenge
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import evaluate_stats, parse_links
+from jg.plucker.settings import RETRY_HTTP_CODES
 
 
 MIN_CHECKS_PER_HOST = 5
@@ -37,6 +39,9 @@ class Spider(BaseSpider):
         "RETRY_TIMES": 10,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
+        # AWS WAF on profesia.sk challenges with an empty '202 Accepted'. Its '405' CAPTCHA
+        # isn't retried, as 405 is a legit response to HEAD requests on other sites
+        "RETRY_HTTP_CODES": [202] + RETRY_HTTP_CODES,
     }
 
     min_items = 0
@@ -110,6 +115,15 @@ class Spider(BaseSpider):
                 startupjobs_urls.append(url)
             elif is_jobscz_url(url):
                 jobscz_urls.append(url)
+            elif is_profesiask_url(url):
+                # GET, not HEAD, as expired ads respond with 200 and a notice
+                yield Request(
+                    url,
+                    callback=self.check_profesiask,
+                    errback=self.check_failure,
+                    cb_kwargs={"urls": [url]},
+                    dont_filter=True,
+                )
             else:
                 yield self._http_request(url, "HEAD")
         if linkedin_urls_count:
@@ -206,6 +220,32 @@ class Spider(BaseSpider):
             self.logger.warning(f"Inconclusive check of {url}: {reason}")
             yield JobCheck(url=url, ok=None, reason=reason)
 
+    def check_profesiask(
+        self, response: Response, urls: list[str]
+    ) -> Generator[JobCheck]:
+        url = urls[0]
+        self.logger.info(f"Checking {url} (Profesia.sk)")
+        try:
+            raise_for_waf_challenge(response)
+        except WAFChallengeError as e:
+            # don't report blocked request as expired job
+            self.logger.warning(f"Inconclusive check of {url}: {e}")
+            yield JobCheck(url=url, ok=None, reason="PROFESIASK WAF")
+        else:
+            if response.status in (404, 410):
+                yield JobCheck(url=url, ok=False, reason=f"HTTP {response.status}")
+            elif not is_profesiask_job_url(response.url):
+                # non-existent ads redirect to the homepage
+                yield JobCheck(url=url, ok=False, reason="PROFESIASK")
+            elif response.css('#detail .alert a[href*="similar_to="]').get(None):
+                yield JobCheck(url=url, ok=False, reason="PROFESIASK")
+            elif response.css('[itemprop="datePosted"]').get(None):
+                yield JobCheck(url=url, ok=True, reason="PROFESIASK")
+            else:
+                raise UnexpectedPageError(
+                    f"Unexpected profesia.sk page: {url} → {response.url}"
+                )
+
     def check_failure(self, failure: Failure) -> Generator[JobCheck]:
         reason = failure.type.__name__
         for url in failure.request.cb_kwargs["urls"]:
@@ -278,6 +318,14 @@ def get_jobscz_site(response: Response) -> str | None:
 
 def is_startupjobs_url(url: str) -> bool:
     return "startupjobs.cz" in urlparse(url).netloc
+
+
+def is_profesiask_url(url: str) -> bool:
+    return "profesia.sk" in urlparse(url).netloc
+
+
+def is_profesiask_job_url(url: str) -> bool:
+    return bool(re.search(r"/O\d+/?$", urlparse(url).path))
 
 
 def parse_startupjobs_id(url: str) -> int:
