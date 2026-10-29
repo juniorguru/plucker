@@ -433,6 +433,10 @@ def test_get_page(url: str, expected: int):
             "Košice, Slovak Republic",
         ),
         (
+            "Brno, Česko (Pozice umožňuje občasnou práci z domu)",
+            "Brno, Česko",
+        ),
+        (
             "Prešovský kraj, Košický kraj (Práca vyžaduje cestovanie)",
             "Prešovský kraj, Košický kraj",
         ),

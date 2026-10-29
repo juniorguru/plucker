@@ -42,6 +42,7 @@ LOCATION_NOTE_RE = re.compile(r"\s*\((?P<note>[^()]*)\)$")
 
 LOCATION_NOTES = [
     "Pozícia umožňuje občasnú prácu z domu",
+    "Pozice umožňuje občasnou práci z domu",
     "Job with occasional home office",
     "Práca vyžaduje cestovanie",
 ]
