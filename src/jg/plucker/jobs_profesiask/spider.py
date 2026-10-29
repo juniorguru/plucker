@@ -15,7 +15,6 @@ from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
-from jg.plucker.scrapers import StatsError, evaluate_stats
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
@@ -60,9 +59,7 @@ class UnexpectedMarkupError(Exception):
 
 
 class UnexpectedLocationNoteError(UnexpectedMarkupError):
-    def __init__(self, text: str, note: str):
-        super().__init__(f"Unexpected location note: {text!r}")
-        self.note = note
+    pass
 
 
 class WAFChallengeError(Exception):
@@ -128,22 +125,6 @@ class Spider(BaseSpider):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._cards: dict[str, Card] = {}
-        self._unknown_location_notes: set[str] = set()
-
-    @classmethod
-    def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
-        if notes := stats.get("profesiask/unknown_location_notes"):
-            raise StatsError(
-                f"Unknown location notes, add them to LOCATION_NOTES: {notes}"
-            )
-        evaluate_stats(stats, min_items)
-
-    def closed(self, reason: str) -> None:
-        if self._unknown_location_notes:
-            self.crawler.stats.set_value(
-                "profesiask/unknown_location_notes",
-                sorted(self._unknown_location_notes),
-            )
 
     @classmethod
     def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> Spider:
@@ -254,11 +235,10 @@ class Spider(BaseSpider):
         try:
             locations = parse_locations(card.locations, remote=card.remote)
         except UnexpectedLocationNoteError as e:
-            # Notes are a handful of phrases in a few languages, and every run
-            # would fail on the first unknown one. Collecting all of them fails
-            # the run only at the end, but with the complete list to add.
-            self.logger.warning(f"{e}, skipping {response.url}")
-            self._unknown_location_notes.add(e.note)
+            # Notes are a handful of phrases in a few languages, and raising
+            # would stop the run on the first unknown one. A logged error fails
+            # the run only at the end, but with all the unknown notes in the log.
+            self.logger.error(f"{e}, skipping {response.url}")
             return
 
         loader = Loader(item=Job(), response=response)
@@ -397,8 +377,8 @@ def parse_location(text: str) -> str:
     """
     text = text.strip()
     if match := LOCATION_NOTE_RE.search(text):
-        if (note := match.group("note").strip()) not in LOCATION_NOTES:
-            raise UnexpectedLocationNoteError(text, note)
+        if match.group("note").strip() not in LOCATION_NOTES:
+            raise UnexpectedLocationNoteError(f"Unexpected location note: {text!r}")
         return text[: match.start()]
     return text
 

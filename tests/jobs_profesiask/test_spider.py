@@ -30,7 +30,6 @@ from jg.plucker.jobs_profesiask.spider import (
     parse_location,
     parse_locations,
 )
-from jg.plucker.scrapers import StatsError
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -587,38 +586,18 @@ def test_spider_start():
     assert requests[0].errback is not None
 
 
-def test_spider_parse_job_collects_unknown_location_notes():
-    spider = Spider()
+def test_spider_parse_job_logs_unknown_location_note(caplog):
     card = make_card(locations=["Brno, Česko (Práce vyžaduje létání)"])
-    jobs = list(spider.parse_job(job_response("job_custom.html"), card.to_dict()))
+    response = job_response("job_custom.html")
+    jobs = list(Spider().parse_job(response, card.to_dict()))
 
     assert jobs == []
-    assert spider._unknown_location_notes == {"Práce vyžaduje létání"}
-
-
-def test_spider_closed_reports_unknown_location_notes():
-    spider = Spider()
-    spider.crawler = Mock()
-    spider._unknown_location_notes = {"Note B", "Note A"}
-    spider.closed("finished")
-
-    spider.crawler.stats.set_value.assert_called_once_with(
-        "profesiask/unknown_location_notes", ["Note A", "Note B"]
-    )
-
-
-def test_spider_evaluate_stats_unknown_location_notes():
-    stats = {
-        "item_scraped_count": 1000,
-        "finish_reason": "finished",
-        "profesiask/unknown_location_notes": ["Práce vyžaduje létání"],
-    }
-
-    with pytest.raises(StatsError, match="Práce vyžaduje létání"):
-        Spider.evaluate_stats(stats, min_items=10)
-
-
-def test_spider_evaluate_stats_passing():
-    Spider.evaluate_stats(
-        {"item_scraped_count": 1000, "finish_reason": "finished"}, min_items=10
-    )
+    assert [(r.levelname, r.message) for r in caplog.records] == [
+        (
+            "ERROR",
+            (
+                "Unexpected location note: 'Brno, Česko (Práce vyžaduje létání)', "
+                f"skipping {response.url}"
+            ),
+        )
+    ]
