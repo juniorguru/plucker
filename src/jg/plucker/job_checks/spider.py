@@ -10,6 +10,11 @@ from scrapy.http.response import Response
 from twisted.python.failure import Failure
 
 from jg.plucker.items import JobCheck
+from jg.plucker.jobs_jobscz.spider import (
+    BETA_BUCKET_PROBE_URL,
+    get_classic_site_cookie,
+    is_beta_site,
+)
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import evaluate_stats, parse_links
 
@@ -17,6 +22,10 @@ from jg.plucker.scrapers import evaluate_stats, parse_links
 MIN_CHECKS_PER_HOST = 5
 
 MAX_INCONCLUSIVE_RATIO = 0.5
+
+
+class UnexpectedPageError(Exception):
+    pass
 
 
 class Spider(BaseSpider):
@@ -90,6 +99,7 @@ class Spider(BaseSpider):
             raise ValueError("No links provided")
         self.logger.info(f"Loading {len(self._start_urls)} links")
         startupjobs_urls = []  # StartupJobs URLs bulk
+        jobscz_urls = []  # checked only after probing the beta bucket
         linkedin_urls_count = 0
         for url in self._start_urls:
             if is_linkedin_url(url):
@@ -98,6 +108,8 @@ class Spider(BaseSpider):
             self._expected_urls.add(url)
             if is_startupjobs_url(url):
                 startupjobs_urls.append(url)
+            elif is_jobscz_url(url):
+                jobscz_urls.append(url)
             else:
                 yield self._http_request(url, "HEAD")
         if linkedin_urls_count:
@@ -111,6 +123,19 @@ class Spider(BaseSpider):
                 errback=self.check_failure,
                 cb_kwargs={"urls": startupjobs_urls},
                 dont_filter=True,
+            )
+        if jobscz_urls:
+            yield Request(
+                BETA_BUCKET_PROBE_URL,
+                callback=self.probe_jobscz,
+                errback=self.check_failure,
+                cb_kwargs={"urls": jobscz_urls},
+                dont_filter=True,
+                meta={
+                    "dont_redirect": True,
+                    "dont_merge_cookies": True,
+                    "handle_httpstatus_list": [301, 302],
+                },
             )
 
     def _http_request(self, url: str, method: str) -> Request:
@@ -137,6 +162,46 @@ class Spider(BaseSpider):
         elif response.status in (405, 501) and response.request.method == "HEAD":
             self.logger.info(f"HEAD not supported by {url}, trying GET")
             yield self._http_request(url, "GET")
+        else:
+            self.logger.warning(f"Inconclusive check of {url}: {reason}")
+            yield JobCheck(url=url, ok=None, reason=reason)
+
+    def probe_jobscz(self, response: Response, urls: list[str]) -> Generator[Request]:
+        # Jobs.cz puts visitors to an A/B test bucket at random, and bucket A
+        # gets redirected to beta.jobs.cz. The beta site responds with 404 to
+        # live jobs of companies with custom career sites, the same 404 as to
+        # expired jobs, so there's no way to tell them apart. The cookie jar
+        # is shared, so the first bucket assigned would affect all checks.
+        cookie = get_classic_site_cookie(response.headers.getlist("Set-Cookie"))
+        self.logger.info(f"Using jobs.cz classic site cookie: {cookie['value']}")
+        for url in urls:
+            # GET, not HEAD, so that the page can be verified
+            yield Request(
+                url,
+                cookies=[cookie],
+                callback=self.check_jobscz,
+                errback=self.check_failure,
+                cb_kwargs={"urls": [url]},
+                dont_filter=True,
+            )
+
+    def check_jobscz(self, response: Response, urls: list[str]) -> Generator[JobCheck]:
+        url = urls[0]
+        self.logger.info(f"Checking {url} (jobs.cz, {response.url})")
+        reason = f"JOBSCZ HTTP {response.status}"
+        if response.status in (404, 410):
+            if is_beta_site(response.url):
+                self.logger.warning(f"Inconclusive check of {url}: {reason} (beta)")
+                yield JobCheck(url=url, ok=None, reason=reason)
+            else:
+                yield JobCheck(url=url, ok=False, reason=reason)
+        elif response.status == 200:
+            if site := get_jobscz_site(response):
+                yield JobCheck(url=url, ok=True, reason=f"{reason} ({site})")
+            else:
+                raise UnexpectedPageError(
+                    f"Unexpected jobs.cz page: {url} → {response.url}"
+                )
         else:
             self.logger.warning(f"Inconclusive check of {url}: {reason}")
             yield JobCheck(url=url, ok=None, reason=reason)
@@ -184,6 +249,31 @@ def get_site(url: str) -> str:
 
 def is_linkedin_url(url: str) -> bool:
     return "linkedin.com" in urlparse(url).netloc
+
+
+def is_jobscz_url(url: str) -> bool:
+    hostname = urlparse(url).hostname or ""
+    return hostname == "jobs.cz" or hostname.endswith(".jobs.cz")
+
+
+def get_jobscz_site(response: Response) -> str | None:
+    hostname = urlparse(response.url).hostname
+    if hostname == "beta.jobs.cz":
+        if response.css('script[type="application/ld+json"]::text').re(
+            r'"@type"\s*:\s*"JobPosting"'
+        ):
+            return "beta"
+    elif hostname == "www.jobs.cz":
+        if response.css('[data-jobad="body"]'):
+            return "classic"
+    elif response.css("script::text").re(r"__LMC_CAREER_WIDGET__") or response.css(
+        'script[src*="assets/"][src*=".min.js"]'
+    ):
+        # Career sites render jobs with JavaScript, so a job widget is all
+        # there is to see. Expired jobs are 404, but some sites respond with
+        # 200 to any job ID, so only jobs.cz URLs are reliable for those
+        return "widget"
+    return None
 
 
 def is_startupjobs_url(url: str) -> bool:
