@@ -23,6 +23,7 @@ from jg.plucker.jobs_profesiask.spider import (
     check_filters,
     clean_listing_url,
     clean_url,
+    get_gone_reason,
     get_page,
     is_custom_logo_url,
     parse_company_name,
@@ -601,3 +602,45 @@ def test_spider_parse_job_logs_unknown_location_note(caplog):
             ),
         )
     ]
+
+
+def test_spider_parse_job_skips_deleted(caplog):
+    url = "https://www.profesia.sk/praca/financne-riaditelstvo-sr/O5374331"
+    response = job_response("job_deleted.html", url)
+
+    with caplog.at_level("INFO"):
+        jobs = list(Spider().parse_job(response, make_card(url=url).to_dict()))
+
+    assert jobs == []
+    assert f"Skipping gone job (deleted): {url}" in caplog.messages
+
+
+@pytest.mark.parametrize(
+    "fixture_path, expected",
+    [
+        ("jobs_profesiask/job_deleted.html", "deleted"),
+        ("job_checks/profesiask_expired.html", "expired"),
+        ("jobs_profesiask/job_standard.html", None),
+        ("jobs_profesiask/job_custom.html", None),
+    ],
+)
+def test_get_gone_reason(fixture_path: str, expected: str | None):
+    body = (FIXTURES_DIR.parent / fixture_path).read_bytes()
+    response = HtmlResponse("https://www.profesia.sk/praca/softip/O5372508", body=body)
+
+    assert get_gone_reason(response) == expected
+
+
+def test_get_gone_reason_redirected_to_homepage():
+    response = HtmlResponse("https://www.profesia.sk/", body=b"<html></html>")
+
+    assert get_gone_reason(response) == "redirected"
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_get_gone_reason_http_status(status: int):
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/softip/O5372508", status=status, body=b""
+    )
+
+    assert get_gone_reason(response) == f"HTTP {status}"

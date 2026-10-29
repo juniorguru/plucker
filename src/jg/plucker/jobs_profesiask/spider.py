@@ -49,6 +49,10 @@ LOCATION_NOTES = [
     "Práce vyžaduje cestování",
 ]
 
+DELETED_NOTICE_RE = re.compile(
+    r"Pracovná ponuka s uvedeným ID \d+ sa v našej databáze nenachádza\."
+)
+
 REMOTE_LOCATIONS = ["Práca z domu", "Remote work"]
 
 WAF_HTTP_CODES = [202, 405]
@@ -222,9 +226,9 @@ class Spider(BaseSpider):
         self.logger.debug(f"Parsing job page {response.url}")
         card = Card.from_dict(card)
 
-        if response.css('#detail .alert a[href*="similar_to="]'):
-            # the ad expired after the listings were crawled
-            self.logger.info(f"Skipping expired job: {response.url}")
+        if gone_reason := get_gone_reason(response):
+            # the ad went away after the listings were crawled
+            self.logger.info(f"Skipping gone job ({gone_reason}): {response.url}")
             return
 
         lang = parse_language(response)
@@ -277,6 +281,33 @@ class Spider(BaseSpider):
             raise UnexpectedMarkupError(f"No description: {response.url}")
 
         yield loader.load_item()
+
+
+def get_gone_reason(response: HtmlResponse) -> str | None:
+    """
+    Returns why the job ad is gone, or None if it's not gone
+
+    Shared with job-checks, so that both tell gone ads apart the same way:
+
+    - expired ads are still shown, but with a notice linking to similar ads,
+    - deleted ads only show a notice, such as 'Pracovná ponuka s uvedeným ID
+      5374331 sa v našej databáze nenachádza.',
+    - non-existent ads redirect to the homepage.
+    """
+    if response.status in (404, 410):
+        return f"HTTP {response.status}"
+    if not is_job_url(response.url):
+        return "redirected"
+    if response.css('#detail .alert a[href*="similar_to="]'):
+        return "expired"
+    texts = response.css("#detail .alert::text").getall()
+    if any(DELETED_NOTICE_RE.fullmatch(text.strip()) for text in texts):
+        return "deleted"
+    return None
+
+
+def is_job_url(url: str) -> bool:
+    return bool(re.search(r"/O\d+/?$", urlparse(url).path))
 
 
 def raise_for_waf_challenge(response: Response) -> None:
