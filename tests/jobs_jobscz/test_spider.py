@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from scrapy import Request
 from scrapy.downloadermiddlewares.redirect import RedirectMiddleware
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
@@ -123,6 +124,14 @@ def test_get_classic_site_cookie(header: bytes, expected: str):
     assert cookie["value"] == expected
 
 
+def test_get_classic_site_cookie_ignores_non_utf8_headers():
+    cookie = get_classic_site_cookie(
+        [b"JOBSSID=\xff; path=/", b"beta_bucket=5%3AA; path=/"]
+    )
+
+    assert cookie["value"] == "5%3AB"
+
+
 def test_get_classic_site_cookie_raises():
     with pytest.raises(ValueError):
         get_classic_site_cookie([b"JOBSSID=abc; path=/"])
@@ -193,6 +202,27 @@ def test_spider_parse():
         requests[-1].url
         == "https://beta.www.jobs.cz/prace/programator/?profession%5B0%5D=201100249&page=2"
     )
+
+
+def test_spider_parse_passes_classic_site_cookie_on():
+    cookie = {
+        "name": "beta_bucket",
+        "value": "5%3AB",
+        "domain": ".jobs.cz",
+        "path": "/",
+    }
+    url = "https://www.jobs.cz/prace/programator/?page=1"
+    response = HtmlResponse(
+        url,
+        body=Path(FIXTURES_DIR / "listing_page_first.html").read_bytes(),
+        request=Request(url, cookies=[cookie]),
+    )
+
+    spider = Spider()
+    requests = list(spider.parse(response))
+
+    assert any(request.callback == spider.parse for request in requests)
+    assert all(request.cookies == [cookie] for request in requests)
 
 
 def test_spider_parse_listing_page():

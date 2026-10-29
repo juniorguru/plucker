@@ -82,7 +82,7 @@ REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
-BETA_BUCKET_RE = re.compile(r"beta_bucket=(?P<version>\d+)%3A")
+BETA_BUCKET_RE = re.compile(rb"beta_bucket=(?P<version>\d+)%3A")
 
 
 class JobDraft(TypedDict, total=False):
@@ -183,6 +183,10 @@ class Spider(BaseSpider):
         page = get_page(response.url)
         self.logger.debug(f"Parsing listing {response.url} (page: {page})")
 
+        # Pass the classic site cookie on explicitly, because unlike queued
+        # requests, the cookie jar doesn't survive migrations of the actor
+        cookies = response.request.cookies if response.request else []
+
         card_xpath = "//article[contains(@class, 'SearchResultCard')]"
         cards = list(response.xpath(card_xpath))
         for n, card in enumerate(cards, start=1):
@@ -216,12 +220,13 @@ class Spider(BaseSpider):
                 url,
                 callback=self.parse_job,
                 cb_kwargs={"item": to_draft(item), "trk": trk},
+                cookies=cookies,
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
         next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
         if next_page_link := response.css(next_page_css).get():
-            yield response.follow(next_page_link, callback=self.parse)
+            yield response.follow(next_page_link, callback=self.parse, cookies=cookies)
         else:
             self.logger.debug(f"No next page found for {response.url}")
 
@@ -461,10 +466,10 @@ def get_job_id(url: str) -> str:
 
 def get_classic_site_cookie(set_cookie_headers: list[bytes]) -> dict[str, str]:
     for header in set_cookie_headers:
-        if match := BETA_BUCKET_RE.search(header.decode()):
+        if match := BETA_BUCKET_RE.search(header):
             return {
                 "name": "beta_bucket",
-                "value": f"{match.group('version')}%3AB",
+                "value": f"{match.group('version').decode()}%3AB",
                 "domain": ".jobs.cz",
                 "path": "/",
             }
