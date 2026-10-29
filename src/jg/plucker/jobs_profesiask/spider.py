@@ -45,6 +45,8 @@ LOCATION_NOTES = [
     "Pozice umožňuje občasnou práci z domu",
     "Job with occasional home office",
     "Práca vyžaduje cestovanie",
+    "The job requires travelling",
+    "Práce vyžaduje cestování",
 ]
 
 REMOTE_LOCATIONS = ["Práca z domu", "Remote work"]
@@ -53,6 +55,10 @@ WAF_HTTP_CODES = [202, 405]
 
 
 class UnexpectedMarkupError(Exception):
+    pass
+
+
+class UnexpectedLocationNoteError(UnexpectedMarkupError):
     pass
 
 
@@ -226,15 +232,22 @@ class Spider(BaseSpider):
             self.logger.info(f"Skipping job in language {lang!r}: {response.url}")
             return
 
+        try:
+            locations = parse_locations(card.locations, remote=card.remote)
+        except UnexpectedLocationNoteError as e:
+            # Notes are a handful of phrases in a few languages, and raising
+            # would stop the run on the first unknown one. A logged error fails
+            # the run only at the end, but with all the unknown notes in the log.
+            self.logger.error(f"{e}, skipping {response.url}")
+            return
+
         loader = Loader(item=Job(), response=response)
         loader.add_value("source", self.name)
         loader.add_value("url", response.url)
         loader.add_value("title", card.title)
         loader.add_value("company_name", parse_company_name(card.company_name))
         loader.add_value("company_logo_urls", card.company_logo_urls)
-        loader.add_value(
-            "locations_raw", parse_locations(card.locations, remote=card.remote)
-        )
+        loader.add_value("locations_raw", locations)
         loader.add_value("remote", card.remote)
         loader.add_value("employment_types", sorted(card.employment_types))
         loader.add_value("source_urls", [response.url, *card.listing_urls])
@@ -365,7 +378,7 @@ def parse_location(text: str) -> str:
     text = text.strip()
     if match := LOCATION_NOTE_RE.search(text):
         if match.group("note").strip() not in LOCATION_NOTES:
-            raise UnexpectedMarkupError(f"Unexpected location note: {text!r}")
+            raise UnexpectedLocationNoteError(f"Unexpected location note: {text!r}")
         return text[: match.start()]
     return text
 

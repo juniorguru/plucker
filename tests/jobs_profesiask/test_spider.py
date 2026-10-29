@@ -440,6 +440,14 @@ def test_get_page(url: str, expected: int):
             "Prešovský kraj, Košický kraj (Práca vyžaduje cestovanie)",
             "Prešovský kraj, Košický kraj",
         ),
+        (
+            "Slovak Republic, Hungary, Poland (The job requires travelling)",
+            "Slovak Republic, Hungary, Poland",
+        ),
+        (
+            "Slovenská republika, Česká republika (Práce vyžaduje cestování)",
+            "Slovenská republika, Česká republika",
+        ),
         ("Lenovo (Slovakia), Bratislava", "Lenovo (Slovakia), Bratislava"),
     ],
 )
@@ -576,3 +584,20 @@ def test_spider_start():
 
     assert [request.url for request in requests] == [LISTING_URL]
     assert requests[0].errback is not None
+
+
+def test_spider_parse_job_logs_unknown_location_note(caplog):
+    card = make_card(locations=["Brno, Česko (Práce vyžaduje létání)"])
+    response = job_response("job_custom.html")
+    jobs = list(Spider().parse_job(response, card.to_dict()))
+
+    assert jobs == []
+    assert [(r.levelname, r.message) for r in caplog.records] == [
+        (
+            "ERROR",
+            (
+                "Unexpected location note: 'Brno, Česko (Práce vyžaduje létání)', "
+                f"skipping {response.url}"
+            ),
+        )
+    ]
