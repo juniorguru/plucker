@@ -1,16 +1,22 @@
+import asyncio
+import json
 from datetime import date
 from pathlib import Path
 from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from scrapy import Request
 from scrapy.exceptions import DontCloseSpider
 from scrapy.http.response.html import HtmlResponse
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.jobs_profesiask.spider import (
     LISTING_URL,
     Card,
+    RequestFailedError,
     Spider,
     UnexpectedMarkupError,
     WAFChallengeError,
@@ -184,7 +190,10 @@ def test_spider_parse_job_standard():
     url = "https://www.profesia.sk/praca/needle-recruitment/O5372781"
     card = make_card(url=url, title="Product Owner", company_name="NEEDLE")
     job = cast(
-        Job, next(Spider().parse_job(job_response("job_standard.html", url), card))
+        Job,
+        next(
+            Spider().parse_job(job_response("job_standard.html", url), card.to_dict())
+        ),
     )
 
     assert job == Job(
@@ -210,7 +219,10 @@ def test_spider_parse_job_standard():
 
 
 def test_spider_parse_job_en():
-    job = cast(Job, next(Spider().parse_job(job_response("job_en.html"), make_card())))
+    job = cast(
+        Job,
+        next(Spider().parse_job(job_response("job_en.html"), make_card().to_dict())),
+    )
 
     assert job["description_html"].startswith(
         '<div class="details" itemprop="description">'
@@ -219,7 +231,10 @@ def test_spider_parse_job_en():
 
 def test_spider_parse_job_custom():
     job = cast(
-        Job, next(Spider().parse_job(job_response("job_custom.html"), make_card()))
+        Job,
+        next(
+            Spider().parse_job(job_response("job_custom.html"), make_card().to_dict())
+        ),
     )
 
     assert job["posted_on"] == date(2026, 10, 9)
@@ -248,7 +263,8 @@ def test_spider_parse_job_custom():
 )
 def test_spider_parse_job_custom_logo(fixture_basename: str, expected: str):
     job = cast(
-        Job, next(Spider().parse_job(job_response(fixture_basename), make_card()))
+        Job,
+        next(Spider().parse_job(job_response(fixture_basename), make_card().to_dict())),
     )
 
     assert job["description_html"].startswith('<div class="maintextearea">')
@@ -266,7 +282,9 @@ def test_spider_parse_job_card_data():
         employment_types={"živnosť", "plný úväzok"},
         remote=True,
     )
-    job = cast(Job, next(Spider().parse_job(job_response("job_custom.html"), card)))
+    job = cast(
+        Job, next(Spider().parse_job(job_response("job_custom.html"), card.to_dict()))
+    )
 
     assert job["company_name"] == "CREATIVE sites, s.r.o."
     assert job["company_logo_urls"] == [
@@ -279,7 +297,9 @@ def test_spider_parse_job_card_data():
 
 def test_spider_parse_job_skips_other_languages():
     jobs = list(
-        Spider().parse_job(job_response("job_custom_label_de.html"), make_card())
+        Spider().parse_job(
+            job_response("job_custom_label_de.html"), make_card().to_dict()
+        )
     )
 
     assert jobs == []
@@ -291,7 +311,7 @@ def test_spider_parse_job_no_description():
     response = HtmlResponse("https://www.profesia.sk/praca/softip/O5372508", body=body)
 
     with pytest.raises(UnexpectedMarkupError):
-        list(Spider().parse_job(response, make_card()))
+        list(Spider().parse_job(response, make_card().to_dict()))
 
 
 def test_spider_parse_job_no_date_posted():
@@ -300,7 +320,7 @@ def test_spider_parse_job_no_date_posted():
     response = HtmlResponse("https://www.profesia.sk/praca/softip/O5372508", body=body)
 
     with pytest.raises(UnexpectedMarkupError):
-        list(Spider().parse_job(response, make_card()))
+        list(Spider().parse_job(response, make_card().to_dict()))
 
 
 def test_spider_parse_waf_challenge():
@@ -323,7 +343,7 @@ def test_spider_parse_job_waf_captcha():
     )
 
     with pytest.raises(WAFChallengeError):
-        list(Spider().parse_job(response, make_card()))
+        list(Spider().parse_job(response, make_card().to_dict()))
 
 
 def test_spider_parse_job_waf_challenge():
@@ -335,7 +355,7 @@ def test_spider_parse_job_waf_challenge():
     )
 
     with pytest.raises(WAFChallengeError):
-        list(Spider().parse_job(response, make_card()))
+        list(Spider().parse_job(response, make_card().to_dict()))
 
 
 @pytest.mark.parametrize(
@@ -503,6 +523,52 @@ def test_spider_idle_fetches_jobs_once(caplog):
 
     requests = [call.args[0] for call in spider.crawler.engine.crawl.call_args_list]
     assert [(request.url, request.cb_kwargs) for request in requests] == [
-        (card.url, {"card": card})
+        (card.url, {"card": card.to_dict()})
     ]
+    json.dumps(requests[0].cb_kwargs)  # Apify request queue needs JSON
     assert f"No employment types, skipping {card_without_types.url}" in caplog.text
+
+
+def test_card_to_dict_roundtrip():
+    card = make_card(employment_types={"živnosť", "plný úväzok"}, remote=True)
+    data = card.to_dict()
+
+    assert json.loads(json.dumps(data)) == data
+    assert data["employment_types"] == ["plný úväzok", "živnosť"]
+    assert Card.from_dict(data) == card
+
+
+def test_spider_parse_job_skips_expired():
+    body = (FIXTURES_DIR.parent / "job_checks" / "profesiask_expired.html").read_bytes()
+    response = HtmlResponse(
+        "https://www.profesia.sk/praca/talent-solutions/O4000000", body=body
+    )
+
+    assert list(Spider().parse_job(response, make_card().to_dict())) == []
+
+
+def test_spider_request_failed():
+    response = HtmlResponse(f"{LISTING_URL}zivnost/?page_num=2", status=403)
+    failure = Failure(HttpError(response, "Ignoring non-200 response"))
+    failure.request = Request(f"{LISTING_URL}zivnost/?page_num=2")
+
+    with pytest.raises(RequestFailedError):
+        Spider().request_failed(failure)
+
+
+def test_spider_cache_ignores_retried_codes():
+    settings = Spider.custom_settings
+
+    assert set(settings["RETRY_HTTP_CODES"]) <= set(
+        settings["HTTPCACHE_IGNORE_HTTP_CODES"]
+    )
+
+
+def test_spider_start():
+    async def collect():
+        return [request async for request in Spider().start()]
+
+    requests = asyncio.run(collect())
+
+    assert [request.url for request in requests] == [LISTING_URL]
+    assert requests[0].errback is not None
