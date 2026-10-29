@@ -15,6 +15,7 @@ from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
+from jg.plucker.scrapers import StatsError, evaluate_stats
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
@@ -55,6 +56,12 @@ WAF_HTTP_CODES = [202, 405]
 
 class UnexpectedMarkupError(Exception):
     pass
+
+
+class UnexpectedLocationNoteError(UnexpectedMarkupError):
+    def __init__(self, text: str, note: str):
+        super().__init__(f"Unexpected location note: {text!r}")
+        self.note = note
 
 
 class WAFChallengeError(Exception):
@@ -120,6 +127,22 @@ class Spider(BaseSpider):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._cards: dict[str, Card] = {}
+        self._unknown_location_notes: set[str] = set()
+
+    @classmethod
+    def evaluate_stats(cls, stats: dict[str, Any], min_items: int) -> None:
+        if notes := stats.get("profesiask/unknown_location_notes"):
+            raise StatsError(
+                f"Unknown location notes, add them to LOCATION_NOTES: {notes}"
+            )
+        evaluate_stats(stats, min_items)
+
+    def closed(self, reason: str) -> None:
+        if self._unknown_location_notes:
+            self.crawler.stats.set_value(
+                "profesiask/unknown_location_notes",
+                sorted(self._unknown_location_notes),
+            )
 
     @classmethod
     def from_crawler(cls, crawler: Crawler, *args: Any, **kwargs: Any) -> Spider:
@@ -227,15 +250,23 @@ class Spider(BaseSpider):
             self.logger.info(f"Skipping job in language {lang!r}: {response.url}")
             return
 
+        try:
+            locations = parse_locations(card.locations, remote=card.remote)
+        except UnexpectedLocationNoteError as e:
+            # Notes are a handful of phrases in a few languages, and every run
+            # would fail on the first unknown one. Collecting all of them fails
+            # the run only at the end, but with the complete list to add.
+            self.logger.warning(f"{e}, skipping {response.url}")
+            self._unknown_location_notes.add(e.note)
+            return
+
         loader = Loader(item=Job(), response=response)
         loader.add_value("source", self.name)
         loader.add_value("url", response.url)
         loader.add_value("title", card.title)
         loader.add_value("company_name", parse_company_name(card.company_name))
         loader.add_value("company_logo_urls", card.company_logo_urls)
-        loader.add_value(
-            "locations_raw", parse_locations(card.locations, remote=card.remote)
-        )
+        loader.add_value("locations_raw", locations)
         loader.add_value("remote", card.remote)
         loader.add_value("employment_types", sorted(card.employment_types))
         loader.add_value("source_urls", [response.url, *card.listing_urls])
@@ -365,8 +396,8 @@ def parse_location(text: str) -> str:
     """
     text = text.strip()
     if match := LOCATION_NOTE_RE.search(text):
-        if match.group("note").strip() not in LOCATION_NOTES:
-            raise UnexpectedMarkupError(f"Unexpected location note: {text!r}")
+        if (note := match.group("note").strip()) not in LOCATION_NOTES:
+            raise UnexpectedLocationNoteError(text, note)
         return text[: match.start()]
     return text
 

@@ -9,6 +9,7 @@ Scrapers must never guess. Parse what you have seen and verified on real pages. 
 - If a site has the data in structured form, prefer it over parsing free text. Examples: microdata, `<meta>` tags, or results of the site's own search filters.
 - Skipping something on purpose is fine, for example ads in irrelevant languages. Make it an explicit, logged decision based on a reliable signal.
 - Only support the languages junior.guru cares about: Czech, Slovak and English. Don't add parsing for other languages; skip such content instead.
+- When unknown values are expected to come in several variants, such as the same note in three languages, the scraper may collect them during the run instead of raising on the first one. It must skip the affected items, and the run must still fail at the end with the complete list, so that all variants can be added in one go. See the location notes in `jobs_profesiask`.
 
 ## Requests must survive the Apify request queue
 
