@@ -18,6 +18,7 @@ from jg.plucker.job_checks.spider import (
     is_jobscz_url,
     is_profesiask_url,
 )
+from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
 from jg.plucker.scrapers import StatsError
 
 
@@ -420,6 +421,28 @@ def test_spider_start_expects_links_to_be_assessed():
     assert profesiask_request.method == "GET"
     assert profesiask_request.callback == spider.check_profesiask
     assert profesiask_request.cb_kwargs == {"urls": [urls[3]]}
+
+
+def test_spider_start_schedules_profesiask_last():
+    urls = [
+        "https://www.profesia.sk/praca/softip/O5372508",
+        "https://www.jobs.cz/rpd/2001440830/",
+        "https://www.startupjobs.cz/nabidka/81775/junior-software-administrator",
+        "https://example.com/job/",
+    ]
+    spider = Spider(links=[{"url": url} for url in urls])
+
+    async def collect():
+        return [request async for request in spider.start()]
+
+    requests = asyncio.run(collect())
+
+    assert [request.url for request in requests] == [
+        "https://example.com/job/",
+        STARTUPJOBS_EXPORT_URL,
+        "https://www.jobs.cz/",
+        "https://www.profesia.sk/praca/softip/O5372508",
+    ]
 
 
 def test_spider_start_probes_jobscz_beta_bucket():
