@@ -871,11 +871,12 @@ def test_spider_parse_job_redirect_to_career_site_redirecting_unexpectedly():
     assert request.url == location
 
 
-def create_spider_with_career_site_slot(delay: float) -> Spider:
+def create_spider_with_engine(paused: bool = False) -> Spider:
     spider = Spider()
-    slot = SimpleNamespace(delay=delay)
-    downloader = SimpleNamespace(slots={JOBS_CZ_SLOT: slot})
-    spider.crawler = SimpleNamespace(engine=SimpleNamespace(downloader=downloader))  # type: ignore
+    engine = SimpleNamespace(paused=paused)
+    engine.pause = lambda: setattr(engine, "paused", True)
+    engine.unpause = lambda: setattr(engine, "paused", False)
+    spider.crawler = SimpleNamespace(engine=engine)  # type: ignore
     return spider
 
 
@@ -888,8 +889,13 @@ def create_forbidden_failure(meta: dict) -> Failure:
     return failure
 
 
-def test_spider_errback_career_site_forbidden_pauses_and_retries(caplog):
-    spider = create_spider_with_career_site_slot(1.0)
+def test_spider_errback_career_site_forbidden_pauses_and_retries(caplog, monkeypatch):
+    calls_later = []
+    monkeypatch.setattr(
+        "jg.plucker.jobs_jobscz.spider.call_later",
+        lambda delay, func: calls_later.append((delay, func)),
+    )
+    spider = create_spider_with_engine()
     failure = create_forbidden_failure({})
 
     with caplog.at_level("WARNING"):
@@ -901,15 +907,13 @@ def test_spider_errback_career_site_forbidden_pauses_and_retries(caplog):
     assert requests[0].meta["career_site_attempt"] == 2
     assert requests[0].meta["download_slot"] == JOBS_CZ_SLOT
     assert is_storable_on_apify(requests[0], spider) is True
-    assert (
-        spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay
-        == CAREER_SITE_PAUSE_SECS
-    )
+    assert spider.crawler.engine.paused is True
+    assert calls_later == [(CAREER_SITE_PAUSE_SECS, spider.resume_career_sites)]
     assert "ERROR" not in [record.levelname for record in caplog.records]
 
 
 def test_spider_errback_career_site_gives_up(caplog):
-    spider = create_spider_with_career_site_slot(1.0)
+    spider = create_spider_with_engine()
     failure = create_forbidden_failure({"career_site_attempt": CAREER_SITE_ATTEMPTS})
 
     with caplog.at_level("ERROR"):
@@ -920,7 +924,7 @@ def test_spider_errback_career_site_gives_up(caplog):
 
 
 def test_spider_errback_career_site_forbidden_when_already_paused():
-    spider = create_spider_with_career_site_slot(CAREER_SITE_PAUSE_SECS)
+    spider = create_spider_with_engine(paused=True)
     spider._career_site_pauses = CAREER_SITE_PAUSES
 
     requests = list(spider.errback(create_forbidden_failure({})))
@@ -929,7 +933,7 @@ def test_spider_errback_career_site_forbidden_when_already_paused():
 
 
 def test_spider_errback_career_site_forbidden_after_all_pauses(caplog):
-    spider = create_spider_with_career_site_slot(1.0)
+    spider = create_spider_with_engine()
     spider._career_site_pauses = CAREER_SITE_PAUSES
 
     with caplog.at_level("ERROR"):
@@ -937,11 +941,11 @@ def test_spider_errback_career_site_forbidden_after_all_pauses(caplog):
 
     assert requests == []
     assert [record.name for record in caplog.records] == ["jobs-jobscz"]
-    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
+    assert spider.crawler.engine.paused is False
 
 
 def test_spider_errback_career_site_other_failure_retries_without_pause():
-    spider = create_spider_with_career_site_slot(1.0)
+    spider = create_spider_with_engine()
     url = "https://moneta.jobs.cz/pd/2001408649/?rps=233&searchId=cb63"
     failure = Failure(ConnectionError("Could not open CONNECT tunnel"))
     failure.request = Request(url)
@@ -950,11 +954,11 @@ def test_spider_errback_career_site_other_failure_retries_without_pause():
 
     assert len(requests) == 1
     assert requests[0].meta["career_site_attempt"] == 2
-    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
+    assert spider.crawler.engine.paused is False
 
 
 def test_spider_errback_www_forbidden_logs_error_without_pause(caplog):
-    spider = create_spider_with_career_site_slot(1.0)
+    spider = create_spider_with_engine()
     url = "https://www.jobs.cz/rpd/2001408649/?rps=233"
     request = Request(url, meta={"download_slot": JOBS_CZ_SLOT})
     response = HtmlResponse(url, status=403, request=request)
@@ -966,7 +970,7 @@ def test_spider_errback_www_forbidden_logs_error_without_pause(caplog):
 
     assert requests == []
     assert [record.name for record in caplog.records] == ["jobs-jobscz"]
-    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
+    assert spider.crawler.engine.paused is False
 
 
 def create_career_site_redirect(job_id: str, meta: dict | None = None) -> HtmlResponse:
@@ -1023,3 +1027,10 @@ def test_spider_parse_job_redirect_doesnt_defer_unexpected_career_site():
     )
 
     assert request.url == "https://notino.jobs.cz/pd/2/?rps=233&searchId=cb63"
+
+
+def test_spider_resume_career_sites():
+    spider = create_spider_with_engine(paused=True)
+    spider.resume_career_sites()
+
+    assert spider.crawler.engine.paused is False

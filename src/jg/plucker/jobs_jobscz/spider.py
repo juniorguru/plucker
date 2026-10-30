@@ -17,6 +17,7 @@ from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 from scrapy.loader import ItemLoader
 from scrapy.spidermiddlewares.httperror import HttpError
+from scrapy.utils.asyncio import call_later
 from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
@@ -202,17 +203,16 @@ class Spider(BaseSpider):
         self.logger.error(f"Request failed: {request.url} ({failure.value!r})")
 
     def pause_career_sites(self) -> bool:
-        """Pauses all of jobs.cz, returns False if pausing doesn't help anymore
+        """Pauses the crawl, returns False if pausing doesn't help anymore
 
-        The slot sends one request per delay, so this pauses all of jobs.cz.
+        Requests already in the downloader go out, but nothing else does.
         Persistent connections close after 240s of inactivity, which makes
-        the next request open a new one through a different proxy IP.
-        AutoThrottle then shortens the delay as responses succeed again.
+        the requests after the pause open new ones through other proxy IPs.
         """
-        assert self.crawler.engine, "Engine not running"
-        slot = self.crawler.engine.downloader.slots[JOBS_CZ_SLOT]
-        if slot.delay >= CAREER_SITE_PAUSE_SECS:
-            return True  # already paused
+        engine = self.crawler.engine
+        assert engine, "Engine not running"
+        if engine.paused:
+            return True
         if self._career_site_pauses >= CAREER_SITE_PAUSES:
             return False
         self._career_site_pauses += 1
@@ -220,8 +220,14 @@ class Spider(BaseSpider):
             f"Career sites forbid access, pausing for {CAREER_SITE_PAUSE_SECS}s "
             f"({self._career_site_pauses}/{CAREER_SITE_PAUSES})"
         )
-        slot.delay = CAREER_SITE_PAUSE_SECS
+        engine.pause()
+        call_later(CAREER_SITE_PAUSE_SECS, self.resume_career_sites)
         return True
+
+    def resume_career_sites(self) -> None:
+        assert self.crawler.engine, "Engine not running"
+        self.logger.info("Resuming after career sites forbade access")
+        self.crawler.engine.unpause()
 
     async def start(self) -> AsyncGenerator[Request]:
         yield Request(
