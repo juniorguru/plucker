@@ -16,6 +16,8 @@ from scrapy.http.response import Response
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
 from scrapy.loader import ItemLoader
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.processors import first, split
@@ -108,6 +110,19 @@ class JobDraft(TypedDict, total=False):
 # and then it ignores cookies with the old version and assigns a new bucket.
 BETA_BUCKET_PROBE_URL = "https://www.jobs.cz/"
 
+# Jobs posted by companies with their own career site on a jobs.cz subdomain
+# redirect there. The career sites block an IP for a while after a few hundred
+# requests, so they share a download slot, which can be paused as a whole.
+CAREER_SITE_SLOT = "career-sites.jobs.cz"
+
+CAREER_SITE_PAUSE_SECS = 300
+
+CAREER_SITE_PAUSES = 3
+
+CAREER_SITE_ATTEMPTS = 4
+
+CAREER_SITE_PD_PATH_RE = re.compile(r"^/pd/(?P<id>\d+)/?$")
+
 
 class Spider(BaseSpider):
     name = "jobs-jobscz"
@@ -152,14 +167,60 @@ class Spider(BaseSpider):
             today = date.fromisoformat(today)
         self.today = today or date.today()
         self._job_ids: set[str] = set()
+        self._career_site_paths: dict[str, str] = {}
+        self._career_site_widgets: dict[str, dict[str, str]] = {}
+        self._career_site_pauses = 0
 
     def logger_trk(self, trk: str) -> Logger:
         return self.logger.logger.getChild(trk)
+
+    def errback(self, failure: Failure) -> Generator[Request]:
+        request = cast(Request, failure.request)
+        if request.meta.get("download_slot") == CAREER_SITE_SLOT:
+            attempt = request.meta.get("career_site_attempt", 1)
+            if attempt < CAREER_SITE_ATTEMPTS and (
+                not is_forbidden(failure) or self.pause_career_sites()
+            ):
+                self.logger.warning(
+                    f"Retrying career site request later (attempt {attempt}): "
+                    f"{request.url} ({failure.value!r})"
+                )
+                yield request.replace(
+                    dont_filter=True,
+                    meta={**request.meta, "career_site_attempt": attempt + 1},
+                )
+                return
+        # Scrapy logs giving up on a request on its own logger, but on Apify
+        # only errors on the spider's logger fail the run
+        self.logger.error(f"Request failed: {request.url} ({failure.value!r})")
+
+    def pause_career_sites(self) -> bool:
+        """Pauses all career sites, returns False if pausing doesn't help anymore
+
+        The slot sends one request per delay, so this pauses all career sites.
+        Persistent connections close after 240s of inactivity, which makes
+        the next request open a new one through a different proxy IP.
+        AutoThrottle then shortens the delay as responses succeed again.
+        """
+        assert self.crawler.engine, "Engine not running"
+        slot = self.crawler.engine.downloader.slots[CAREER_SITE_SLOT]
+        if slot.delay >= CAREER_SITE_PAUSE_SECS:
+            return True  # already paused
+        if self._career_site_pauses >= CAREER_SITE_PAUSES:
+            return False
+        self._career_site_pauses += 1
+        self.logger.warning(
+            f"Career sites forbid access, pausing for {CAREER_SITE_PAUSE_SECS}s "
+            f"({self._career_site_pauses}/{CAREER_SITE_PAUSES})"
+        )
+        slot.delay = CAREER_SITE_PAUSE_SECS
+        return True
 
     async def start(self) -> AsyncGenerator[Request]:
         yield Request(
             BETA_BUCKET_PROBE_URL,
             callback=self.parse_beta_bucket,
+            errback=self.errback,
             dont_filter=True,
             meta={
                 "dont_redirect": True,
@@ -173,7 +234,7 @@ class Spider(BaseSpider):
         cookie = get_classic_site_cookie(response.headers.getlist("Set-Cookie"))
         self.logger.debug(f"Using classic site cookie: {cookie['value']}")
         for url in self.start_urls:
-            yield Request(url, cookies=[cookie])
+            yield Request(url, cookies=[cookie], errback=self.errback)
 
     def parse(self, response: Response) -> Generator[Request]:
         response = cast(HtmlResponse, response)
@@ -218,17 +279,52 @@ class Spider(BaseSpider):
             self.logger_trk(trk).debug(f"Parsing card for {url}")
             yield response.follow(
                 url,
-                callback=self.parse_job,
+                callback=self.parse_job_redirect,
+                errback=self.errback,
                 cb_kwargs={"item": to_draft(item), "trk": trk},
                 cookies=cookies,
+                meta={"dont_redirect": True, "handle_httpstatus_list": [301, 302]},
             )
         self.logger.debug(f"Found {len(cards)} job cards on {response.url}")
 
         next_page_css = f'.Pagination__link[href*="page={page + 1}"]::attr(href)'
         if next_page_link := response.css(next_page_css).get():
-            yield response.follow(next_page_link, callback=self.parse, cookies=cookies)
+            yield response.follow(
+                next_page_link,
+                callback=self.parse,
+                errback=self.errback,
+                cookies=cookies,
+            )
         else:
             self.logger.debug(f"No next page found for {response.url}")
+
+    def parse_job_redirect(
+        self, response: Response, item: JobDraft, trk: str
+    ) -> Generator[Job | Request]:
+        if response.status not in (301, 302):
+            yield from self.parse_job(response, item, trk)
+            return
+
+        url = response.urljoin(response.headers["Location"].decode())
+        host = get_widget_host(url)
+        if (path := self._career_site_paths.get(host)) and (
+            widget := self._career_site_widgets.get(host)
+        ):
+            if job_url := get_career_site_job_url(url, path):
+                self.logger_trk(trk).debug(f"Skipping known career site at {job_url}")
+                yield from self.parse_job_widget(job_url, item, **widget, trk=trk)
+                return
+            self.logger_trk(trk).debug(f"Unknown career site redirect {url}")
+
+        cookies = response.request.cookies if response.request else []
+        yield response.follow(
+            url,
+            callback=self.parse_job,
+            errback=self.errback,
+            cb_kwargs={"item": item, "trk": trk},
+            cookies=cookies,
+            meta=get_request_meta(url),
+        )
 
     def parse_job(
         self, response: Response, item: JobDraft, trk: str
@@ -244,6 +340,7 @@ class Spider(BaseSpider):
         loader.add_value("source_urls", response.url)
 
         if "www.jobs.cz" not in response.url:
+            self.remember_career_site_path(response, trk)
             yield from self.parse_job_widget_data(response, item, trk)
         else:
             self.logger_trk(trk).debug("Parsing as standard job page")
@@ -271,6 +368,24 @@ class Spider(BaseSpider):
 
             yield loader.load_item()
 
+    def remember_career_site_path(self, response: Response, trk: str) -> None:
+        host = get_widget_host(response.url)
+        if host in self._career_site_paths:
+            return
+        meta = response.request.meta if response.request else {}
+        if not (redirect_urls := meta.get("redirect_urls")):
+            self.logger_trk(trk).debug(f"Career site reached without redirect: {host}")
+            return
+        redirect_url = redirect_urls[-1]
+        path = urlparse(response.url).path
+        if get_career_site_job_url(redirect_url, path) == response.url:
+            self.logger_trk(trk).debug(f"Remembering career site path: {host}{path}")
+            self._career_site_paths[host] = path
+        else:
+            self.logger_trk(trk).debug(
+                f"Career site redirects unexpectedly: {redirect_url} → {response.url}"
+            )
+
     def parse_job_widget_data(
         self, response: HtmlResponse, item: JobDraft, trk: str
     ) -> Generator[Request]:
@@ -289,15 +404,18 @@ class Spider(BaseSpider):
                 key=get_script_relevance,
             )
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
+            script_url = script_urls.pop(0)
             yield response.follow(
-                script_urls.pop(0),
+                script_url,
                 callback=self.parse_job_widget_script,
+                errback=self.errback,
                 cb_kwargs={
                     "item": item,
                     "url": response.url,
                     "script_urls": script_urls,
                     "trk": trk,
                 },
+                meta=get_request_meta(script_url),
             )
         else:
             yield from self.parse_job_widget(
@@ -341,30 +459,37 @@ class Spider(BaseSpider):
             )
         elif chunk_names := parse_react_chunk_names(script_response.text):
             chunk_urls = [
-                url.replace("react.min.js", chunk_name) for chunk_name in chunk_names
+                script_response.url.replace("react.min.js", chunk_name)
+                for chunk_name in chunk_names
             ]
             self.logger_trk(trk).debug(f"Chunk URLs: {chunk_urls!r}")
+            chunk_url = chunk_urls.pop(0)
             yield Request(
-                chunk_urls.pop(0),
+                chunk_url,
                 callback=self.parse_job_widget_script,
+                errback=self.errback,
                 cb_kwargs={
                     "item": item,
                     "url": url,
                     "script_urls": chunk_urls,
                     "trk": trk,
                 },
+                meta=get_request_meta(chunk_url),
             )
         elif script_urls:
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
+            script_url = script_urls.pop(0)
             yield Request(
-                script_urls.pop(0),
+                script_url,
                 callback=self.parse_job_widget_script,
+                errback=self.errback,
                 cb_kwargs={
                     "item": item,
                     "url": url,
                     "script_urls": script_urls,
                     "trk": trk,
                 },
+                meta=get_request_meta(script_url),
             )
         else:
             raise NotImplementedError("Widget data not found")
@@ -378,6 +503,15 @@ class Spider(BaseSpider):
         widget_id: str,
         trk: str,
     ) -> Generator[Request]:
+        self._career_site_widgets.setdefault(
+            get_widget_host(url),
+            {
+                "widget_host": widget_host,
+                "widget_api_key": widget_api_key,
+                "widget_id": widget_id,
+            },
+        )
+
         loader = Loader(item=from_draft(item))
         loader.add_value("url", url)
         loader.add_value("company_url", f"https://{widget_host}")
@@ -415,6 +549,7 @@ class Spider(BaseSpider):
                 }
             ),
             callback=self.parse_job_widget_api,
+            errback=self.errback,
             cb_kwargs={"item": to_draft(loader.load_item()), "trk": trk},
         )
 
@@ -478,6 +613,44 @@ def get_classic_site_cookie(set_cookie_headers: list[bytes]) -> dict[str, str]:
 
 def is_beta_site(url: str) -> bool:
     return urlparse(url).hostname == "beta.jobs.cz"
+
+
+def is_forbidden(failure: Failure) -> bool:
+    return isinstance(failure.value, HttpError) and failure.value.response.status == 403
+
+
+def is_career_site(url: str) -> bool:
+    hostname = urlparse(url).hostname or ""
+    return hostname.endswith(".jobs.cz") and hostname not in (
+        "www.jobs.cz",
+        "beta.jobs.cz",
+    )
+
+
+def get_request_meta(url: str) -> dict[str, Any]:
+    if is_career_site(url):
+        # Retrying right away is futile, as the request would reuse
+        # the connection through the same, blocked IP. See Spider.errback()
+        return {"download_slot": CAREER_SITE_SLOT, "dont_retry": True}
+    return {}
+
+
+def get_career_site_job_url(redirect_url: str, path: str) -> str | None:
+    """Returns where a career site redirects from its /pd/ URL
+
+    The career sites redirect the /pd/ URL to a job page with the same ID,
+    with the search ID as an impression ID. Only the path differs per site.
+    """
+    parsed = urlparse(redirect_url)
+    if not (match := CAREER_SITE_PD_PATH_RE.match(parsed.path)):
+        return None
+    params = get_params(redirect_url)
+    if set(params) != {"rps", "searchId"}:
+        return None
+    return (
+        f"https://{parsed.hostname}{path}?r=detail&id={match.group('id')}"
+        f"&rps={params['rps']}&impressionId={params['searchId']}"
+    )
 
 
 def to_draft(item: Job) -> JobDraft:
