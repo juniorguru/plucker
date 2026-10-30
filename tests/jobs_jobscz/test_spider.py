@@ -19,6 +19,7 @@ from jg.plucker import settings
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
     CAREER_SITE_ATTEMPTS,
+    CAREER_SITE_DEFERRALS,
     CAREER_SITE_PAUSE_SECS,
     CAREER_SITE_PAUSES,
     JOBS_CZ_SLOT,
@@ -966,3 +967,57 @@ def test_spider_errback_www_forbidden_logs_error_without_pause(caplog):
     assert requests == []
     assert [record.name for record in caplog.records] == ["jobs-jobscz"]
     assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
+
+
+def create_career_site_redirect(job_id: str, meta: dict | None = None) -> HtmlResponse:
+    url = f"https://www.jobs.cz/rpd/{job_id}/?searchId=cb63&rps=233"
+    location = f"https://notino.jobs.cz/pd/{job_id}/?rps=233&searchId=cb63"
+    request = Request(
+        url,
+        meta={
+            "dont_redirect": True,
+            "handle_httpstatus_list": [301, 302],
+            **(meta or {}),
+        },
+    )
+    return HtmlResponse(
+        url, status=302, headers={"Location": location}, request=request
+    )
+
+
+def test_spider_parse_job_redirect_defers_jobs_at_pending_career_site():
+    spider = Spider()
+    first = next(
+        spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1")
+    )
+    response = create_career_site_redirect("2")
+    second = next(spider.parse_job_redirect(response, JobDraft(), "2"))
+
+    assert first.url == "https://notino.jobs.cz/pd/1/?rps=233&searchId=cb63"
+    assert second.url == response.url
+    assert second.dont_filter is True
+    assert second.meta["career_site_deferrals"] == 1
+    assert second.meta["dont_redirect"] is True
+    assert is_storable_on_apify(second, spider) is True
+
+
+def test_spider_parse_job_redirect_stops_deferring():
+    spider = Spider()
+    next(spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1"))
+    response = create_career_site_redirect(
+        "2", {"career_site_deferrals": CAREER_SITE_DEFERRALS}
+    )
+    request = next(spider.parse_job_redirect(response, JobDraft(), "2"))
+
+    assert request.url == "https://notino.jobs.cz/pd/2/?rps=233&searchId=cb63"
+
+
+def test_spider_parse_job_redirect_doesnt_defer_unexpected_career_site():
+    spider = Spider()
+    next(spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1"))
+    spider._career_sites_unexpected.add("notino.jobs.cz")
+    request = next(
+        spider.parse_job_redirect(create_career_site_redirect("2"), JobDraft(), "2")
+    )
+
+    assert request.url == "https://notino.jobs.cz/pd/2/?rps=233&searchId=cb63"

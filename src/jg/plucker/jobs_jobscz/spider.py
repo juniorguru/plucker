@@ -124,6 +124,8 @@ CAREER_SITE_PAUSES = 3
 
 CAREER_SITE_ATTEMPTS = 4
 
+CAREER_SITE_DEFERRALS = 3
+
 CAREER_SITE_PD_PATH_RE = re.compile(r"^/pd/(?P<id>\d+)/?$")
 
 
@@ -172,6 +174,8 @@ class Spider(BaseSpider):
         self._job_ids: set[str] = set()
         self._career_site_paths: dict[str, str] = {}
         self._career_site_widgets: dict[str, dict[str, str]] = {}
+        self._career_sites_pending: set[str] = set()
+        self._career_sites_unexpected: set[str] = set()
         self._career_site_pauses = 0
 
     def logger_trk(self, trk: str) -> Logger:
@@ -309,15 +313,35 @@ class Spider(BaseSpider):
             return
 
         url = response.urljoin(response.headers["Location"].decode())
-        host = get_widget_host(url)
-        if (path := self._career_site_paths.get(host)) and (
-            widget := self._career_site_widgets.get(host)
-        ):
-            if job_url := get_career_site_job_url(url, path):
-                self.logger_trk(trk).debug(f"Skipping known career site at {job_url}")
-                yield from self.parse_job_widget(job_url, item, **widget, trk=trk)
-                return
-            self.logger_trk(trk).debug(f"Unknown career site redirect {url}")
+        if is_career_site(url):
+            host = get_widget_host(url)
+            if (path := self._career_site_paths.get(host)) and (
+                widget := self._career_site_widgets.get(host)
+            ):
+                if job_url := get_career_site_job_url(url, path):
+                    self.logger_trk(trk).debug(
+                        f"Skipping known career site at {job_url}"
+                    )
+                    yield from self.parse_job_widget(job_url, item, **widget, trk=trk)
+                    return
+                self.logger_trk(trk).debug(f"Unknown career site redirect {url}")
+            elif host in self._career_sites_pending:
+                # Another job is already on its way to the same career site.
+                # Requeuing this one makes it come back after that one, when
+                # the site is likely known. The redirect response is cached.
+                request = cast(Request, response.request)
+                deferrals = request.meta.get("career_site_deferrals", 0)
+                if (
+                    deferrals < CAREER_SITE_DEFERRALS
+                    and host not in self._career_sites_unexpected
+                ):
+                    self.logger_trk(trk).debug(f"Deferring job at career site {host}")
+                    yield request.replace(
+                        dont_filter=True,
+                        meta={**request.meta, "career_site_deferrals": deferrals + 1},
+                    )
+                    return
+            self._career_sites_pending.add(host)
 
         cookies = response.request.cookies if response.request else []
         yield response.follow(
@@ -388,6 +412,7 @@ class Spider(BaseSpider):
             self.logger_trk(trk).debug(
                 f"Career site redirects unexpectedly: {redirect_url} → {response.url}"
             )
+            self._career_sites_unexpected.add(host)
 
     def parse_job_widget_data(
         self, response: HtmlResponse, item: JobDraft, trk: str
