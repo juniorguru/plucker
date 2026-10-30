@@ -3,6 +3,7 @@ import itertools
 import json
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -10,20 +11,29 @@ from scrapy import Request
 from scrapy.downloadermiddlewares.redirect import RedirectMiddleware
 from scrapy.http.response.html import HtmlResponse
 from scrapy.http.response.text import TextResponse
-from scrapy.spidermiddlewares.httperror import HttpErrorMiddleware
+from scrapy.spidermiddlewares.httperror import HttpError, HttpErrorMiddleware
 from scrapy.utils.test import get_crawler
+from twisted.python.failure import Failure
 
 from jg.plucker import settings
 from jg.plucker.items import Job
 from jg.plucker.jobs_jobscz.spider import (
+    CAREER_SITE_ATTEMPTS,
+    CAREER_SITE_DEFERRALS,
+    CAREER_SITE_PAUSE_SECS,
+    CAREER_SITE_PAUSES,
+    JOBS_CZ_SLOT,
     JobDraft,
     Spider,
     from_draft,
+    get_career_site_job_url,
     get_classic_site_cookie,
     get_job_id,
     get_param,
     get_params,
+    get_request_meta,
     is_beta_site,
+    is_career_site,
     select_widget,
     to_draft,
 )
@@ -492,7 +502,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
     request = next(
         Spider().parse_job_widget_script(
             response,
-            "https://czechoslovakgroup.jobs.cz/assets/js/react.min.js?av=666e27a672636e0c",
+            "https://czechoslovakgroup.jobs.cz/detail-pozice?r=detail&id=2001488312&rps=233",
             JobDraft(),
             [
                 "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
@@ -688,3 +698,339 @@ def test_get_params():
         "rps": "228",
         "impressionId": "a653a2a6-05c9-49fb-b391-96b185355f2d",
     }
+
+
+def test_spider_errback_logs_error_on_spider_logger(caplog):
+    url = "https://www.jobs.cz/prace/programator/"
+    response = HtmlResponse(url, status=403, request=Request(url))
+    failure = Failure(HttpError(response, "Ignoring non-200 response"))
+    failure.request = response.request
+
+    with caplog.at_level("ERROR"):
+        requests = list(Spider().errback(failure))
+
+    assert requests == []
+
+    assert [record.name for record in caplog.records] == ["jobs-jobscz"]
+    assert caplog.messages[0].startswith(f"Request failed: {url}")
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://moneta.jobs.cz/pd/2001408649/?rps=233", True),
+        ("https://www.jobs.cz/rpd/2001408649/?rps=233", False),
+        ("https://beta.jobs.cz/nabidka/2001408649/", False),
+        ("https://api.capybara.lmc.cz/api/graphql/widget", False),
+    ],
+)
+def test_is_career_site(url: str, expected: bool):
+    assert is_career_site(url) is expected
+
+
+@pytest.mark.parametrize(
+    "redirect_url, path, expected",
+    [
+        (
+            "https://notino.jobs.cz/pd/2001504995/?rps=233&searchId=cb63f717-1e3a-42b7-96e3-2d05cef2a474",
+            "/detail-pozice",
+            "https://notino.jobs.cz/detail-pozice?r=detail&id=2001504995&rps=233&impressionId=cb63f717-1e3a-42b7-96e3-2d05cef2a474",
+        ),
+        (
+            "https://eon.jobs.cz/pd/2001504850/?rps=233&searchId=cb63f717-1e3a-42b7-96e3-2d05cef2a474",
+            "/",
+            "https://eon.jobs.cz/?r=detail&id=2001504850&rps=233&impressionId=cb63f717-1e3a-42b7-96e3-2d05cef2a474",
+        ),
+        (
+            "https://notino.jobs.cz/pd/2001504995/?rps=233",
+            "/detail-pozice",
+            None,
+        ),
+        (
+            "https://notino.jobs.cz/pd/2001504995/?rps=233&searchId=cb63&foo=bar",
+            "/detail-pozice",
+            None,
+        ),
+        (
+            "https://notino.jobs.cz/kariera/2001504995/?rps=233&searchId=cb63",
+            "/detail-pozice",
+            None,
+        ),
+    ],
+)
+def test_get_career_site_job_url(redirect_url: str, path: str, expected: str | None):
+    assert get_career_site_job_url(redirect_url, path) == expected
+
+
+def test_spider_parse_job_redirect_not_redirected():
+    url = "https://www.jobs.cz/rpd/2000130345/?searchId=ac8f8a52-704e-4c4f-a3c2-a1d1c7a3e6e2&rps=228"
+    response = HtmlResponse(
+        url, body=Path(FIXTURES_DIR / "job_standard.html").read_bytes()
+    )
+    job = next(Spider().parse_job_redirect(response, JobDraft(), "123"))
+
+    assert isinstance(job, Job)
+    assert job["url"] == url
+
+
+def test_spider_parse_job_redirect_to_www():
+    url = "https://www.jobs.cz/rpd/2001427052/?searchId=cb63&rps=233"
+    location = "https://www.jobs.cz/fp/hitachi-energy-czech-republic-s-r-o-1703023432/2001427052/?searchId=cb63&rps=233"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    request = next(Spider().parse_job_redirect(response, JobDraft(), "123"))
+
+    assert is_storable_on_apify(request, Spider()) is True
+    assert request.url == location
+    assert request.callback.__name__ == "parse_job"
+    assert "download_slot" not in request.meta
+
+
+def test_spider_parse_job_redirect_to_unknown_career_site():
+    url = "https://www.jobs.cz/rpd/2001504995/?searchId=cb63&rps=233"
+    location = "https://notino.jobs.cz/pd/2001504995/?rps=233&searchId=cb63"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    request = next(Spider().parse_job_redirect(response, JobDraft(), "123"))
+
+    assert is_storable_on_apify(request, Spider()) is True
+    assert request.url == location
+    assert request.callback.__name__ == "parse_job"
+    assert request.meta["download_slot"] == JOBS_CZ_SLOT
+    assert request.meta["dont_retry"] is True
+
+
+def test_spider_parse_job_redirect_to_known_career_site():
+    spider = Spider()
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
+    response = HtmlResponse(
+        url,
+        body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
+        request=Request(
+            url,
+            meta={
+                "redirect_urls": [
+                    "https://www.jobs.cz/rpd/2000142365/?searchId=2c2d92cc-aebc-4949-9758-81b1b299224d&rps=228",
+                    "https://4value-group.jobs.cz/pd/2000142365/?rps=228&searchId=2c2d92cc-aebc-4949-9758-81b1b299224d",
+                ]
+            },
+        ),
+    )
+    list(spider.parse_job(response, JobDraft(), "123"))
+
+    url = "https://www.jobs.cz/rpd/2000999999/?searchId=1b95&rps=233"
+    location = "https://4value-group.jobs.cz/pd/2000999999/?rps=233&searchId=1b95"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    request = next(spider.parse_job_redirect(response, JobDraft(), "456"))
+    body = json.loads(request.body)
+
+    assert is_storable_on_apify(request, spider) is True
+    assert request.url == "https://api.capybara.lmc.cz/api/graphql/widget"
+    assert (
+        request.headers["X-Api-Key"]
+        == b"77dd9cff31711f94a97698fda3ecec7d9a561a15db53cfec868bafd31c9befbb"
+    )
+    assert (
+        request.cb_kwargs["item"]["url"]
+        == "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000999999&rps=233&impressionId=1b95"
+    )
+    assert body["variables"]["jobAdId"] == "2000999999"
+    assert body["variables"]["impressionId"] == "1b95"
+    assert body["variables"]["widgetId"] == "e4a614ae-b321-47bb-8a7a-9d771a086880"
+    assert body["variables"]["host"] == "4value-group.jobs.cz"
+
+
+def test_spider_parse_job_redirect_to_career_site_redirecting_unexpectedly():
+    spider = Spider()
+    url = "https://www.jobs.cz/rpd/2000142365/?searchId=2c2d92cc&rps=228"
+    location = "https://4value-group.jobs.cz/pd/2000142365/?rps=228&searchId=2c2d92cc"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    next(spider.parse_job_redirect(response, JobDraft(), "123"))
+
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=something-else"
+    response = HtmlResponse(
+        url,
+        body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
+        request=Request(url, meta={"redirect_urls": [location]}),
+    )
+    list(spider.parse_job(response, JobDraft(), "123"))
+
+    url = "https://www.jobs.cz/rpd/2000999999/?searchId=1b95&rps=233"
+    location = "https://4value-group.jobs.cz/pd/2000999999/?rps=233&searchId=1b95"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    request = next(spider.parse_job_redirect(response, JobDraft(), "456"))
+
+    assert request.url == location  # followed right away, not deferred
+
+
+def create_spider_with_engine(paused: bool = False) -> Spider:
+    spider = Spider()
+    engine = SimpleNamespace(paused=paused)
+    engine.pause = lambda: setattr(engine, "paused", True)
+    engine.unpause = lambda: setattr(engine, "paused", False)
+    spider.crawler = SimpleNamespace(engine=engine)  # type: ignore
+    return spider
+
+
+def create_forbidden_failure(meta: dict) -> Failure:
+    url = "https://moneta.jobs.cz/detail-pozice?r=detail&id=2001408649&rps=233"
+    request = Request(url, meta={**get_request_meta(url), **meta})
+    response = HtmlResponse(url, status=403, request=request)
+    failure = Failure(HttpError(response, "Ignoring non-200 response"))
+    failure.request = request
+    return failure
+
+
+def test_spider_errback_career_site_forbidden_pauses_and_retries(caplog, monkeypatch):
+    calls_later = []
+    monkeypatch.setattr(
+        "jg.plucker.jobs_jobscz.spider.call_later",
+        lambda delay, func: calls_later.append((delay, func)),
+    )
+    spider = create_spider_with_engine()
+    failure = create_forbidden_failure({})
+
+    with caplog.at_level("WARNING"):
+        requests = list(spider.errback(failure))
+
+    assert len(requests) == 1
+    assert requests[0].url == failure.request.url
+    assert requests[0].dont_filter is True
+    assert requests[0].meta["career_site_attempt"] == 2
+    assert requests[0].meta["download_slot"] == JOBS_CZ_SLOT
+    assert is_storable_on_apify(requests[0], spider) is True
+    assert spider.crawler.engine.paused is True
+    assert calls_later == [(CAREER_SITE_PAUSE_SECS, spider.resume_career_sites)]
+    assert "ERROR" not in [record.levelname for record in caplog.records]
+
+
+def test_spider_errback_career_site_gives_up(caplog):
+    spider = create_spider_with_engine()
+    failure = create_forbidden_failure({"career_site_attempt": CAREER_SITE_ATTEMPTS})
+
+    with caplog.at_level("ERROR"):
+        requests = list(spider.errback(failure))
+
+    assert requests == []
+    assert [record.name for record in caplog.records] == ["jobs-jobscz"]
+
+
+def test_spider_errback_career_site_forbidden_when_already_paused():
+    spider = create_spider_with_engine(paused=True)
+    spider._career_site_pauses = CAREER_SITE_PAUSES
+
+    requests = list(spider.errback(create_forbidden_failure({})))
+
+    assert len(requests) == 1
+
+
+def test_spider_errback_career_site_forbidden_after_all_pauses(caplog):
+    spider = create_spider_with_engine()
+    spider._career_site_pauses = CAREER_SITE_PAUSES
+
+    with caplog.at_level("ERROR"):
+        requests = list(spider.errback(create_forbidden_failure({})))
+
+    assert requests == []
+    assert [record.name for record in caplog.records] == ["jobs-jobscz"]
+    assert spider.crawler.engine.paused is False
+
+
+def test_spider_errback_career_site_other_failure_retries_without_pause():
+    spider = create_spider_with_engine()
+    url = "https://moneta.jobs.cz/pd/2001408649/?rps=233&searchId=cb63"
+    failure = Failure(ConnectionError("Could not open CONNECT tunnel"))
+    failure.request = Request(url)
+
+    requests = list(spider.errback(failure))
+
+    assert len(requests) == 1
+    assert requests[0].meta["career_site_attempt"] == 2
+    assert spider.crawler.engine.paused is False
+
+
+def test_spider_errback_www_forbidden_logs_error_without_pause(caplog):
+    spider = create_spider_with_engine()
+    url = "https://www.jobs.cz/rpd/2001408649/?rps=233"
+    request = Request(url, meta={"download_slot": JOBS_CZ_SLOT})
+    response = HtmlResponse(url, status=403, request=request)
+    failure = Failure(HttpError(response, "Ignoring non-200 response"))
+    failure.request = request
+
+    with caplog.at_level("ERROR"):
+        requests = list(spider.errback(failure))
+
+    assert requests == []
+    assert [record.name for record in caplog.records] == ["jobs-jobscz"]
+    assert spider.crawler.engine.paused is False
+
+
+def create_career_site_redirect(job_id: str, meta: dict | None = None) -> HtmlResponse:
+    url = f"https://www.jobs.cz/rpd/{job_id}/?searchId=cb63&rps=233"
+    location = f"https://notino.jobs.cz/pd/{job_id}/?rps=233&searchId=cb63"
+    request = Request(
+        url,
+        meta={
+            "dont_redirect": True,
+            "handle_httpstatus_list": [301, 302],
+            "download_latency": 0.5,
+            **(meta or {}),
+        },
+    )
+    return HtmlResponse(
+        url, status=302, headers={"Location": location}, request=request
+    )
+
+
+def test_spider_parse_job_redirect_defers_jobs_at_pending_career_site():
+    spider = Spider()
+    first = next(
+        spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1")
+    )
+    response = create_career_site_redirect("2")
+    second = next(spider.parse_job_redirect(response, JobDraft(), "2"))
+
+    assert first.url == "https://notino.jobs.cz/pd/1/?rps=233&searchId=cb63"
+    assert second.url == response.url
+    assert second.dont_filter is True
+    assert second.meta["career_site_deferrals"] == 1
+    assert second.meta["dont_redirect"] is True
+    assert "download_latency" not in second.meta
+    assert is_storable_on_apify(second, spider) is True
+
+
+def test_spider_parse_job_redirect_stops_deferring():
+    spider = Spider()
+    next(spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1"))
+    response = create_career_site_redirect(
+        "2", {"career_site_deferrals": CAREER_SITE_DEFERRALS}
+    )
+    request = next(spider.parse_job_redirect(response, JobDraft(), "2"))
+
+    assert request.url == "https://notino.jobs.cz/pd/2/?rps=233&searchId=cb63"
+
+
+def test_spider_parse_job_redirect_doesnt_defer_unexpected_career_site():
+    spider = Spider()
+    next(spider.parse_job_redirect(create_career_site_redirect("1"), JobDraft(), "1"))
+    spider._career_sites_unexpected.add("notino.jobs.cz")
+    request = next(
+        spider.parse_job_redirect(create_career_site_redirect("2"), JobDraft(), "2")
+    )
+
+    assert request.url == "https://notino.jobs.cz/pd/2/?rps=233&searchId=cb63"
+
+
+def test_spider_resume_career_sites():
+    spider = create_spider_with_engine(paused=True)
+    spider.resume_career_sites()
+
+    assert spider.crawler.engine.paused is False
