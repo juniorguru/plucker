@@ -846,18 +846,18 @@ def test_spider_parse_job_redirect_to_known_career_site():
 
 def test_spider_parse_job_redirect_to_career_site_redirecting_unexpectedly():
     spider = Spider()
-    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=2c2d92cc-aebc-4949-9758-81b1b299224d"
+    url = "https://www.jobs.cz/rpd/2000142365/?searchId=2c2d92cc&rps=228"
+    location = "https://4value-group.jobs.cz/pd/2000142365/?rps=228&searchId=2c2d92cc"
+    response = HtmlResponse(
+        url, status=302, headers={"Location": location}, request=Request(url)
+    )
+    next(spider.parse_job_redirect(response, JobDraft(), "123"))
+
+    url = "https://4value-group.jobs.cz/detail-pozice?r=detail&id=2000142365&rps=228&impressionId=something-else"
     response = HtmlResponse(
         url,
         body=Path(FIXTURES_DIR / "job_widget.html").read_bytes(),
-        request=Request(
-            url,
-            meta={
-                "redirect_urls": [
-                    "https://4value-group.jobs.cz/pd/2000142365/?rps=228&searchId=something-else",
-                ]
-            },
-        ),
+        request=Request(url, meta={"redirect_urls": [location]}),
     )
     list(spider.parse_job(response, JobDraft(), "123"))
 
@@ -868,7 +868,7 @@ def test_spider_parse_job_redirect_to_career_site_redirecting_unexpectedly():
     )
     request = next(spider.parse_job_redirect(response, JobDraft(), "456"))
 
-    assert request.url == location
+    assert request.url == location  # followed right away, not deferred
 
 
 def create_spider_with_engine(paused: bool = False) -> Spider:
