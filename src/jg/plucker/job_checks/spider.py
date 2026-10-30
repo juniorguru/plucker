@@ -40,7 +40,16 @@ class Spider(BaseSpider):
     custom_settings = {
         "HTTPCACHE_ENABLED": False,
         "HTTPERROR_ALLOW_ALL": True,
-        "RETRY_TIMES": 10,
+        # The run has a fixed time budget, and a blocked site would spend it all on retries
+        "RETRY_TIMES": 3,
+        "DOWNLOAD_TIMEOUT": 30,
+        # Requests waiting for their site's download delay count towards the global
+        # limit, so a throttled site would starve all the others. Rely on the limit
+        # per site instead
+        "CONCURRENT_REQUESTS": 1000,
+        # AutoThrottle doesn't lower the delay on responses other than 200, so a site
+        # responding with a WAF challenge would be checked at the start delay for good
+        "AUTOTHROTTLE_START_DELAY": 1,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
         # AWS WAF on profesia.sk challenges with an empty '202 Accepted'. Its '405' CAPTCHA
@@ -109,6 +118,7 @@ class Spider(BaseSpider):
         self.logger.info(f"Loading {len(self._start_urls)} links")
         startupjobs_urls = []  # StartupJobs URLs bulk
         jobscz_urls = []  # checked only after probing the beta bucket
+        profesiask_urls = []  # slow because of the WAF, so scheduled last
         linkedin_urls_count = 0
         for url in self._start_urls:
             if is_linkedin_url(url):
@@ -120,14 +130,7 @@ class Spider(BaseSpider):
             elif is_jobscz_url(url):
                 jobscz_urls.append(url)
             elif is_profesiask_url(url):
-                # GET, not HEAD, as expired ads respond with 200 and a notice
-                yield Request(
-                    url,
-                    callback=self.check_profesiask,
-                    errback=self.check_failure,
-                    cb_kwargs={"urls": [url]},
-                    dont_filter=True,
-                )
+                profesiask_urls.append(url)
             else:
                 yield self._http_request(url, "HEAD")
         if linkedin_urls_count:
@@ -154,6 +157,15 @@ class Spider(BaseSpider):
                     "dont_merge_cookies": True,
                     "handle_httpstatus_list": [301, 302],
                 },
+            )
+        for url in profesiask_urls:
+            # GET, not HEAD, as expired ads respond with 200 and a notice
+            yield Request(
+                url,
+                callback=self.check_profesiask,
+                errback=self.check_failure,
+                cb_kwargs={"urls": [url]},
+                dont_filter=True,
             )
 
     def _http_request(self, url: str, method: str) -> Request:
