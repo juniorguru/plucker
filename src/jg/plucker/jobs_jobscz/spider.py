@@ -112,8 +112,11 @@ BETA_BUCKET_PROBE_URL = "https://www.jobs.cz/"
 
 # Jobs posted by companies with their own career site on a jobs.cz subdomain
 # redirect there. The career sites block an IP for a while after a few hundred
-# requests, so they share a download slot, which can be paused as a whole.
-CAREER_SITE_SLOT = "career-sites.jobs.cz"
+# requests. Requests to them use the slot of www.jobs.cz, where AutoThrottle
+# keeps a low delay thanks to plenty of successful responses. In a slot of
+# their own, mostly redirects would never lower the delay, and because queued
+# requests count towards CONCURRENT_REQUESTS, a slow slot stalls the whole crawl.
+JOBS_CZ_SLOT = "www.jobs.cz"
 
 CAREER_SITE_PAUSE_SECS = 300
 
@@ -176,7 +179,7 @@ class Spider(BaseSpider):
 
     def errback(self, failure: Failure) -> Generator[Request]:
         request = cast(Request, failure.request)
-        if request.meta.get("download_slot") == CAREER_SITE_SLOT:
+        if is_career_site(request.url):
             attempt = request.meta.get("career_site_attempt", 1)
             if attempt < CAREER_SITE_ATTEMPTS and (
                 not is_forbidden(failure) or self.pause_career_sites()
@@ -195,15 +198,15 @@ class Spider(BaseSpider):
         self.logger.error(f"Request failed: {request.url} ({failure.value!r})")
 
     def pause_career_sites(self) -> bool:
-        """Pauses all career sites, returns False if pausing doesn't help anymore
+        """Pauses all of jobs.cz, returns False if pausing doesn't help anymore
 
-        The slot sends one request per delay, so this pauses all career sites.
+        The slot sends one request per delay, so this pauses all of jobs.cz.
         Persistent connections close after 240s of inactivity, which makes
         the next request open a new one through a different proxy IP.
         AutoThrottle then shortens the delay as responses succeed again.
         """
         assert self.crawler.engine, "Engine not running"
-        slot = self.crawler.engine.downloader.slots[CAREER_SITE_SLOT]
+        slot = self.crawler.engine.downloader.slots[JOBS_CZ_SLOT]
         if slot.delay >= CAREER_SITE_PAUSE_SECS:
             return True  # already paused
         if self._career_site_pauses >= CAREER_SITE_PAUSES:
@@ -631,7 +634,7 @@ def get_request_meta(url: str) -> dict[str, Any]:
     if is_career_site(url):
         # Retrying right away is futile, as the request would reuse
         # the connection through the same, blocked IP. See Spider.errback()
-        return {"download_slot": CAREER_SITE_SLOT, "dont_retry": True}
+        return {"download_slot": JOBS_CZ_SLOT, "dont_retry": True}
     return {}
 
 

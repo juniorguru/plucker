@@ -21,7 +21,7 @@ from jg.plucker.jobs_jobscz.spider import (
     CAREER_SITE_ATTEMPTS,
     CAREER_SITE_PAUSE_SECS,
     CAREER_SITE_PAUSES,
-    CAREER_SITE_SLOT,
+    JOBS_CZ_SLOT,
     JobDraft,
     Spider,
     from_draft,
@@ -30,6 +30,7 @@ from jg.plucker.jobs_jobscz.spider import (
     get_job_id,
     get_param,
     get_params,
+    get_request_meta,
     is_beta_site,
     is_career_site,
     select_widget,
@@ -699,7 +700,7 @@ def test_get_params():
 
 
 def test_spider_errback_logs_error_on_spider_logger(caplog):
-    url = "https://moneta.jobs.cz/pd/2001408649/?rps=233"
+    url = "https://www.jobs.cz/prace/programator/"
     response = HtmlResponse(url, status=403, request=Request(url))
     failure = Failure(HttpError(response, "Ignoring non-200 response"))
     failure.request = response.request
@@ -796,7 +797,7 @@ def test_spider_parse_job_redirect_to_unknown_career_site():
     assert is_storable_on_apify(request, Spider()) is True
     assert request.url == location
     assert request.callback.__name__ == "parse_job"
-    assert request.meta["download_slot"] == CAREER_SITE_SLOT
+    assert request.meta["download_slot"] == JOBS_CZ_SLOT
     assert request.meta["dont_retry"] is True
 
 
@@ -872,14 +873,14 @@ def test_spider_parse_job_redirect_to_career_site_redirecting_unexpectedly():
 def create_spider_with_career_site_slot(delay: float) -> Spider:
     spider = Spider()
     slot = SimpleNamespace(delay=delay)
-    downloader = SimpleNamespace(slots={CAREER_SITE_SLOT: slot})
+    downloader = SimpleNamespace(slots={JOBS_CZ_SLOT: slot})
     spider.crawler = SimpleNamespace(engine=SimpleNamespace(downloader=downloader))  # type: ignore
     return spider
 
 
 def create_forbidden_failure(meta: dict) -> Failure:
     url = "https://moneta.jobs.cz/detail-pozice?r=detail&id=2001408649&rps=233"
-    request = Request(url, meta={"download_slot": CAREER_SITE_SLOT, **meta})
+    request = Request(url, meta={**get_request_meta(url), **meta})
     response = HtmlResponse(url, status=403, request=request)
     failure = Failure(HttpError(response, "Ignoring non-200 response"))
     failure.request = request
@@ -897,10 +898,10 @@ def test_spider_errback_career_site_forbidden_pauses_and_retries(caplog):
     assert requests[0].url == failure.request.url
     assert requests[0].dont_filter is True
     assert requests[0].meta["career_site_attempt"] == 2
-    assert requests[0].meta["download_slot"] == CAREER_SITE_SLOT
+    assert requests[0].meta["download_slot"] == JOBS_CZ_SLOT
     assert is_storable_on_apify(requests[0], spider) is True
     assert (
-        spider.crawler.engine.downloader.slots[CAREER_SITE_SLOT].delay
+        spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay
         == CAREER_SITE_PAUSE_SECS
     )
     assert "ERROR" not in [record.levelname for record in caplog.records]
@@ -935,17 +936,33 @@ def test_spider_errback_career_site_forbidden_after_all_pauses(caplog):
 
     assert requests == []
     assert [record.name for record in caplog.records] == ["jobs-jobscz"]
-    assert spider.crawler.engine.downloader.slots[CAREER_SITE_SLOT].delay == 1.0
+    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
 
 
 def test_spider_errback_career_site_other_failure_retries_without_pause():
     spider = create_spider_with_career_site_slot(1.0)
     url = "https://moneta.jobs.cz/pd/2001408649/?rps=233&searchId=cb63"
     failure = Failure(ConnectionError("Could not open CONNECT tunnel"))
-    failure.request = Request(url, meta={"download_slot": CAREER_SITE_SLOT})
+    failure.request = Request(url)
 
     requests = list(spider.errback(failure))
 
     assert len(requests) == 1
     assert requests[0].meta["career_site_attempt"] == 2
-    assert spider.crawler.engine.downloader.slots[CAREER_SITE_SLOT].delay == 1.0
+    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
+
+
+def test_spider_errback_www_forbidden_logs_error_without_pause(caplog):
+    spider = create_spider_with_career_site_slot(1.0)
+    url = "https://www.jobs.cz/rpd/2001408649/?rps=233"
+    request = Request(url, meta={"download_slot": JOBS_CZ_SLOT})
+    response = HtmlResponse(url, status=403, request=request)
+    failure = Failure(HttpError(response, "Ignoring non-200 response"))
+    failure.request = request
+
+    with caplog.at_level("ERROR"):
+        requests = list(spider.errback(failure))
+
+    assert requests == []
+    assert [record.name for record in caplog.records] == ["jobs-jobscz"]
+    assert spider.crawler.engine.downloader.slots[JOBS_CZ_SLOT].delay == 1.0
