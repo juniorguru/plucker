@@ -977,6 +977,7 @@ def create_career_site_redirect(job_id: str, meta: dict | None = None) -> HtmlRe
         meta={
             "dont_redirect": True,
             "handle_httpstatus_list": [301, 302],
+            "download_latency": 0.5,
             **(meta or {}),
         },
     )
@@ -998,6 +999,7 @@ def test_spider_parse_job_redirect_defers_jobs_at_pending_career_site():
     assert second.dont_filter is True
     assert second.meta["career_site_deferrals"] == 1
     assert second.meta["dont_redirect"] is True
+    assert "download_latency" not in second.meta
     assert is_storable_on_apify(second, spider) is True
 
 

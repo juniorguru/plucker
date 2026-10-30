@@ -194,7 +194,7 @@ class Spider(BaseSpider):
                 )
                 yield request.replace(
                     dont_filter=True,
-                    meta={**request.meta, "career_site_attempt": attempt + 1},
+                    meta=get_requeue_meta(request, career_site_attempt=attempt + 1),
                 )
                 return
         # Scrapy logs giving up on a request on its own logger, but on Apify
@@ -338,7 +338,9 @@ class Spider(BaseSpider):
                     self.logger_trk(trk).debug(f"Deferring job at career site {host}")
                     yield request.replace(
                         dont_filter=True,
-                        meta={**request.meta, "career_site_deferrals": deferrals + 1},
+                        meta=get_requeue_meta(
+                            request, career_site_deferrals=deferrals + 1
+                        ),
                     )
                     return
             self._career_sites_pending.add(host)
@@ -661,6 +663,21 @@ def get_request_meta(url: str) -> dict[str, Any]:
         # the connection through the same, blocked IP. See Spider.errback()
         return {"download_slot": JOBS_CZ_SLOT, "dont_retry": True}
     return {}
+
+
+def get_requeue_meta(request: Request, **values: Any) -> dict[str, Any]:
+    # Like RetryMiddleware, keep the meta, but not what belongs to the download
+    download_keys = {
+        "_auth_proxy",
+        "_dont_cache",
+        "_scheme_proxy",
+        "cache_timestamp",
+        "download_latency",
+    }
+    meta = {
+        key: value for key, value in request.meta.items() if key not in download_keys
+    }
+    return {**meta, **values}
 
 
 def get_career_site_job_url(redirect_url: str, path: str) -> str | None:
