@@ -10,7 +10,3 @@ Scrapers must never guess. Parse what you have seen and verified on real pages. 
 - Skipping something on purpose is fine, for example ads in irrelevant languages. Make it an explicit, logged decision based on a reliable signal.
 - Only support the languages junior.guru cares about: Czech, Slovak and English. Don't add parsing for other languages; skip such content instead.
 - When unknown values are expected to come in several variants, such as the same note in three languages, the scraper may log each with `self.logger.error()` and skip the item instead of raising on the first one. The logged errors fail the run at the end, and the log has all the variants, so they can be added in one go. Log on the spider's own logger: on Apify, errors on `scrapy.*` loggers aren't counted. See the location notes in `jobs_profesiask`.
-
-## Requests must survive the Apify request queue
-
-On Apify, scheduled requests are stored in the Apify request queue as JSON. Everything in a request's `cb_kwargs` and `meta` must be JSON-serializable: `str`, `int`, `float`, `bool`, `None`, `list` or `dict`. Don't pass dataclasses, sets, items or other objects. The Apify scheduler skips requests it can't serialize, and it only logs an error, so the data silently goes missing. Local runs keep requests in memory and won't catch it, so test that the `cb_kwargs` of the requests your spider yields pass `json.dumps()`.
