@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from jg.plucker.scrapers import (
     StatsError,
     evaluate_stats,
     generate_schema,
+    get_closespider_timeout,
     get_spider_module_name,
 )
 
@@ -170,6 +172,43 @@ def test_evaluate_stats_min_items_failing():
             },
             min_items=20,
         )
+
+
+def test_evaluate_stats_finish_reasons_passing():
+    evaluate_stats(
+        {"item_scraped_count": 10, "finish_reason": "closespider_timeout"},
+        min_items=10,
+        finish_reasons=["finished", "closespider_timeout"],
+    )
+
+
+def test_evaluate_stats_finish_reasons_failing():
+    with pytest.raises(StatsError, match="closespider_timeout"):
+        evaluate_stats(
+            {"item_scraped_count": 10, "finish_reason": "closespider_timeout"},
+            min_items=10,
+        )
+
+
+def test_get_closespider_timeout():
+    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
+    timeout_at = now + timedelta(seconds=600)
+
+    assert get_closespider_timeout(timeout_at, now) == 540
+
+
+def test_get_closespider_timeout_no_timeout():
+    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
+
+    assert get_closespider_timeout(None, now) is None
+
+
+def test_get_closespider_timeout_little_time_left():
+    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
+    timeout_at = now + timedelta(seconds=30)
+
+    # zero would turn the timeout off
+    assert get_closespider_timeout(timeout_at, now) == 1
 
 
 def test_get_spider_module():

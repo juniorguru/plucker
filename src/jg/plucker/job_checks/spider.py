@@ -38,6 +38,10 @@ class Spider(BaseSpider):
     name = "job-checks"
 
     custom_settings = {
+        # The Apify request queue makes a blocking API call for every request it
+        # adds or hands out, which stalls the whole crawl. The run is short and
+        # cheap to repeat, so the requests can be kept in memory
+        "SCHEDULER": "scrapy.core.scheduler.Scheduler",
         "HTTPCACHE_ENABLED": False,
         "HTTPERROR_ALLOW_ALL": True,
         # The run has a fixed time budget, and a blocked site would spend it all on retries
@@ -67,7 +71,11 @@ class Spider(BaseSpider):
         error_count = stats.get("log_count/ERROR", 0)
         stats_copy = stats.copy()
         stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
-        return evaluate_stats(stats_copy, min_items)
+        # Running out of time leaves some links unchecked, but junior.guru treats
+        # them as inconclusive, so it's better than losing the checks done so far
+        return evaluate_stats(
+            stats_copy, min_items, finish_reasons=["finished", "closespider_timeout"]
+        )
 
     def __init__(
         self, name: str | None = None, links: list[dict[str, str]] | None = None
@@ -94,6 +102,12 @@ class Spider(BaseSpider):
             self._inconclusive_by_host[host] += 1
 
     def closed(self, reason: str) -> None:
+        if reason == "closespider_timeout":
+            not_assessed_count = len(self._expected_urls - self._assessed_urls)
+            self.logger.warning(
+                f"Ran out of time, {not_assessed_count} links not assessed"
+            )
+            return
         if reason != "finished":
             return  # don't bury the real cause under follow-up errors
 

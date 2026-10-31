@@ -51,6 +51,12 @@ class Spider(BaseSpider):
     name = "job-logos"
 
     custom_settings = {
+        # The Apify request queue makes a blocking API call for every request it
+        # adds or hands out, which stalls the whole crawl. The run is short and
+        # cheap to repeat, so the requests can be kept in memory
+        "SCHEDULER": "scrapy.core.scheduler.Scheduler",
+        # Each cache read and write would be such a blocking call, too
+        "HTTPCACHE_ENABLED": False,
         # Logos and favicons are small, no need to wait for long
         "DOWNLOAD_TIMEOUT": 30,
     }
@@ -65,7 +71,11 @@ class Spider(BaseSpider):
         error_count = stats.get("log_count/ERROR", 0)
         stats_copy = stats.copy()
         stats_copy["log_count/ERROR"] = max(0, error_count - timeouts_count)
-        return evaluate_stats(stats_copy, min_items)
+        # Running out of time leaves some logos missing, but junior.guru falls back
+        # to generated ones, so it's better than losing the logos scraped so far
+        return evaluate_stats(
+            stats_copy, min_items, finish_reasons=["finished", "closespider_timeout"]
+        )
 
     def __init__(
         self, name: str | None = None, links: list[dict[str, str]] | None = None

@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Coroutine, Generator
+from collections.abc import Coroutine, Generator, Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -70,6 +71,13 @@ async def run_as_actor(
         settings["HTTPCACHE_EXPIRATION_SECS"] = 0
         settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
         settings["FEEDS"] = {}
+        if closespider_timeout := get_closespider_timeout(
+            Actor.configuration.timeout_at, datetime.now(UTC)
+        ):
+            logger.info(
+                f"Closing the spider in {closespider_timeout:.0f}s at the latest"
+            )
+            settings["CLOSESPIDER_TIMEOUT"] = closespider_timeout
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
@@ -79,6 +87,23 @@ async def run_as_actor(
         await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
+
+
+# Closing the spider waits for the requests in progress and the item pipelines,
+# and the actor still has to exit afterwards
+CLOSESPIDER_TIMEOUT_MARGIN = timedelta(seconds=60)
+
+
+def get_closespider_timeout(timeout_at: datetime | None, now: datetime) -> float | None:
+    """Returns seconds the spider can run so that it closes before the actor times out
+
+    A spider closed this way keeps the items it has already scraped, while a timed out
+    actor run fails as a whole. Whether the run counts as a success is up to the spider's
+    evaluate_stats(), which by default fails on any other reason than 'finished'.
+    """
+    if timeout_at is None:
+        return None
+    return max(1, (timeout_at - now - CLOSESPIDER_TIMEOUT_MARGIN).total_seconds())
 
 
 class RunCacheStorage(ApifyCacheStorage):
@@ -200,7 +225,9 @@ class StatsError(RuntimeError):
     pass
 
 
-def evaluate_stats(stats: StatsT, min_items: int):
+def evaluate_stats(
+    stats: StatsT, min_items: int, finish_reasons: Iterable[str] = ("finished",)
+):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions/count"):
         raise StatsError(f"Exceptions raised: {exc_count}")
@@ -210,7 +237,7 @@ def evaluate_stats(stats: StatsT, min_items: int):
         raise StatsError(f"Errors logged: {error_count}")
     if item_count < min_items:
         raise StatsError(f"Few items scraped: {item_count}")
-    if (reason := stats.get("finish_reason")) and reason != "finished":
+    if (reason := stats.get("finish_reason")) and reason not in finish_reasons:
         raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")
