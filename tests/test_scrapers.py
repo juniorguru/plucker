@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from apify.storages import KeyValueStore
 from scrapy import Field, Item, Request, Spider
+from scrapy.crawler import Crawler
 from scrapy.http import HtmlResponse
 from scrapy.settings import Settings
 from scrapy.utils.test import get_crawler
@@ -15,6 +16,7 @@ from jg.plucker.scrapers import (
     StatsError,
     evaluate_stats,
     generate_schema,
+    get_actor_settings,
     get_spider_module_name,
 )
 
@@ -91,6 +93,22 @@ def test_spider_names(
 
     assert "_" not in spider_class.name
     assert spider_class.name == actor_config["name"] == actor_config["title"]
+
+
+@pytest.mark.parametrize(
+    "spider_class",
+    [
+        pytest.param(
+            import_module(f"jg.plucker.{spider_package.name}.spider").Spider,
+            id=spider_package.name,
+        )
+        for spider_package in spider_packages
+    ],
+)
+def test_actor_keeps_requests_in_memory(spider_class: type[Spider]):
+    crawler = Crawler(spider_class, get_actor_settings())
+
+    assert crawler.settings["SCHEDULER"] == "scrapy.core.scheduler.Scheduler"
 
 
 def test_evaluate_stats_passing():

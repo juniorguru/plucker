@@ -38,10 +38,6 @@ class Spider(BaseSpider):
     name = "job-checks"
 
     custom_settings = {
-        # The Apify request queue makes a blocking API call for every request it
-        # adds or hands out, which stalls the whole crawl. The run is short and
-        # cheap to repeat, so the requests can be kept in memory
-        "SCHEDULER": "scrapy.core.scheduler.Scheduler",
         "HTTPCACHE_ENABLED": False,
         "HTTPERROR_ALLOW_ALL": True,
         # The run has a fixed time budget, and a blocked site would spend it all on retries

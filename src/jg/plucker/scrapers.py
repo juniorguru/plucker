@@ -13,7 +13,7 @@ from apify.storages import KeyValueStore
 from pydantic import BaseModel, HttpUrl, PlainSerializer
 from scrapy import Item, Spider
 from scrapy.crawler import Crawler, CrawlerRunner
-from scrapy.settings import BaseSettings
+from scrapy.settings import BaseSettings, Settings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsT
 from scrapy.utils.defer import deferred_to_future
@@ -64,12 +64,7 @@ async def run_as_actor(
         proxy_config = params.pop("proxyConfig", None)
         logger.debug(f"Proxy config: {proxy_config!r}")
 
-        settings = apply_apify_settings(proxy_config=proxy_config)
-        settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.RunCacheStorage"
-        # The cache lives only as long as the run, see RunCacheStorage
-        settings["HTTPCACHE_EXPIRATION_SECS"] = 0
-        settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
-        settings["FEEDS"] = {}
+        settings = get_actor_settings(proxy_config)
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
@@ -79,6 +74,22 @@ async def run_as_actor(
         await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
+
+
+def get_actor_settings(proxy_config: dict | None = None) -> Settings:
+    settings = apply_apify_settings(proxy_config=proxy_config)
+    # The Apify request queue makes a blocking API call for every request it
+    # adds or hands out, and the engine keeps polling it while requests wait
+    # for their site's download delay, which stalls the crawl and costs money.
+    # All runs are short enough to repeat, and after a reboot the HTTP cache
+    # replays the responses already downloaded, see RunCacheStorage
+    settings["SCHEDULER"] = "scrapy.core.scheduler.Scheduler"
+    settings["HTTPCACHE_STORAGE"] = "jg.plucker.scrapers.RunCacheStorage"
+    # The cache lives only as long as the run, see RunCacheStorage
+    settings["HTTPCACHE_EXPIRATION_SECS"] = 0
+    settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
+    settings["FEEDS"] = {}
+    return settings
 
 
 class RunCacheStorage(ApifyCacheStorage):
