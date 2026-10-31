@@ -1,5 +1,7 @@
 import asyncio
 import json
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from pathlib import Path
@@ -293,3 +295,20 @@ def test_run_cache_storage_does_not_share_default_store(
         assert default_kvs is not storage._kvs
     finally:
         storage.close_spider(spider)
+
+
+def test_close_spider_drops_queued_requests_on_timeout():
+    script_path = Path(__file__).parent / "crawl_out_of_time.py"
+    process = subprocess.run(
+        [sys.executable, script_path],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    result = json.loads(process.stdout.splitlines()[-1])
+
+    assert result["finish_reason"] == "closespider_timeout"
+    assert result["duration"] < 10  # downloading all would take 20s
+    assert result["responses_count"] + len(result["errbacks"]) == 20
+    assert set(result["errbacks"]) == {"OutOfTimeError"}

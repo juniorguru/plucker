@@ -45,7 +45,11 @@ AUTOTHROTTLE_ENABLED = True
 
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
-EXTENSIONS = {"scrapy.extensions.memusage.MemoryUsage": None}
+EXTENSIONS = {
+    "scrapy.extensions.memusage.MemoryUsage": None,
+    "scrapy.extensions.closespider.CloseSpider": None,
+    "jg.plucker.scrapers.CloseSpider": 0,
+}
 
 APIFY_TOKEN = os.getenv("APIFY_TOKEN")
 

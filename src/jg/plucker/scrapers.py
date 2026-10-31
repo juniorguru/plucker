@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Coroutine, Generator, Iterable
 from datetime import UTC, datetime, timedelta
@@ -13,11 +14,14 @@ from apify.storage_clients import ApifyStorageClient
 from apify.storages import KeyValueStore
 from pydantic import BaseModel, HttpUrl, PlainSerializer
 from scrapy import Item, Spider
+from scrapy.core.downloader import Downloader
 from scrapy.crawler import Crawler, CrawlerRunner
+from scrapy.exceptions import IgnoreRequest
+from scrapy.extensions.closespider import CloseSpider as BaseCloseSpider
 from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsT
-from scrapy.utils.defer import deferred_to_future
+from scrapy.utils.defer import _schedule_coro, deferred_to_future
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.reactor import install_reactor
 
@@ -104,6 +108,45 @@ def get_closespider_timeout(timeout_at: datetime | None, now: datetime) -> float
     if timeout_at is None:
         return None
     return max(1, (timeout_at - now - CLOSESPIDER_TIMEOUT_MARGIN).total_seconds())
+
+
+class OutOfTimeError(IgnoreRequest):
+    pass
+
+
+class CloseSpider(BaseCloseSpider):
+    """Like Scrapy's CloseSpider, but on timeout it doesn't wait for queued requests
+
+    Requests waiting in the downloader for their site's download delay count as
+    in progress, and closing the spider waits for them to download, which can take
+    longer than the actor has left. On timeout, they fail with OutOfTimeError
+    instead, so that their errbacks still get called.
+    """
+
+    def _close_spider(self, reason: str) -> None:
+        _schedule_coro(self._close_spider_async(reason))
+
+    async def _close_spider_async(self, reason: str) -> None:
+        engine = self.crawler.engine
+        closing = asyncio.ensure_future(engine.close_spider_async(reason=reason))
+        await asyncio.sleep(
+            0
+        )  # lets the engine stop taking requests from the scheduler
+        if reason == "closespider_timeout" and (
+            count := drop_queued_requests(engine.downloader)
+        ):
+            logger.warning(f"Out of time, dropped {count} queued requests")
+        await closing
+
+
+def drop_queued_requests(downloader: Downloader) -> int:
+    count = 0
+    for slot in downloader.slots.values():
+        while slot.queue:
+            request, deferred = slot.queue.popleft()
+            deferred.errback(OutOfTimeError(f"Out of time: {request.url}"))
+            count += 1
+    return count
 
 
 class RunCacheStorage(ApifyCacheStorage):
