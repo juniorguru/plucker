@@ -54,6 +54,9 @@ class Spider(BaseSpider):
         # AutoThrottle doesn't lower the delay on responses other than 200, so a site
         # responding with a WAF challenge would be checked at the start delay for good
         "AUTOTHROTTLE_START_DELAY": 1,
+        # Each site gets ~120 links, and checking them one by one takes minutes,
+        # e.g. profesia.sk redirects each link first, which doubles the requests
+        "AUTOTHROTTLE_TARGET_CONCURRENCY": 4,
         "DUPEFILTER_CLASS": "scrapy.dupefilters.BaseDupeFilter",
         "METAREFRESH_ENABLED": False,
         # AWS WAF on profesia.sk challenges with an empty '202 Accepted'. Its '405' CAPTCHA
