@@ -262,7 +262,13 @@ class Spider(BaseSpider):
             self.logger.warning(f"Inconclusive check of {url}: {e}")
             yield JobCheck(url=url, ok=None, reason="PROFESIASK WAF")
         else:
-            if gone_reason := get_gone_reason(response):
+            if response.status not in (200, 404, 410):
+                # e.g. '403 Forbidden' through some proxies, which isn't a WAF
+                # challenge, but doesn't tell anything about the job either
+                reason = f"PROFESIASK HTTP {response.status}"
+                self.logger.warning(f"Inconclusive check of {url}: {reason}")
+                yield JobCheck(url=url, ok=None, reason=reason)
+            elif gone_reason := get_gone_reason(response):
                 reason = f"PROFESIASK {gone_reason.upper()}"
                 yield JobCheck(url=url, ok=False, reason=reason)
             elif response.css('[itemprop="datePosted"]').get(None):

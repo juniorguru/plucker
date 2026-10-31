@@ -334,6 +334,15 @@ def test_spider_check_profesiask_waf_challenge(status: int, headers: dict[str, s
     assert links == [JobCheck(url=url, ok=None, reason="PROFESIASK WAF")]
 
 
+@pytest.mark.parametrize("status", [403, 500])
+def test_spider_check_profesiask_http_error(status: int):
+    url = "https://www.profesia.sk/praca/softip/O5372508"
+    response = HtmlResponse(url, status=status, body=b"<html><body>Nope</body></html>")
+    links = list(Spider().check_profesiask(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=None, reason=f"PROFESIASK HTTP {status}")]
+
+
 def test_spider_check_profesiask_unknown_page():
     url = "https://www.profesia.sk/praca/softip/O5372508"
     response = HtmlResponse(url, body=b"<html><body>Something else</body></html>")
