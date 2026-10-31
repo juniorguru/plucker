@@ -71,11 +71,7 @@ class Spider(BaseSpider):
         error_count = stats.get("log_count/ERROR", 0)
         stats_copy = stats.copy()
         stats_copy["log_count/ERROR"] = max(0, error_count - timeouts_count)
-        # Running out of time leaves some logos missing, but junior.guru falls back
-        # to generated ones, so it's better than losing the logos scraped so far
-        return evaluate_stats(
-            stats_copy, min_items, finish_reasons=["finished", "closespider_timeout"]
-        )
+        return evaluate_stats(stats_copy, min_items)
 
     def __init__(
         self, name: str | None = None, links: list[dict[str, str]] | None = None

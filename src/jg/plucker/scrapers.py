@@ -1,7 +1,5 @@
-import asyncio
 import logging
-from collections.abc import Coroutine, Generator, Iterable
-from datetime import UTC, datetime, timedelta
+from collections.abc import Coroutine, Generator
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -14,14 +12,11 @@ from apify.storage_clients import ApifyStorageClient
 from apify.storages import KeyValueStore
 from pydantic import BaseModel, HttpUrl, PlainSerializer
 from scrapy import Item, Spider
-from scrapy.core.downloader import Downloader
 from scrapy.crawler import Crawler, CrawlerRunner
-from scrapy.exceptions import IgnoreRequest
-from scrapy.extensions.closespider import CloseSpider as BaseCloseSpider
 from scrapy.settings import BaseSettings
 from scrapy.spiderloader import SpiderLoader as BaseSpiderLoader
 from scrapy.statscollectors import StatsT
-from scrapy.utils.defer import _schedule_coro, deferred_to_future
+from scrapy.utils.defer import deferred_to_future
 from scrapy.utils.project import get_project_settings
 from scrapy.utils.reactor import install_reactor
 
@@ -75,13 +70,6 @@ async def run_as_actor(
         settings["HTTPCACHE_EXPIRATION_SECS"] = 0
         settings["ITEM_PIPELINES"]["jg.plucker.pipelines.ImagePipeline"] = 500
         settings["FEEDS"] = {}
-        if closespider_timeout := get_closespider_timeout(
-            Actor.configuration.timeout_at, datetime.now(UTC)
-        ):
-            logger.info(
-                f"Closing the spider in {closespider_timeout:.0f}s at the latest"
-            )
-            settings["CLOSESPIDER_TIMEOUT"] = closespider_timeout
 
         logger.info("Starting the spider")
         runner = CrawlerRunner(settings)
@@ -91,62 +79,6 @@ async def run_as_actor(
         await deferred_to_future(runner.crawl(crawler, **params))
 
         check_crawl_results(crawler)
-
-
-# Closing the spider waits for the requests in progress and the item pipelines,
-# and the actor still has to exit afterwards
-CLOSESPIDER_TIMEOUT_MARGIN = timedelta(seconds=60)
-
-
-def get_closespider_timeout(timeout_at: datetime | None, now: datetime) -> float | None:
-    """Returns seconds the spider can run so that it closes before the actor times out
-
-    A spider closed this way keeps the items it has already scraped, while a timed out
-    actor run fails as a whole. Whether the run counts as a success is up to the spider's
-    evaluate_stats(), which by default fails on any other reason than 'finished'.
-    """
-    if timeout_at is None:
-        return None
-    return max(1, (timeout_at - now - CLOSESPIDER_TIMEOUT_MARGIN).total_seconds())
-
-
-class OutOfTimeError(IgnoreRequest):
-    pass
-
-
-class CloseSpider(BaseCloseSpider):
-    """Like Scrapy's CloseSpider, but on timeout it doesn't wait for queued requests
-
-    Requests waiting in the downloader for their site's download delay count as
-    in progress, and closing the spider waits for them to download, which can take
-    longer than the actor has left. On timeout, they fail with OutOfTimeError
-    instead, so that their errbacks still get called.
-    """
-
-    def _close_spider(self, reason: str) -> None:
-        _schedule_coro(self._close_spider_async(reason))
-
-    async def _close_spider_async(self, reason: str) -> None:
-        engine = self.crawler.engine
-        closing = asyncio.ensure_future(engine.close_spider_async(reason=reason))
-        await asyncio.sleep(
-            0
-        )  # lets the engine stop taking requests from the scheduler
-        if reason == "closespider_timeout" and (
-            count := drop_queued_requests(engine.downloader)
-        ):
-            logger.warning(f"Out of time, dropped {count} queued requests")
-        await closing
-
-
-def drop_queued_requests(downloader: Downloader) -> int:
-    count = 0
-    for slot in downloader.slots.values():
-        while slot.queue:
-            request, deferred = slot.queue.popleft()
-            deferred.errback(OutOfTimeError(f"Out of time: {request.url}"))
-            count += 1
-    return count
 
 
 class RunCacheStorage(ApifyCacheStorage):
@@ -268,9 +200,7 @@ class StatsError(RuntimeError):
     pass
 
 
-def evaluate_stats(
-    stats: StatsT, min_items: int, finish_reasons: Iterable[str] = ("finished",)
-):
+def evaluate_stats(stats: StatsT, min_items: int):
     item_count = stats.get("item_scraped_count", 0)
     if exc_count := stats.get("spider_exceptions/count"):
         raise StatsError(f"Exceptions raised: {exc_count}")
@@ -280,7 +210,7 @@ def evaluate_stats(
         raise StatsError(f"Errors logged: {error_count}")
     if item_count < min_items:
         raise StatsError(f"Few items scraped: {item_count}")
-    if (reason := stats.get("finish_reason")) and reason not in finish_reasons:
+    if (reason := stats.get("finish_reason")) and reason != "finished":
         raise StatsError(f"Scraping finished with reason {reason!r}")
     if item_count := stats.get("item_dropped_reasons_count/MissingRequiredFields"):
         raise StatsError(f"Items missing required fields: {item_count}")

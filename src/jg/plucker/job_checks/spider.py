@@ -74,11 +74,7 @@ class Spider(BaseSpider):
         error_count = stats.get("log_count/ERROR", 0)
         stats_copy = stats.copy()
         stats_copy["log_count/ERROR"] = max(0, error_count - max_retries)
-        # Running out of time leaves some links unchecked, but junior.guru treats
-        # them as inconclusive, so it's better than losing the checks done so far
-        return evaluate_stats(
-            stats_copy, min_items, finish_reasons=["finished", "closespider_timeout"]
-        )
+        return evaluate_stats(stats_copy, min_items)
 
     def __init__(
         self, name: str | None = None, links: list[dict[str, str]] | None = None
@@ -105,12 +101,6 @@ class Spider(BaseSpider):
             self._inconclusive_by_host[host] += 1
 
     def closed(self, reason: str) -> None:
-        if reason == "closespider_timeout":
-            not_assessed_count = len(self._expected_urls - self._assessed_urls)
-            self.logger.warning(
-                f"Ran out of time, {not_assessed_count} links not assessed"
-            )
-            return
         if reason != "finished":
             return  # don't bury the real cause under follow-up errors
 

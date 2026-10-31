@@ -1,8 +1,5 @@
 import asyncio
 import json
-import subprocess
-import sys
-from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from pathlib import Path
 
@@ -18,7 +15,6 @@ from jg.plucker.scrapers import (
     StatsError,
     evaluate_stats,
     generate_schema,
-    get_closespider_timeout,
     get_spider_module_name,
 )
 
@@ -176,43 +172,6 @@ def test_evaluate_stats_min_items_failing():
         )
 
 
-def test_evaluate_stats_finish_reasons_passing():
-    evaluate_stats(
-        {"item_scraped_count": 10, "finish_reason": "closespider_timeout"},
-        min_items=10,
-        finish_reasons=["finished", "closespider_timeout"],
-    )
-
-
-def test_evaluate_stats_finish_reasons_failing():
-    with pytest.raises(StatsError, match="closespider_timeout"):
-        evaluate_stats(
-            {"item_scraped_count": 10, "finish_reason": "closespider_timeout"},
-            min_items=10,
-        )
-
-
-def test_get_closespider_timeout():
-    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
-    timeout_at = now + timedelta(seconds=600)
-
-    assert get_closespider_timeout(timeout_at, now) == 540
-
-
-def test_get_closespider_timeout_no_timeout():
-    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
-
-    assert get_closespider_timeout(None, now) is None
-
-
-def test_get_closespider_timeout_little_time_left():
-    now = datetime(2026, 10, 31, 4, 51, 28, tzinfo=UTC)
-    timeout_at = now + timedelta(seconds=30)
-
-    # zero would turn the timeout off
-    assert get_closespider_timeout(timeout_at, now) == 1
-
-
 def test_get_spider_module():
     assert (
         get_spider_module_name("src/jg/plucker/exchange_rates")
@@ -295,20 +254,3 @@ def test_run_cache_storage_does_not_share_default_store(
         assert default_kvs is not storage._kvs
     finally:
         storage.close_spider(spider)
-
-
-def test_close_spider_drops_queued_requests_on_timeout():
-    script_path = Path(__file__).parent / "crawl_out_of_time.py"
-    process = subprocess.run(
-        [sys.executable, script_path],
-        capture_output=True,
-        text=True,
-        timeout=60,
-        check=True,
-    )
-    result = json.loads(process.stdout.splitlines()[-1])
-
-    assert result["finish_reason"] == "closespider_timeout"
-    assert result["duration"] < 10  # downloading all would take 20s
-    assert result["responses_count"] + len(result["errbacks"]) == 20
-    assert set(result["errbacks"]) == {"OutOfTimeError"}
