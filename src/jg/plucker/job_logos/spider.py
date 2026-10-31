@@ -51,6 +51,12 @@ class Spider(BaseSpider):
     name = "job-logos"
 
     custom_settings = {
+        # The Apify request queue makes a blocking API call for every request it
+        # adds or hands out, which stalls the whole crawl. The run is short and
+        # cheap to repeat, so the requests can be kept in memory
+        "SCHEDULER": "scrapy.core.scheduler.Scheduler",
+        # Each cache read and write would be such a blocking call, too
+        "HTTPCACHE_ENABLED": False,
         # Logos and favicons are small, no need to wait for long
         "DOWNLOAD_TIMEOUT": 30,
     }
