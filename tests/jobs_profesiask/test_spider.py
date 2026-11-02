@@ -472,6 +472,7 @@ def test_parse_location_unexpected_note(text: str):
     "locations, expected",
     [
         (["Práca z domu"], []),
+        (["Práce z domu"], []),
         (["Remote work"], []),
         (["Bratislava", "Práca z domu"], ["Bratislava"]),
         (["Bratislava"], ["Bratislava"]),
