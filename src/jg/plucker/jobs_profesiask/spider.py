@@ -53,7 +53,7 @@ DELETED_NOTICE_RE = re.compile(
     r"Pracovná ponuka s uvedeným ID \d+ sa v našej databáze nenachádza\."
 )
 
-REMOTE_LOCATIONS = ["Práca z domu", "Remote work"]
+REMOTE_LOCATIONS = ["Práca z domu", "Práce z domu", "Remote work"]
 
 WAF_HTTP_CODES = [202, 405]
 
