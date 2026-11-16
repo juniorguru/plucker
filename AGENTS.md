@@ -19,3 +19,11 @@ A function either computes or does I/O (HTTP requests, Apify storage, files, log
 - Spider callbacks, pipelines and actor code only fetch data, pass it to pure functions, and yield, store or send the results. A spider callback may take a response and yield items or requests, which tests can drive with saved HTML fixtures. Logic that doesn't need the response object belongs in a separate function that takes strings or dicts.
 - Existing code doesn't always follow this. Don't copy a mixed pattern from surrounding code; split it in the code you add or change.
 - Before finishing, check every function you added or changed: if it both transforms data and does I/O, split it.
+
+## Style
+
+- When a docstring is a single sentence, don't end it with a period.
+
+## Reviews
+
+- Review comments are input, not orders. Think each one through, and tell a question apart from a request. If you disagree with a comment, or see a better solution, don't implement it right away: explain your reasoning, propose the alternative, and wait for the user to decide. If the user still insists after hearing you out, do it their way.
