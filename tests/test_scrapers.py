@@ -111,6 +111,23 @@ def test_actor_keeps_requests_in_memory(spider_class: type[Spider]):
     assert crawler.settings["SCHEDULER"] == "scrapy.core.scheduler.Scheduler"
 
 
+@pytest.mark.parametrize(
+    "spider_class",
+    [
+        pytest.param(
+            import_module(f"jg.plucker.{spider_package.name}.spider").Spider,
+            id=spider_package.name,
+        )
+        for spider_package in spider_packages
+    ],
+)
+def test_actor_keeps_apify_proxy(spider_class: type[Spider]):
+    crawler = Crawler(spider_class, get_actor_settings({"useApifyProxy": True}))
+    middlewares = crawler.settings["DOWNLOADER_MIDDLEWARES"]
+
+    assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
+
+
 def test_evaluate_stats_passing():
     evaluate_stats(
         {

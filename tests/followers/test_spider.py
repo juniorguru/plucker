@@ -45,6 +45,22 @@ def test_spider_start_requests_are_storable_on_apify():
         assert is_storable_on_apify(request, spider) is True
 
 
+def test_spider_profile_requests_are_not_filtered():
+    async def collect():
+        return [request async for request in spider.start()]
+
+    spider = Spider()
+    requests = asyncio.run(collect())
+    profile_requests = [
+        request
+        for request in requests
+        if get_domain(request.url) in ("facebook.com", "instagram.com")
+    ]
+
+    assert len(profile_requests) == 4
+    assert all(request.dont_filter for request in profile_requests)
+
+
 def test_spider_today_from_string():
     assert Spider(today="2025-03-18").today == date(2025, 3, 18)
 
