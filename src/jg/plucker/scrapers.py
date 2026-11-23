@@ -44,16 +44,19 @@ async def run_as_spider(
     settings = get_project_settings()
 
     logger.info("Starting the spider")
-    runner = CrawlerRunner(settings)
-    crawler = runner.create_crawler(spider_class)
-
     logger.debug(f"Spider params: {params!r}")
-    # runner.crawl(crawler) would merge the runner's settings into the crawler
-    # again and replace dict settings like DOWNLOADER_MIDDLEWARES as a whole,
-    # dropping what the spider added to them in update_settings()
-    await deferred_to_future(crawler.crawl(**params))
+    crawler = await crawl(settings, spider_class, params)
 
     check_crawl_results(crawler)
+
+
+async def crawl(
+    settings: Settings, spider_class: type[Spider], params: dict[str, Any]
+) -> Crawler:
+    runner = CrawlerRunner(settings)
+    crawler = runner.create_crawler(spider_class)
+    await deferred_to_future(crawler.crawl(**params))
+    return crawler
 
 
 async def run_as_actor(
@@ -70,14 +73,8 @@ async def run_as_actor(
         settings = get_actor_settings(proxy_config)
 
         logger.info("Starting the spider")
-        runner = CrawlerRunner(settings)
-        crawler = runner.create_crawler(spider_class)
-
         logger.debug(f"Spider params: {params!r}")
-        # runner.crawl(crawler) would merge the runner's settings into the crawler
-        # again and replace dict settings like DOWNLOADER_MIDDLEWARES as a whole,
-        # dropping what the spider added to them in update_settings()
-        await deferred_to_future(crawler.crawl(**params))
+        crawler = await crawl(settings, spider_class, params)
 
         check_crawl_results(crawler)
 

@@ -1,5 +1,7 @@
 import asyncio
 import json
+import subprocess
+import sys
 from importlib import import_module
 from pathlib import Path
 
@@ -126,6 +128,20 @@ def test_actor_keeps_apify_proxy(spider_class: type[Spider]):
     crawler = runner.create_crawler(spider_class)
     middlewares = crawler.settings["DOWNLOADER_MIDDLEWARES"]
 
+    assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
+
+
+def test_crawl_keeps_middlewares_added_by_spider():
+    process = subprocess.run(
+        [sys.executable, Path(__file__).parent / "crawl_settings.py"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    middlewares = json.loads(process.stdout.splitlines()[-1])
+
+    assert middlewares["__main__.Middleware"] == 1000
     assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
 
 
