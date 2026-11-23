@@ -83,6 +83,9 @@ SCRIPT_URL_RE = re.compile(
 
 REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
+# Career sites look for the widget name on the first of these elements
+WIDGET_CONTAINER_IDS = ["vacancies", "vacancy-detail", "vacancy-form"]
+
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 BETA_BUCKET_RE = re.compile(rb"beta_bucket=(?P<version>\d+)%3A")
@@ -440,18 +443,12 @@ class Spider(BaseSpider):
                 key=get_script_relevance,
             )
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
-            script_url = script_urls.pop(0)
-            yield response.follow(
-                script_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": response.url,
-                    "script_urls": script_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(script_url),
+            containers_widget_names = [
+                response.css(f"#{element_id}::attr(data-widget)").getall()
+                for element_id in WIDGET_CONTAINER_IDS
+            ]
+            yield self.request_widget_script(
+                script_urls, response.url, item, containers_widget_names, trk
             )
         else:
             yield from self.parse_job_widget(
@@ -468,14 +465,16 @@ class Spider(BaseSpider):
         script_response: Response,
         url: str,
         item: JobDraft,
+        containers_widget_names: list[list[str]],
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request]:
         script_response = cast(TextResponse, script_response)
 
         if data := parse_widget_script_json(script_response.text):
-            widget_name = select_widget(list(data["widgets"].keys()))
-            widget_data = data["widgets"][widget_name]
+            widget_name = get_widget_name(containers_widget_names)
+            self.logger_trk(trk).debug(f"Widget name: {widget_name}")
+            widget_data = select_widget(data["widgets"], widget_name)
             yield from self.parse_job_widget(
                 url,
                 item,
@@ -499,36 +498,40 @@ class Spider(BaseSpider):
                 for chunk_name in chunk_names
             ]
             self.logger_trk(trk).debug(f"Chunk URLs: {chunk_urls!r}")
-            chunk_url = chunk_urls.pop(0)
-            yield Request(
-                chunk_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": url,
-                    "script_urls": chunk_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(chunk_url),
+            yield self.request_widget_script(
+                chunk_urls, url, item, containers_widget_names, trk
             )
         elif script_urls:
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
-            script_url = script_urls.pop(0)
-            yield Request(
-                script_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": url,
-                    "script_urls": script_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(script_url),
+            yield self.request_widget_script(
+                script_urls, url, item, containers_widget_names, trk
             )
         else:
             raise NotImplementedError("Widget data not found")
+
+    def request_widget_script(
+        self,
+        script_urls: list[str],
+        url: str,
+        item: JobDraft,
+        containers_widget_names: list[list[str]],
+        trk: str,
+    ) -> Request:
+        """Requests the first of the script URLs, passing the rest on"""
+        script_url, *script_urls = script_urls
+        return Request(
+            script_url,
+            callback=self.parse_job_widget_script,
+            errback=self.errback,
+            cb_kwargs={
+                "item": item,
+                "url": url,
+                "containers_widget_names": containers_widget_names,
+                "script_urls": script_urls,
+                "trk": trk,
+            },
+            meta=get_request_meta(script_url),
+        )
 
     def parse_job_widget(
         self,
@@ -599,6 +602,8 @@ class Spider(BaseSpider):
             payload = cast(dict, response.json())
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON: {response!r}\n{response.text!r}") from e
+        if "data" not in payload:
+            raise ValueError(f"No data in widget API response: {payload!r}")
         job_ad = payload["data"]["widget"]["jobAd"]
 
         loader = Loader(item=from_draft(item), response=response)
@@ -723,11 +728,24 @@ def load_gql(path: str | Path) -> str:
     return Path(path).read_text()
 
 
-def select_widget(names: list[str]) -> str:
-    for name in names:
-        if name.startswith("main"):
-            return name
-    return names[0]
+def get_widget_name(containers_widget_names: list[list[str]]) -> str:
+    """Returns the widget name from the data-widget attribute of the first container
+
+    Takes data-widget values of elements with each of the WIDGET_CONTAINER_IDS.
+    """
+    for widget_names in containers_widget_names:
+        if len(widget_names) == 1:
+            return widget_names[0]
+        if widget_names:
+            raise ValueError(f"Ambiguous widget names: {widget_names!r}")
+    raise ValueError(f"Widget name not found: {containers_widget_names!r}")
+
+
+def select_widget(widgets: dict[str, dict[str, Any]], name: str) -> dict[str, Any]:
+    try:
+        return widgets[name]
+    except KeyError:
+        raise ValueError(f"Widget {name!r} not found: {list(widgets)!r}")
 
 
 def parse_widget_script_json(text: str) -> dict[str, Any] | None:
