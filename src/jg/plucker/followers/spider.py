@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from scrapy import Request, Spider as BaseSpider
 from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http.response import Response
+from scrapy.settings import BaseSettings
 
 from jg.plucker.items import Followers
 
@@ -49,10 +50,16 @@ class Spider(BaseSpider):
             "http": "scrapy_impersonate.ImpersonateDownloadHandler",
             "https": "scrapy_impersonate.ImpersonateDownloadHandler",
         },
-        "DOWNLOADER_MIDDLEWARES": {
-            "scrapy_impersonate.RandomBrowserMiddleware": 1000,
-        },
     }
+
+    @classmethod
+    def update_settings(cls, settings: BaseSettings) -> None:
+        super().update_settings(settings)
+        # Setting DOWNLOADER_MIDDLEWARES in custom_settings would replace the whole
+        # dict, including ApifyHttpProxyMiddleware, and the actor would run without proxy
+        settings["DOWNLOADER_MIDDLEWARES"].set(
+            "scrapy_impersonate.RandomBrowserMiddleware", 1000, priority="spider"
+        )
 
     def __init__(self, name: str | None = None, today: date | str | None = None):
         super().__init__(name)
@@ -152,6 +159,9 @@ class Spider(BaseSpider):
             callback,
             cb_kwargs={"name": name},
             headers=headers,
+            # Profiles can redirect to the same login page, which the dupefilter
+            # would otherwise drop silently
+            dont_filter=True,
             # Scrapy would ignore 404 silently, but it means the profile is gone
             meta={"handle_httpstatus_list": [404]},
         )

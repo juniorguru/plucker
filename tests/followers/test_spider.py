@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from scrapy import Request
+from scrapy.crawler import CrawlerRunner
 from scrapy.http.response.html import HtmlResponse
 from scrapy.utils.test import get_crawler
 
@@ -14,6 +15,7 @@ from jg.plucker.followers.spider import (
     parse_facebook_description,
     parse_instagram_description,
 )
+from jg.plucker.scrapers import get_actor_settings
 from tests.utils import is_storable_on_apify
 
 
@@ -43,6 +45,31 @@ def test_spider_start_requests_are_storable_on_apify():
     assert requests
     for request in requests:
         assert is_storable_on_apify(request, spider) is True
+
+
+def test_spider_profile_requests_are_not_filtered():
+    async def collect():
+        return [request async for request in spider.start()]
+
+    spider = Spider()
+    requests = asyncio.run(collect())
+    profile_requests = [
+        request
+        for request in requests
+        if get_domain(request.url) in ("facebook.com", "instagram.com")
+    ]
+
+    assert len(profile_requests) == 4
+    assert all(request.dont_filter for request in profile_requests)
+
+
+def test_spider_keeps_impersonation_and_apify_proxy():
+    runner = CrawlerRunner(get_actor_settings({"useApifyProxy": True}))
+    crawler = runner.create_crawler(Spider)
+    middlewares = crawler.settings["DOWNLOADER_MIDDLEWARES"]
+
+    assert middlewares["scrapy_impersonate.RandomBrowserMiddleware"] == 1000
+    assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
 
 
 def test_spider_today_from_string():

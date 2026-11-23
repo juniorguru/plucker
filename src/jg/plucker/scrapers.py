@@ -44,13 +44,19 @@ async def run_as_spider(
     settings = get_project_settings()
 
     logger.info("Starting the spider")
-    runner = CrawlerRunner(settings)
-    crawler = runner.create_crawler(spider_class)
-
     logger.debug(f"Spider params: {params!r}")
-    await deferred_to_future(runner.crawl(crawler, **params))
+    crawler = await crawl(settings, spider_class, params)
 
     check_crawl_results(crawler)
+
+
+async def crawl(
+    settings: Settings, spider_class: type[Spider], params: dict[str, Any]
+) -> Crawler:
+    runner = CrawlerRunner(settings)
+    crawler = runner.create_crawler(spider_class)
+    await deferred_to_future(crawler.crawl(**params))
+    return crawler
 
 
 async def run_as_actor(
@@ -67,11 +73,8 @@ async def run_as_actor(
         settings = get_actor_settings(proxy_config)
 
         logger.info("Starting the spider")
-        runner = CrawlerRunner(settings)
-        crawler = runner.create_crawler(spider_class)
-
         logger.debug(f"Spider params: {params!r}")
-        await deferred_to_future(runner.crawl(crawler, **params))
+        crawler = await crawl(settings, spider_class, params)
 
         check_crawl_results(crawler)
 

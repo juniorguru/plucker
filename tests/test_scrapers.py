@@ -1,12 +1,14 @@
 import asyncio
 import json
+import subprocess
+import sys
 from importlib import import_module
 from pathlib import Path
 
 import pytest
 from apify.storages import KeyValueStore
 from scrapy import Field, Item, Request, Spider
-from scrapy.crawler import Crawler
+from scrapy.crawler import Crawler, CrawlerRunner
 from scrapy.http import HtmlResponse
 from scrapy.settings import Settings
 from scrapy.utils.test import get_crawler
@@ -109,6 +111,38 @@ def test_actor_keeps_requests_in_memory(spider_class: type[Spider]):
     crawler = Crawler(spider_class, get_actor_settings())
 
     assert crawler.settings["SCHEDULER"] == "scrapy.core.scheduler.Scheduler"
+
+
+@pytest.mark.parametrize(
+    "spider_class",
+    [
+        pytest.param(
+            import_module(f"jg.plucker.{spider_package.name}.spider").Spider,
+            id=spider_package.name,
+        )
+        for spider_package in spider_packages
+    ],
+)
+def test_actor_keeps_apify_proxy(spider_class: type[Spider]):
+    runner = CrawlerRunner(get_actor_settings({"useApifyProxy": True}))
+    crawler = runner.create_crawler(spider_class)
+    middlewares = crawler.settings["DOWNLOADER_MIDDLEWARES"]
+
+    assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
+
+
+def test_crawl_keeps_middlewares_added_by_spider():
+    process = subprocess.run(
+        [sys.executable, Path(__file__).parent / "crawl_settings.py"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    middlewares = json.loads(process.stdout.splitlines()[-1])
+
+    assert middlewares["__main__.Middleware"] == 1000
+    assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750
 
 
 def test_evaluate_stats_passing():
