@@ -650,6 +650,17 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(
     assert next(requests)
 
 
+def test_spider_parse_job_widget_api_raises_without_data():
+    response = TextResponse(
+        "https://api.capybara.lmc.cz/api/graphql/widget",
+        body=json.dumps({"errors": [{"message": "Something went wrong"}]}).encode(),
+    )
+    jobs = Spider().parse_job_widget_api(response, JobDraft(), "123")
+
+    with pytest.raises(ValueError, match="No data in widget API response"):
+        next(jobs)
+
+
 @pytest.mark.parametrize(
     "today, expected_posted_on",
     [
