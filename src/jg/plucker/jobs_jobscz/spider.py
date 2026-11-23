@@ -728,20 +728,28 @@ def load_gql(path: str | Path) -> str:
     return Path(path).read_text()
 
 
-def get_widget_name(containers_widget_names: list[list[str]]) -> str:
+def get_widget_name(containers_widget_names: list[list[str]]) -> str | None:
     """Returns the widget name from the data-widget attribute of the first container
 
     Takes data-widget values of elements with each of the WIDGET_CONTAINER_IDS.
+    Some career sites don't name the widget at all.
     """
     for widget_names in containers_widget_names:
         if len(widget_names) == 1:
             return widget_names[0]
         if widget_names:
             raise ValueError(f"Ambiguous widget names: {widget_names!r}")
-    raise ValueError(f"Widget name not found: {containers_widget_names!r}")
+    return None
 
 
-def select_widget(widgets: dict[str, dict[str, Any]], name: str) -> dict[str, Any]:
+def select_widget(
+    widgets: dict[str, dict[str, Any]], name: str | None
+) -> dict[str, Any]:
+    """Returns the widget of given name, or the only widget if the page names none"""
+    if name is None:
+        if len(widgets) == 1:
+            return next(iter(widgets.values()))
+        raise ValueError(f"No widget name and several widgets: {list(widgets)!r}")
     try:
         return widgets[name]
     except KeyError:
