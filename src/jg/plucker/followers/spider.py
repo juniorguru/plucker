@@ -1,6 +1,6 @@
 import json
 import re
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Generator
 from datetime import date
 from urllib.parse import urlparse
 
@@ -24,7 +24,19 @@ FB_DESCRIPTION_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
-INSTAGRAM_APP_ID = "936619743392459"
+IG_DESCRIPTION_RES = [
+    re.compile(r"^(\d+) Followers, "),  # English
+    re.compile(r"^Počet sledujících: (\d+), "),  # Czech
+]
+
+LOGIN_PATHS = ("/login", "/accounts/login")
+
+# Meta's own link preview crawler gets the og:description on Instagram profiles
+LINK_PREVIEW_USER_AGENT = (
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+)
+
+MAX_ATTEMPTS = 2
 
 
 class Spider(BaseSpider):
@@ -54,27 +66,27 @@ class Spider(BaseSpider):
             "https://mastodonczech.cz/@honzajavorek",
             self.parse_mastodon,
         )
-        yield Request(
+        yield self.profile_request(
             "https://www.facebook.com/juniordotguru",
             self.parse_facebook,
-            cb_kwargs={"name": "facebook"},
+            name="facebook",
         )
-        yield Request(
+        yield self.profile_request(
             "https://www.facebook.com/honzajavorek/?__xts__=1",
             self.parse_facebook,
-            cb_kwargs={"name": "facebook_personal"},
+            name="facebook_personal",
         )
-        yield Request(
-            "https://i.instagram.com/api/v1/users/web_profile_info/?username=juniordotguru",
+        yield self.profile_request(
+            "https://www.instagram.com/juniordotguru/",
             self.parse_instagram,
-            cb_kwargs={"name": "instagram"},
-            headers={"x-ig-app-id": INSTAGRAM_APP_ID},
+            name="instagram",
+            headers={"User-Agent": LINK_PREVIEW_USER_AGENT},
         )
-        yield Request(
-            "https://i.instagram.com/api/v1/users/web_profile_info/?username=honza.javorek",
+        yield self.profile_request(
+            "https://www.instagram.com/honza.javorek/",
             self.parse_instagram,
-            cb_kwargs={"name": "instagram_personal"},
-            headers={"x-ig-app-id": INSTAGRAM_APP_ID},
+            name="instagram_personal",
+            headers={"User-Agent": LINK_PREVIEW_USER_AGENT},
         )
         yield Request(
             (
@@ -129,28 +141,88 @@ class Spider(BaseSpider):
                 self.logger.debug(f"Could not parse text: {text!r}")
         raise ValueError("Could not find followers count:\n\n" + response.text)
 
-    def parse_facebook(self, response: Response, name: str) -> Followers:
+    def profile_request(
+        self,
+        url: str,
+        callback: Callable,
+        name: str,
+        headers: dict[str, str] | None = None,
+    ) -> Request:
+        return Request(
+            url,
+            callback,
+            cb_kwargs={"name": name, "attempt": 1},
+            headers=headers,
+            meta={"handle_httpstatus_list": [404]},
+        )
+
+    def parse_facebook(
+        self, response: Response, name: str, attempt: int = 1
+    ) -> Generator[Followers | Request]:
+        yield from self.parse_profile(
+            response, name, attempt, parse_facebook_description
+        )
+
+    def parse_instagram(
+        self, response: Response, name: str, attempt: int = 1
+    ) -> Generator[Followers | Request]:
+        yield from self.parse_profile(
+            response, name, attempt, parse_instagram_description
+        )
+
+    def parse_profile(
+        self,
+        response: Response,
+        name: str,
+        attempt: int,
+        parse_description: Callable[[str], int],
+    ) -> Generator[Followers | Request]:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
+        redirect_urls = response.meta.get("redirect_urls", [])
+        if is_login_redirect([*redirect_urls, response.url]):
+            if attempt < MAX_ATTEMPTS:
+                self.logger.warning(f"Redirected to login, retrying {name}")
+                if response.request is None:
+                    raise ValueError(f"Missing request to retry: {name}")
+                yield response.request.replace(
+                    url=redirect_urls[0] if redirect_urls else response.url,
+                    cb_kwargs={"name": name, "attempt": attempt + 1},
+                    meta={"handle_httpstatus_list": [404], "dont_cache": True},
+                    dont_filter=True,
+                )
+            else:
+                self.logger.error(
+                    f"Redirected to login {attempt} times, skipping {name}"
+                )
+            return
+        if response.status != 200:
+            raise ValueError(f"Unexpected HTTP status {response.status}: {name}")
         selector = 'meta[property="og:description"]::attr(content)'
         if description := response.css(selector).get():
-            self.logger.info("Found og:description")
-            if match := FB_DESCRIPTION_RE.search(description):
-                count = int(re.sub(r"\D", "", match.group(1)))
-                return Followers(date=self.today, name=name, count=count)
-            self.logger.error(f"Could not parse followers: {description!r}")
-        raise ValueError("Could not find followers count:\n\n" + response.text)
+            count = parse_description(description)
+            yield Followers(date=self.today, name=name, count=count)
+        else:
+            raise ValueError("Could not find og:description:\n\n" + response.text)
 
-    def parse_instagram(self, response: Response, name: str) -> Followers:
-        self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
-        try:
-            data = json.loads(response.text)
-            count = data["data"]["user"]["edge_followed_by"]["count"]
-        except (KeyError, TypeError, json.JSONDecodeError) as exc:
-            raise ValueError(
-                "Could not find followers count in Instagram API response:\n\n"
-                + response.text
-            ) from exc
-        return Followers(date=self.today, name=name, count=int(count))
+
+def parse_facebook_description(description: str) -> int:
+    """Parse followers count from Facebook's og:description"""
+    if match := FB_DESCRIPTION_RE.search(description):
+        return int(re.sub(r"\D", "", match.group(1)))
+    raise ValueError(f"Could not parse followers: {description!r}")
+
+
+def parse_instagram_description(description: str) -> int:
+    """Parse followers count from Instagram's og:description"""
+    for description_re in IG_DESCRIPTION_RES:
+        if match := description_re.search(description):
+            return int(match.group(1))
+    raise ValueError(f"Could not parse followers: {description!r}")
+
+
+def is_login_redirect(urls: list[str]) -> bool:
+    """Tell whether any of the URLs is a login page"""
+    return any(urlparse(url).path.startswith(LOGIN_PATHS) for url in urls)
 
 
 def get_domain(url: str) -> str:
