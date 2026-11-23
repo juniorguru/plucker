@@ -83,6 +83,9 @@ SCRIPT_URL_RE = re.compile(
 
 REACT_CHUNK_RE = re.compile(r'"(?P<chunk_name>react\.[^\.]+\.react.min.js)"')
 
+# Career sites look for the widget name on the first of these elements
+WIDGET_CONTAINER_IDS = ["vacancies", "vacancy-detail", "vacancy-form"]
+
 WIDGET_QUERY_PATH = Path(__file__).parent / "widget.gql"
 
 BETA_BUCKET_RE = re.compile(rb"beta_bucket=(?P<version>\d+)%3A")
@@ -441,6 +444,13 @@ class Spider(BaseSpider):
             )
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             script_url = script_urls.pop(0)
+            widget_name = get_widget_name(
+                [
+                    response.css(f"#{element_id}::attr(data-widget)").getall()
+                    for element_id in WIDGET_CONTAINER_IDS
+                ]
+            )
+            self.logger_trk(trk).debug(f"Widget name: {widget_name}")
             yield response.follow(
                 script_url,
                 callback=self.parse_job_widget_script,
@@ -448,6 +458,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": response.url,
+                    "widget_name": widget_name,
                     "script_urls": script_urls,
                     "trk": trk,
                 },
@@ -468,14 +479,14 @@ class Spider(BaseSpider):
         script_response: Response,
         url: str,
         item: JobDraft,
+        widget_name: str,
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request]:
         script_response = cast(TextResponse, script_response)
 
         if data := parse_widget_script_json(script_response.text):
-            widget_name = select_widget(list(data["widgets"].keys()))
-            widget_data = data["widgets"][widget_name]
+            widget_data = select_widget(data["widgets"], widget_name)
             yield from self.parse_job_widget(
                 url,
                 item,
@@ -507,6 +518,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": url,
+                    "widget_name": widget_name,
                     "script_urls": chunk_urls,
                     "trk": trk,
                 },
@@ -522,6 +534,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": url,
+                    "widget_name": widget_name,
                     "script_urls": script_urls,
                     "trk": trk,
                 },
@@ -599,6 +612,8 @@ class Spider(BaseSpider):
             payload = cast(dict, response.json())
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON: {response!r}\n{response.text!r}") from e
+        if "data" not in payload:
+            raise ValueError(f"No data in widget API response: {payload!r}")
         job_ad = payload["data"]["widget"]["jobAd"]
 
         loader = Loader(item=from_draft(item), response=response)
@@ -723,11 +738,24 @@ def load_gql(path: str | Path) -> str:
     return Path(path).read_text()
 
 
-def select_widget(names: list[str]) -> str:
-    for name in names:
-        if name.startswith("main"):
-            return name
-    return names[0]
+def get_widget_name(containers_widget_names: list[list[str]]) -> str:
+    """Returns the widget name from the data-widget attribute of the first container
+
+    Takes data-widget values of elements with each of the WIDGET_CONTAINER_IDS.
+    """
+    for widget_names in containers_widget_names:
+        if len(widget_names) == 1:
+            return widget_names[0]
+        if widget_names:
+            raise ValueError(f"Ambiguous widget names: {widget_names!r}")
+    raise ValueError(f"Widget name not found: {containers_widget_names!r}")
+
+
+def select_widget(widgets: dict[str, dict[str, Any]], name: str) -> dict[str, Any]:
+    try:
+        return widgets[name]
+    except KeyError:
+        raise ValueError(f"Widget {name!r} not found: {list(widgets)!r}")
 
 
 def parse_widget_script_json(text: str) -> dict[str, Any] | None:

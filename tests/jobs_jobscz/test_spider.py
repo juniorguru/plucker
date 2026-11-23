@@ -32,6 +32,7 @@ from jg.plucker.jobs_jobscz.spider import (
     get_param,
     get_params,
     get_request_meta,
+    get_widget_name,
     is_beta_site,
     is_career_site,
     select_widget,
@@ -464,6 +465,7 @@ def test_spider_parse_job_widget_script_request():
         request.url
         == "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c"
     )
+    assert request.cb_kwargs["widget_name"] == "main"
 
 
 def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur():
@@ -504,6 +506,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
             response,
             "https://czechoslovakgroup.jobs.cz/detail-pozice?r=detail&id=2001488312&rps=233",
             JobDraft(),
+            "main",
             [
                 "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
                 "https://cdn.capybara.lmc.cz/cs-framework-api/v1/build/js/api.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
@@ -519,6 +522,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
         request.url
         == "https://czechoslovakgroup.jobs.cz/assets/js/react.50e0a46e.react.min.js?av=666e27a672636e0c"
     )
+    assert request.cb_kwargs["widget_name"] == "main"
     assert request.cb_kwargs["script_urls"] == [
         "https://czechoslovakgroup.jobs.cz/assets/js/react.49d0a293.react.min.js?av=666e27a672636e0c",
         "https://czechoslovakgroup.jobs.cz/assets/js/react.b48beae3.react.min.js?av=666e27a672636e0c",
@@ -536,7 +540,9 @@ def test_spider_parse_job_widget_script_response():
         body=Path(FIXTURES_DIR / "job_widget_script.js").read_bytes(),
     )
     request = next(
-        Spider().parse_job_widget_script(response, html_url, JobDraft(), [], "123")
+        Spider().parse_job_widget_script(
+            response, html_url, JobDraft(), "main", [], "123"
+        )
     )
 
     assert is_storable_on_apify(request, Spider()) is True
@@ -562,14 +568,50 @@ def test_spider_parse_job_widget_script_response():
     )
 
 
+def test_spider_parse_job_widget_script_response_selects_widget_by_name():
+    html_url = "https://roedl.jobs.cz/detail-pozice?r=detail&id=2001545878&rps=233"
+    response = TextResponse(
+        "https://site-assets.jobs.cz/assets/roedl/2ba98c08c1770a05/assets/js/script.min.js",
+        body=Path(FIXTURES_DIR / "job_widget_script10.js").read_bytes(),
+    )
+    request = next(
+        Spider().parse_job_widget_script(
+            response, html_url, JobDraft(), "main", [], "123"
+        )
+    )
+    body = json.loads(request.body)
+
+    assert body["variables"]["widgetId"] == "477bde92-3d06-4f4b-bf52-6f09ea51cd29"
+
+
+def test_spider_parse_job_widget_script_response_raises_on_unknown_widget():
+    html_url = "https://roedl.jobs.cz/detail-pozice?r=detail&id=2001545878&rps=233"
+    response = TextResponse(
+        "https://site-assets.jobs.cz/assets/roedl/2ba98c08c1770a05/assets/js/script.min.js",
+        body=Path(FIXTURES_DIR / "job_widget_script10.js").read_bytes(),
+    )
+    requests = Spider().parse_job_widget_script(
+        response, html_url, JobDraft(), "foo", [], "123"
+    )
+
+    with pytest.raises(ValueError, match="Widget 'foo' not found"):
+        next(requests)
+
+
 @pytest.mark.parametrize(
-    "path",
+    "path, widget_name",
     [
-        pytest.param(path, id=path.name)
+        pytest.param(
+            path,
+            "main-cs" if path.name == "job_widget_script2.js" else "main",
+            id=path.name,
+        )
         for path in FIXTURES_DIR.rglob("job_widget_script*.js")
     ],
 )
-def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path):
+def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(
+    path: Path, widget_name: str
+):
     html_url = (
         "https://foo.jobs.cz/detail-pozice?r=detail&id=123&rps=456&impressionId=789"
     )
@@ -577,7 +619,7 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(path: Path
         "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
     requests = Spider().parse_job_widget_script(
-        response, html_url, JobDraft(), [], "123"
+        response, html_url, JobDraft(), widget_name, [], "123"
     )
 
     assert next(requests)
@@ -617,15 +659,38 @@ def test_spider_parse_job_widget_api():
 
 
 @pytest.mark.parametrize(
-    "names, expected",
+    "containers_widget_names, expected",
     [
-        (["main", "recommend"], "main"),
-        (["main-cs", "main-en"], "main-cs"),
-        (["foo", "bar"], "foo"),
+        ([[], ["main"], []], "main"),
+        ([["main-cs"], ["main"], []], "main-cs"),
+        ([[], [], ["main-en"]], "main-en"),
     ],
 )
-def test_select_widget(names: list[str], expected: str):
-    assert select_widget(names) == expected
+def test_get_widget_name(containers_widget_names: list[list[str]], expected: str):
+    assert get_widget_name(containers_widget_names) == expected
+
+
+@pytest.mark.parametrize(
+    "containers_widget_names",
+    [
+        [[], [], []],
+        [[], ["main", "main-en"], []],
+    ],
+)
+def test_get_widget_name_raises(containers_widget_names: list[list[str]]):
+    with pytest.raises(ValueError):
+        get_widget_name(containers_widget_names)
+
+
+def test_select_widget():
+    widgets = {"main-klienti": {"id": "1"}, "main": {"id": "2"}}
+
+    assert select_widget(widgets, "main") == {"id": "2"}
+
+
+def test_select_widget_raises():
+    with pytest.raises(ValueError):
+        select_widget({"main-cs": {"id": "1"}}, "main")
 
 
 def test_spider_today_from_string():
