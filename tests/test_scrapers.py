@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from apify.storages import KeyValueStore
 from scrapy import Field, Item, Request, Spider
-from scrapy.crawler import Crawler
+from scrapy.crawler import Crawler, CrawlerRunner
 from scrapy.http import HtmlResponse
 from scrapy.settings import Settings
 from scrapy.utils.test import get_crawler
@@ -122,7 +122,8 @@ def test_actor_keeps_requests_in_memory(spider_class: type[Spider]):
     ],
 )
 def test_actor_keeps_apify_proxy(spider_class: type[Spider]):
-    crawler = Crawler(spider_class, get_actor_settings({"useApifyProxy": True}))
+    runner = CrawlerRunner(get_actor_settings({"useApifyProxy": True}))
+    crawler = runner.create_crawler(spider_class)
     middlewares = crawler.settings["DOWNLOADER_MIDDLEWARES"]
 
     assert middlewares["apify.scrapy.middlewares.ApifyHttpProxyMiddleware"] == 750

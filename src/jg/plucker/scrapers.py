@@ -48,7 +48,10 @@ async def run_as_spider(
     crawler = runner.create_crawler(spider_class)
 
     logger.debug(f"Spider params: {params!r}")
-    await deferred_to_future(runner.crawl(crawler, **params))
+    # runner.crawl(crawler) would merge the runner's settings into the crawler
+    # again and replace dict settings like DOWNLOADER_MIDDLEWARES as a whole,
+    # dropping what the spider added to them in update_settings()
+    await deferred_to_future(crawler.crawl(**params))
 
     check_crawl_results(crawler)
 
@@ -71,7 +74,10 @@ async def run_as_actor(
         crawler = runner.create_crawler(spider_class)
 
         logger.debug(f"Spider params: {params!r}")
-        await deferred_to_future(runner.crawl(crawler, **params))
+        # runner.crawl(crawler) would merge the runner's settings into the crawler
+        # again and replace dict settings like DOWNLOADER_MIDDLEWARES as a whole,
+        # dropping what the spider added to them in update_settings()
+        await deferred_to_future(crawler.crawl(**params))
 
         check_crawl_results(crawler)
 
