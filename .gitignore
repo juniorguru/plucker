@@ -47,3 +47,6 @@ items.json
 
 # Scrapy
 .scrapy/
+
+# 1Password-mounted secrets
+.env
