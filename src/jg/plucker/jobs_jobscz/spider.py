@@ -443,23 +443,12 @@ class Spider(BaseSpider):
                 key=get_script_relevance,
             )
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
-            script_url = script_urls.pop(0)
             containers_widget_names = [
                 response.css(f"#{element_id}::attr(data-widget)").getall()
                 for element_id in WIDGET_CONTAINER_IDS
             ]
-            yield response.follow(
-                script_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": response.url,
-                    "containers_widget_names": containers_widget_names,
-                    "script_urls": script_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(script_url),
+            yield self.request_widget_script(
+                script_urls, response.url, item, containers_widget_names, trk
             )
         else:
             yield from self.parse_job_widget(
@@ -509,38 +498,40 @@ class Spider(BaseSpider):
                 for chunk_name in chunk_names
             ]
             self.logger_trk(trk).debug(f"Chunk URLs: {chunk_urls!r}")
-            chunk_url = chunk_urls.pop(0)
-            yield Request(
-                chunk_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": url,
-                    "containers_widget_names": containers_widget_names,
-                    "script_urls": chunk_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(chunk_url),
+            yield self.request_widget_script(
+                chunk_urls, url, item, containers_widget_names, trk
             )
         elif script_urls:
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
-            script_url = script_urls.pop(0)
-            yield Request(
-                script_url,
-                callback=self.parse_job_widget_script,
-                errback=self.errback,
-                cb_kwargs={
-                    "item": item,
-                    "url": url,
-                    "containers_widget_names": containers_widget_names,
-                    "script_urls": script_urls,
-                    "trk": trk,
-                },
-                meta=get_request_meta(script_url),
+            yield self.request_widget_script(
+                script_urls, url, item, containers_widget_names, trk
             )
         else:
             raise NotImplementedError("Widget data not found")
+
+    def request_widget_script(
+        self,
+        script_urls: list[str],
+        url: str,
+        item: JobDraft,
+        containers_widget_names: list[list[str]],
+        trk: str,
+    ) -> Request:
+        """Requests the first of the script URLs, passing the rest on"""
+        script_url, *script_urls = script_urls
+        return Request(
+            script_url,
+            callback=self.parse_job_widget_script,
+            errback=self.errback,
+            cb_kwargs={
+                "item": item,
+                "url": url,
+                "containers_widget_names": containers_widget_names,
+                "script_urls": script_urls,
+                "trk": trk,
+            },
+            meta=get_request_meta(script_url),
+        )
 
     def parse_job_widget(
         self,
