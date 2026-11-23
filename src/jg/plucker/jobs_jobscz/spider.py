@@ -444,13 +444,10 @@ class Spider(BaseSpider):
             )
             self.logger_trk(trk).debug(f"Script URLs: {script_urls!r}")
             script_url = script_urls.pop(0)
-            widget_name = get_widget_name(
-                [
-                    response.css(f"#{element_id}::attr(data-widget)").getall()
-                    for element_id in WIDGET_CONTAINER_IDS
-                ]
-            )
-            self.logger_trk(trk).debug(f"Widget name: {widget_name}")
+            containers_widget_names = [
+                response.css(f"#{element_id}::attr(data-widget)").getall()
+                for element_id in WIDGET_CONTAINER_IDS
+            ]
             yield response.follow(
                 script_url,
                 callback=self.parse_job_widget_script,
@@ -458,7 +455,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": response.url,
-                    "widget_name": widget_name,
+                    "containers_widget_names": containers_widget_names,
                     "script_urls": script_urls,
                     "trk": trk,
                 },
@@ -479,13 +476,15 @@ class Spider(BaseSpider):
         script_response: Response,
         url: str,
         item: JobDraft,
-        widget_name: str,
+        containers_widget_names: list[list[str]],
         script_urls: list[str],
         trk: str,
     ) -> Generator[Request]:
         script_response = cast(TextResponse, script_response)
 
         if data := parse_widget_script_json(script_response.text):
+            widget_name = get_widget_name(containers_widget_names)
+            self.logger_trk(trk).debug(f"Widget name: {widget_name}")
             widget_data = select_widget(data["widgets"], widget_name)
             yield from self.parse_job_widget(
                 url,
@@ -518,7 +517,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": url,
-                    "widget_name": widget_name,
+                    "containers_widget_names": containers_widget_names,
                     "script_urls": chunk_urls,
                     "trk": trk,
                 },
@@ -534,7 +533,7 @@ class Spider(BaseSpider):
                 cb_kwargs={
                     "item": item,
                     "url": url,
-                    "widget_name": widget_name,
+                    "containers_widget_names": containers_widget_names,
                     "script_urls": script_urls,
                     "trk": trk,
                 },

@@ -465,7 +465,17 @@ def test_spider_parse_job_widget_script_request():
         request.url
         == "https://skoda-auto.jobs.cz/assets/js/script.min.js?av=afe813c9aef55a9c"
     )
-    assert request.cb_kwargs["widget_name"] == "main"
+    assert request.cb_kwargs["containers_widget_names"] == [[], ["main"], []]
+
+
+def test_spider_parse_job_widget_script_request_without_widget_name():
+    url = "https://skoda-auto.jobs.cz/detail-pozice?r=detail&id=1632413478&rps=233&impressionId=24d42f33-4e37-4a12-98a8-892a30257708"
+    body = Path(FIXTURES_DIR / "job_widget_script.html").read_bytes()
+    body = body.replace(b' data-widget="main"', b"")
+    response = HtmlResponse(url, body=body)
+    request = next(Spider().parse_job(response, JobDraft(), "123"))
+
+    assert request.cb_kwargs["containers_widget_names"] == [[], [], []]
 
 
 def test_spider_parse_job_widget_script_request_when_multiple_script_urls_occur():
@@ -506,7 +516,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
             response,
             "https://czechoslovakgroup.jobs.cz/detail-pozice?r=detail&id=2001488312&rps=233",
             JobDraft(),
-            "main",
+            [["main"]],
             [
                 "https://czechoslovakgroup.jobs.cz/assets/js/script.min.js?av=666e27a672636e0c",
                 "https://cdn.capybara.lmc.cz/cs-framework-api/v1/build/js/api.min.js?v=2024.07.12.093805-ge54bf3e1f4d-310",
@@ -522,7 +532,7 @@ def test_spider_parse_job_widget_script_request_when_there_are_react_chunks():
         request.url
         == "https://czechoslovakgroup.jobs.cz/assets/js/react.50e0a46e.react.min.js?av=666e27a672636e0c"
     )
-    assert request.cb_kwargs["widget_name"] == "main"
+    assert request.cb_kwargs["containers_widget_names"] == [["main"]]
     assert request.cb_kwargs["script_urls"] == [
         "https://czechoslovakgroup.jobs.cz/assets/js/react.49d0a293.react.min.js?av=666e27a672636e0c",
         "https://czechoslovakgroup.jobs.cz/assets/js/react.b48beae3.react.min.js?av=666e27a672636e0c",
@@ -541,7 +551,7 @@ def test_spider_parse_job_widget_script_response():
     )
     request = next(
         Spider().parse_job_widget_script(
-            response, html_url, JobDraft(), "main", [], "123"
+            response, html_url, JobDraft(), [["main"]], [], "123"
         )
     )
 
@@ -576,12 +586,27 @@ def test_spider_parse_job_widget_script_response_selects_widget_by_name():
     )
     request = next(
         Spider().parse_job_widget_script(
-            response, html_url, JobDraft(), "main", [], "123"
+            response, html_url, JobDraft(), [["main"]], [], "123"
         )
     )
     body = json.loads(request.body)
 
     assert body["variables"]["widgetId"] == "477bde92-3d06-4f4b-bf52-6f09ea51cd29"
+
+
+def test_spider_parse_job_widget_script_response_mess_without_widget_name():
+    html_url = (
+        "https://foo.jobs.cz/detail-pozice?r=detail&id=123&rps=456&impressionId=789"
+    )
+    response = TextResponse(
+        "https://foo.jobs.cz/assets/js/script.min.js",
+        body=Path(FIXTURES_DIR / "job_widget_script6.js").read_bytes(),
+    )
+    requests = Spider().parse_job_widget_script(
+        response, html_url, JobDraft(), [[], [], []], [], "123"
+    )
+
+    assert next(requests).method == "POST"
 
 
 def test_spider_parse_job_widget_script_response_raises_on_unknown_widget():
@@ -591,7 +616,7 @@ def test_spider_parse_job_widget_script_response_raises_on_unknown_widget():
         body=Path(FIXTURES_DIR / "job_widget_script10.js").read_bytes(),
     )
     requests = Spider().parse_job_widget_script(
-        response, html_url, JobDraft(), "foo", [], "123"
+        response, html_url, JobDraft(), [["foo"]], [], "123"
     )
 
     with pytest.raises(ValueError, match="Widget 'foo' not found"):
@@ -619,7 +644,7 @@ def test_spider_parse_job_widget_script_response_parsing_doesnt_raise(
         "https://foo.jobs.cz/assets/js/script.min.js", body=path.read_bytes()
     )
     requests = Spider().parse_job_widget_script(
-        response, html_url, JobDraft(), widget_name, [], "123"
+        response, html_url, JobDraft(), [[widget_name]], [], "123"
     )
 
     assert next(requests)
