@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from scrapy import Request
 from scrapy.http.response.html import HtmlResponse
+from scrapy.utils.test import get_crawler
 
 from jg.plucker.followers.spider import (
     Spider,
@@ -139,42 +140,45 @@ def test_spider_parse_instagram(filename: str, name: str, expected_count: int):
     ]
 
 
-def login_redirect_response(attempt: int) -> HtmlResponse:
-    url = "https://www.facebook.com/honzajavorek/?__xts__=1"
+def login_redirect_response(retry_times: int) -> HtmlResponse:
     request = Request(
         "https://www.facebook.com/?next=https%3A%2F%2Fwww.facebook.com%2Fhonzajavorek%2F&_rdr",
-        cb_kwargs={"name": "facebook_personal", "attempt": attempt},
+        cb_kwargs={"name": "facebook_personal"},
         meta={
+            "retry_times": retry_times,
             "redirect_urls": [
-                url,
+                "https://www.facebook.com/honzajavorek/?__xts__=1",
                 "https://m.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2Fhonzajavorek%2F",
-            ]
+            ],
         },
     )
-    return HtmlResponse(request.url, body=b"<html></html>", request=request, status=200)
+    return HtmlResponse(request.url, body=b"<html></html>", request=request)
 
 
 def test_spider_parse_facebook_login_redirect_retries():
-    spider = Spider()
-    response = login_redirect_response(attempt=1)
+    spider = Spider.from_crawler(get_crawler(Spider))
+    response = login_redirect_response(retry_times=0)
     results = list(spider.parse_facebook(response, name="facebook_personal"))
 
     assert len(results) == 1
     request = results[0]
     assert isinstance(request, Request)
     assert request.url == "https://www.facebook.com/honzajavorek/?__xts__=1"
-    assert request.cb_kwargs == {"name": "facebook_personal", "attempt": 2}
+    assert request.cb_kwargs == {"name": "facebook_personal"}
+    assert request.meta["retry_times"] == 1
     assert request.meta["dont_cache"] is True
-    assert request.dont_filter is True
+    assert "redirect_urls" not in request.meta
 
 
 def test_spider_parse_facebook_login_redirect_gives_up(caplog):
-    spider = Spider()
-    response = login_redirect_response(attempt=2)
-    results = list(spider.parse_facebook(response, name="facebook_personal", attempt=2))
+    spider = Spider.from_crawler(get_crawler(Spider))
+    response = login_redirect_response(retry_times=1)
+    results = list(spider.parse_facebook(response, name="facebook_personal"))
 
     assert results == []
-    assert "Redirected to login 2 times" in caplog.text
+    assert "Gave up retrying" in caplog.text
+    assert caplog.records[-1].levelname == "ERROR"
+    assert caplog.records[-1].name == "followers"
 
 
 def test_spider_parse_instagram_not_found():

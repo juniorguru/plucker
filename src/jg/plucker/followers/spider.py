@@ -5,6 +5,7 @@ from datetime import date
 from urllib.parse import urlparse
 
 from scrapy import Request, Spider as BaseSpider
+from scrapy.downloadermiddlewares.retry import get_retry_request
 from scrapy.http.response import Response
 
 from jg.plucker.items import Followers
@@ -35,8 +36,6 @@ LOGIN_PATHS = ("/login", "/accounts/login")
 LINK_PREVIEW_USER_AGENT = (
     "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
 )
-
-MAX_ATTEMPTS = 2
 
 
 class Spider(BaseSpider):
@@ -151,49 +150,50 @@ class Spider(BaseSpider):
         return Request(
             url,
             callback,
-            cb_kwargs={"name": name, "attempt": 1},
+            cb_kwargs={"name": name},
             headers=headers,
+            # Scrapy would ignore 404 silently, but it means the profile is gone
             meta={"handle_httpstatus_list": [404]},
         )
 
     def parse_facebook(
-        self, response: Response, name: str, attempt: int = 1
+        self, response: Response, name: str
     ) -> Generator[Followers | Request]:
-        yield from self.parse_profile(
-            response, name, attempt, parse_facebook_description
-        )
+        yield from self.parse_profile(response, name, parse_facebook_description)
 
     def parse_instagram(
-        self, response: Response, name: str, attempt: int = 1
+        self, response: Response, name: str
     ) -> Generator[Followers | Request]:
-        yield from self.parse_profile(
-            response, name, attempt, parse_instagram_description
-        )
+        yield from self.parse_profile(response, name, parse_instagram_description)
 
     def parse_profile(
         self,
         response: Response,
         name: str,
-        attempt: int,
         parse_description: Callable[[str], int],
     ) -> Generator[Followers | Request]:
         self.logger.info(f"Parsing {name} from {get_domain(response.url)}")
         redirect_urls = response.meta.get("redirect_urls", [])
         if is_login_redirect([*redirect_urls, response.url]):
-            if attempt < MAX_ATTEMPTS:
-                self.logger.warning(f"Redirected to login, retrying {name}")
-                if response.request is None:
-                    raise ValueError(f"Missing request to retry: {name}")
-                yield response.request.replace(
-                    url=redirect_urls[0] if redirect_urls else response.url,
-                    cb_kwargs={"name": name, "attempt": attempt + 1},
-                    meta={"handle_httpstatus_list": [404], "dont_cache": True},
-                    dont_filter=True,
-                )
-            else:
-                self.logger.error(
-                    f"Redirected to login {attempt} times, skipping {name}"
-                )
+            if response.request is None:
+                raise ValueError(f"Missing request to retry: {name}")
+            request = response.request.replace(
+                url=redirect_urls[0] if redirect_urls else response.url,
+                meta={
+                    "handle_httpstatus_list": [404],
+                    "retry_times": response.request.meta.get("retry_times", 0),
+                    # The cached response would be the same login redirect
+                    "dont_cache": True,
+                },
+            )
+            if retry_request := get_retry_request(
+                request,
+                spider=self,
+                reason="login redirect",
+                max_retry_times=1,
+                logger=self.logger.logger,
+            ):
+                yield retry_request
             return
         if response.status != 200:
             raise ValueError(f"Unexpected HTTP status {response.status}: {name}")
