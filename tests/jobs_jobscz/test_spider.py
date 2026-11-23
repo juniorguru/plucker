@@ -625,6 +625,22 @@ def test_spider_parse_job_widget_script_response_without_widget_name():
     assert body["variables"]["widgetId"] == "5768159b-2ddc-4ae5-9a23-296c83de5df6"
 
 
+def test_spider_parse_job_widget_script_response_without_widget_name_main():
+    html_url = "https://dsv.jobs.cz/detail-pozice?r=detail&id=2001515502&rps=233"
+    response = TextResponse(
+        "https://site-assets.jobs.cz/assets/dsv/b6ee022da1a8d118/assets/js/script.min.js",
+        body=Path(FIXTURES_DIR / "job_widget_script12.js").read_bytes(),
+    )
+    request = next(
+        Spider().parse_job_widget_script(
+            response, html_url, JobDraft(), [[], [], []], [], "123"
+        )
+    )
+    body = json.loads(request.body)
+
+    assert body["variables"]["widgetId"] == "13d9c0c0-f639-4ff9-9286-5d54a7f8b7a3"
+
+
 def test_spider_parse_job_widget_script_response_raises_on_unknown_widget():
     html_url = "https://roedl.jobs.cz/detail-pozice?r=detail&id=2001545878&rps=233"
     response = TextResponse(
@@ -746,6 +762,12 @@ def test_select_widget_raises():
 
 
 def test_select_widget_without_name():
+    widgets = {"main": {"id": "1"}, "main-rudna": {"id": "2"}}
+
+    assert select_widget(widgets, None) == {"id": "1"}
+
+
+def test_select_widget_without_name_single_widget():
     assert select_widget({"main-manpower": {"id": "1"}}, None) == {"id": "1"}
 
 

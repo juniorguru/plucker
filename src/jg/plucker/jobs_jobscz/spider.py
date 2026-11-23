@@ -745,11 +745,17 @@ def get_widget_name(containers_widget_names: list[list[str]]) -> str | None:
 def select_widget(
     widgets: dict[str, dict[str, Any]], name: str | None
 ) -> dict[str, Any]:
-    """Returns the widget of given name, or the only widget if the page names none"""
+    """Returns the widget of given name
+
+    If the page names no widget, the site's own script uses the main widget.
+    Some sites have just one widget with a different name instead.
+    """
     if name is None:
+        if "main" in widgets:
+            return widgets["main"]
         if len(widgets) == 1:
             return next(iter(widgets.values()))
-        raise ValueError(f"No widget name and several widgets: {list(widgets)!r}")
+        raise ValueError(f"No widget name and no main widget: {list(widgets)!r}")
     try:
         return widgets[name]
     except KeyError:
