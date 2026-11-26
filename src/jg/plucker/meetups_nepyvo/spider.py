@@ -1,5 +1,7 @@
 from collections.abc import Generator
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from ics import Calendar, Event
 from scrapy import Spider as BaseSpider
@@ -9,6 +11,8 @@ from jg.plucker.items import Meetup
 
 
 SERIES_URL = "https://nepyvo.cz/"
+
+PRAGUE_TZ = ZoneInfo("Europe/Prague")
 
 
 class Spider(BaseSpider):
@@ -44,7 +48,7 @@ class Spider(BaseSpider):
 
         return Meetup(
             title=event.summary,
-            url=get_event_url(event.url, event.uid),
+            url=get_event_url(event.url, starts_at),
             description=event.description,
             starts_at=starts_at,
             ends_at=ends_at,
@@ -56,14 +60,18 @@ class Spider(BaseSpider):
         )
 
 
-def get_event_url(url: str | None, uid: str | None) -> str:
+def get_event_url(url: str | None, starts_at: datetime) -> str:
     """Returns a URL unique to the event, as junior.guru deduplicates meetups by URL
 
     The calendar has no per-event URLs and the website has no per-event pages,
-    so the homepage URL gets the event's UID as a fragment.
+    so the homepage URL gets UTM params with the event's date in Prague.
     """
     if url:
         return url
-    if not uid:
-        raise ValueError("Event has neither URL nor UID")
-    return f"{SERIES_URL}#{uid}"
+    starts_on = starts_at.astimezone(PRAGUE_TZ).date()
+    params = {
+        "utm_source": "juniorguru",
+        "utm_medium": "club",
+        "utm_campaign": f"meetup-{starts_on.isoformat()}",
+    }
+    return f"{SERIES_URL}?{urlencode(params)}"
