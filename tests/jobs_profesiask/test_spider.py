@@ -18,7 +18,6 @@ from jg.plucker.jobs_profesiask.spider import (
     Card,
     RequestFailedError,
     Spider,
-    UnexpectedMarkupError,
     WAFChallengeError,
     check_filters,
     clean_listing_url,
@@ -31,6 +30,7 @@ from jg.plucker.jobs_profesiask.spider import (
     parse_location,
     parse_locations,
 )
+from jg.plucker.scrapers import UnexpectedDataError
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -96,7 +96,7 @@ def test_check_filters_unexpected(old: bytes, new: bytes):
     assert old in body
     response = HtmlResponse(LISTING_URL, body=body.replace(old, new))
 
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         check_filters(response)
 
 
@@ -311,7 +311,7 @@ def test_spider_parse_job_no_description():
     body = body.replace(b'class="maintextearea"', b'class="something-else"')
     response = HtmlResponse("https://www.profesia.sk/praca/softip/O5372508", body=body)
 
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().parse_job(response, make_card().to_dict()))
 
 
@@ -320,7 +320,7 @@ def test_spider_parse_job_no_date_posted():
     body = body.replace(b'itemprop="datePosted"', b'itemprop="somethingElse"')
     response = HtmlResponse("https://www.profesia.sk/praca/softip/O5372508", body=body)
 
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().parse_job(response, make_card().to_dict()))
 
 
@@ -376,7 +376,7 @@ def test_parse_language_missing():
         "https://www.profesia.sk/praca/softip/O5372508", body=b"<html></html>"
     )
 
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         parse_language(response)
 
 
@@ -464,7 +464,7 @@ def test_parse_location(text: str, expected: str):
     ],
 )
 def test_parse_location_unexpected_note(text: str):
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         parse_location(text)
 
 
@@ -483,7 +483,7 @@ def test_parse_locations_remote(locations: list[str], expected: list[str]):
 
 
 def test_parse_locations_remote_but_not_remote():
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         parse_locations(["Práca z domu"], remote=False)
 
 
@@ -502,7 +502,7 @@ def test_parse_company_name(text: str, expected: str):
 
 
 def test_parse_company_name_unexpected():
-    with pytest.raises(UnexpectedMarkupError):
+    with pytest.raises(UnexpectedDataError):
         parse_company_name("ACME | e-shops | since 1990")
 
 

@@ -14,12 +14,11 @@ from jg.plucker import settings
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import (
     Spider,
-    UnexpectedPageError,
     is_jobscz_url,
     is_profesiask_url,
 )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
-from jg.plucker.scrapers import StatsError
+from jg.plucker.scrapers import StatsError, UnexpectedDataError
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -121,7 +120,7 @@ def test_spider_check_jobscz_unexpected_page(response_url: str, fixture_basename
         response_url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
 
-    with pytest.raises(UnexpectedPageError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().check_jobscz(response, urls=[url]))
 
 
@@ -347,7 +346,7 @@ def test_spider_check_profesiask_unknown_page():
     url = "https://www.profesia.sk/praca/softip/O5372508"
     response = HtmlResponse(url, body=b"<html><body>Something else</body></html>")
 
-    with pytest.raises(UnexpectedPageError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().check_profesiask(response, urls=[url]))
 
 
@@ -612,3 +611,33 @@ def test_spider_logs_sites_with_inconclusive_checks(
         spider.closed("finished")
 
     assert caplog.messages == expected_messages
+
+
+def test_spider_start_checks_getjob_by_head():
+    url = "https://getjob.cz/prace/it-technik-482786834164"
+    spider = Spider(links=[{"url": url}])
+
+    async def collect():
+        return [request async for request in spider.start()]
+
+    requests = asyncio.run(collect())
+
+    assert [(request.url, request.method) for request in requests] == [(url, "HEAD")]
+    assert requests[0].callback == spider.check_http
+    assert spider._expected_urls == {url}
+
+
+@pytest.mark.parametrize(
+    "status, expected_ok",
+    [
+        (200, True),  # live job, checked on getjob.cz on 2026-11-26
+        (404, False),  # unknown slug, checked on getjob.cz on 2026-11-26
+        (410, False),  # inactive job, according to getjob.cz's own frontend
+    ],
+)
+def test_spider_check_http_getjob(status: int, expected_ok: bool):
+    url = "https://getjob.cz/prace/it-technik-482786834164"
+    response = TextResponse(url, status=status, request=Request(url, method="HEAD"))
+    links = list(Spider().check_http(response, urls=[url]))
+
+    assert links == [JobCheck(url=url, ok=expected_ok, reason=f"HTTP {status}")]
