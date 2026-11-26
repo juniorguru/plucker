@@ -301,20 +301,21 @@ def test_load_job_without_location():
     assert "locations_raw" not in job
 
 
-def test_load_job_without_company():
-    data = load_fixture("detail_email.json")["nabidka"] | {"company": " "}
+@pytest.mark.parametrize("company", ["", " "])
+def test_load_job_without_company(company: str):
+    data = load_fixture("detail_email.json")["nabidka"] | {"company": company}
+
+    with pytest.raises(UnexpectedDataError):
+        load_job(data, False, "jobs-getjob", "https://example.com")
+
+
+def test_required_fields_filter_drops_job_without_description():
+    # GetJob has jobs without a description. Without one, junior.guru can't
+    # filter them or tell if they're for juniors, so they get dropped on purpose
+    data = load_fixture("detail_mpsv.json")["nabidka"] | {"popis": ""}
     job = load_job(data, False, "jobs-getjob", "https://example.com")
 
-    # company_name is a required field of Job, so RequiredFieldsFilterPipeline
-    # drops the item, see test_required_fields_filter_drops_job_without_company
-    assert "company_name" not in job
-
-
-def test_required_fields_filter_drops_job_without_company():
-    data = load_fixture("detail_email.json")["nabidka"] | {"company": " "}
-    job = load_job(data, False, "jobs-getjob", "https://example.com")
-
-    with pytest.raises(MissingRequiredFields, match="company_name"):
+    with pytest.raises(MissingRequiredFields, match="description_html"):
         RequiredFieldsFilterPipeline().process_item(job)
 
 

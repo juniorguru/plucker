@@ -241,6 +241,18 @@ def text_to_html(text: str) -> str:
     return "\n".join(parts)
 
 
+def get_company_name(job: dict[str, Any]) -> str:
+    """
+    Returns the company name of the job
+
+    Raises UnexpectedDataError if it's blank. Sources the scraper keeps have
+    never had jobs without a company, so a blank one means GetJob changed something.
+    """
+    if company_name := job["company"].strip():
+        return company_name
+    raise UnexpectedDataError(f"No company: {job['slug']!r}")
+
+
 def load_job(job: dict[str, Any], remote: bool, source: str, source_url: str) -> Job:
     loader = Loader(item=Job())
     loader.add_value("source", source)
@@ -248,7 +260,7 @@ def load_job(job: dict[str, Any], remote: bool, source: str, source_url: str) ->
     loader.add_value("title", job["title"])
     loader.add_value("url", JOB_URL_TEMPLATE.format(slug=job["slug"]))
     loader.add_value("apply_url", get_apply_url(job["reakce"]))
-    loader.add_value("company_name", job["company"])
+    loader.add_value("company_name", get_company_name(job))
     loader.add_value("locations_raw", job["location"])
     loader.add_value("remote", remote)
     loader.add_value(
