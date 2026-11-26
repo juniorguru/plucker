@@ -133,8 +133,13 @@ class Spider(BaseSpider):
         if response.status == 410:
             self.logger.warning(f"Job no longer active: {response.url}")
             return
-        data = cast(TextResponse, response).json()
-        yield load_job(data["nabidka"], remote, self.name, response.url)
+        job = cast(TextResponse, response).json()["nabidka"]
+        if not has_description(job):
+            # Without a description, junior.guru can't filter the job
+            # or tell if it's for juniors
+            self.logger.info(f"Skipping {job['slug']!r}: no description")
+            return
+        yield load_job(job, remote, self.name, response.url)
 
 
 class UnknownSourceError(UnexpectedDataError):
@@ -239,6 +244,10 @@ def text_to_html(text: str) -> str:
     if list_items:
         parts.append(f"<ul>{''.join(list_items)}</ul>")
     return "\n".join(parts)
+
+
+def has_description(job: dict[str, Any]) -> bool:
+    return bool(job["popis"].strip())
 
 
 def get_company_name(job: dict[str, Any]) -> str:
