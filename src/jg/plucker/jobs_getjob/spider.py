@@ -263,12 +263,17 @@ def get_company_name(job: dict[str, Any]) -> str:
 
 
 def load_job(job: dict[str, Any], remote: bool, source: str, source_url: str) -> Job:
+    url = JOB_URL_TEMPLATE.format(slug=job["slug"])
     loader = Loader(item=Job())
     loader.add_value("source", source)
     loader.add_value("source_urls", source_url)
+    # junior.guru lists GetJob's jobs thanks to a cooperation with GetJob,
+    # so people apply through GetJob. The link GetJob sends them to is kept
+    # just in case, but it's often the company's website, not an application
+    loader.add_value("source_urls", get_apply_url(job["reakce"]))
     loader.add_value("title", job["title"])
-    loader.add_value("url", JOB_URL_TEMPLATE.format(slug=job["slug"]))
-    loader.add_value("apply_url", get_apply_url(job["reakce"]))
+    loader.add_value("url", url)
+    loader.add_value("apply_url", url)
     loader.add_value("company_name", get_company_name(job))
     loader.add_value("locations_raw", job["location"])
     loader.add_value("remote", remote)

@@ -260,10 +260,7 @@ def test_load_job():
     )
     assert job["title"] == "IT technik"
     assert job["url"] == "https://getjob.cz/prace/it-technik-482786834164"
-    assert (
-        job["apply_url"]
-        == "https://up.gov.cz/volna-mista-v-cr#/volna-mista-detail/67312987"
-    )
+    assert job["apply_url"] == "https://getjob.cz/prace/it-technik-482786834164"
     assert job["company_name"] == "JUHA s.r.o."
     assert job["locations_raw"] == ["Brno"]
     assert job["remote"] is True
@@ -271,7 +268,8 @@ def test_load_job():
     assert job["posted_on"] == date(2026, 11, 24)
     assert job["source"] == "jobs-getjob"
     assert job["source_urls"] == [
-        "https://getjob.cz/api/jobs/board?nabidka=it-technik-482786834164"
+        "https://getjob.cz/api/jobs/board?nabidka=it-technik-482786834164",
+        "https://up.gov.cz/volna-mista-v-cr#/volna-mista-detail/67312987",
     ]
     assert job["description_html"].startswith("<p>První kontakt osobně")
     assert (
@@ -288,7 +286,11 @@ def test_load_job_email():
         "https://example.com",
     )
 
-    assert "apply_url" not in job
+    assert (
+        job["apply_url"]
+        == "https://getjob.cz/prace/lektor-ka-pripravneho-kurzu-matematiky-na-prijimaci-zkousky-e9d7a4fa4208"
+    )
+    assert job["source_urls"] == ["https://example.com"]
     assert job["remote"] is False
     assert job["employment_types"] == ["brigáda", "dohoda"]
     assert job["posted_on"] == date(2026, 11, 6)
@@ -419,7 +421,7 @@ def test_spider_parse_job():
 
     assert len(jobs) == 1
     assert isinstance(jobs[0], Job)
-    assert jobs[0]["source_urls"] == [url]
+    assert jobs[0]["source_urls"][0] == url
 
 
 def test_spider_parse_job_gone():
