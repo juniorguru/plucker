@@ -10,6 +10,7 @@ from scrapy.loader import ItemLoader
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
+from jg.plucker.scrapers import UnexpectedDataError
 
 
 API_URL = "https://getjob.cz/api/jobs/board"
@@ -64,10 +65,6 @@ CONTRACT_TYPES = {
 }
 
 BULLET = "• "
-
-
-class UnexpectedDataError(Exception):
-    pass
 
 
 class Spider(BaseSpider):

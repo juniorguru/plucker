@@ -15,6 +15,7 @@ from twisted.python.failure import Failure
 
 from jg.plucker.items import Job
 from jg.plucker.processors import parse_iso_date
+from jg.plucker.scrapers import UnexpectedDataError
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
@@ -58,11 +59,7 @@ REMOTE_LOCATIONS = ["Práca z domu", "Práce z domu", "Remote work"]
 WAF_HTTP_CODES = [202, 405]
 
 
-class UnexpectedMarkupError(Exception):
-    pass
-
-
-class UnexpectedLocationNoteError(UnexpectedMarkupError):
+class UnexpectedLocationNoteError(UnexpectedDataError):
     pass
 
 
@@ -257,7 +254,7 @@ class Spider(BaseSpider):
         loader.add_value("source_urls", [response.url, *card.listing_urls])
 
         if not response.css('[itemprop="datePosted"]'):
-            raise UnexpectedMarkupError(f"No date posted: {response.url}")
+            raise UnexpectedDataError(f"No date posted: {response.url}")
         loader.add_css("posted_on", '[itemprop="datePosted"]::text')
 
         loader.add_css("company_logo_urls", "img.logo-offer::attr(src)")
@@ -278,7 +275,7 @@ class Spider(BaseSpider):
                 ],
             )
         else:
-            raise UnexpectedMarkupError(f"No description: {response.url}")
+            raise UnexpectedDataError(f"No description: {response.url}")
 
         yield loader.load_item()
 
@@ -330,7 +327,7 @@ def check_filters(response: HtmlResponse) -> None:
         for href in employment_types_links.css("::attr(href)").getall()
     }
     if slugs != set(EMPLOYMENT_TYPES):
-        raise UnexpectedMarkupError(
+        raise UnexpectedDataError(
             f"Unexpected employment types filter: {sorted(slugs)}"
         )
 
@@ -340,7 +337,7 @@ def check_filters(response: HtmlResponse) -> None:
         for href in remote_work_links.css("::attr(href)").getall()
     }
     if values != set(REMOTE_WORK):
-        raise UnexpectedMarkupError(f"Unexpected remote work filter: {sorted(values)}")
+        raise UnexpectedDataError(f"Unexpected remote work filter: {sorted(values)}")
 
 
 def parse_card(response: HtmlResponse, card_el: Any) -> Card:
@@ -348,7 +345,7 @@ def parse_card(response: HtmlResponse, card_el: Any) -> Card:
     title = card_el.css("h2 .title::text").get()
     company_name = card_el.css(".employer::text").get()
     if not title or not company_name:
-        raise UnexpectedMarkupError(f"No title or company name: {url}")
+        raise UnexpectedDataError(f"No title or company name: {url}")
     return Card(
         url=url,
         title=title.strip(),
@@ -366,7 +363,7 @@ def parse_card(response: HtmlResponse, card_el: Any) -> Card:
 def parse_language(response: HtmlResponse) -> str:
     locale = response.css('meta[property="og:locale"]::attr(content)').get()
     if not locale or not (match := re.fullmatch(r"([a-z]{2})_[A-Z]{2}", locale)):
-        raise UnexpectedMarkupError(f"Unexpected og:locale {locale!r}: {response.url}")
+        raise UnexpectedDataError(f"Unexpected og:locale {locale!r}: {response.url}")
     return match.group(1)
 
 
@@ -398,7 +395,7 @@ def parse_company_name(text: str) -> str:
     """
     parts = text.split(" | ")
     if len(parts) > 2:
-        raise UnexpectedMarkupError(f"Unexpected company name: {text!r}")
+        raise UnexpectedDataError(f"Unexpected company name: {text!r}")
     return parts[0].strip()
 
 
@@ -423,7 +420,7 @@ def parse_locations(locations: Iterable[str], remote: bool) -> list[str]:
     for location in map(parse_location, locations):
         if location in REMOTE_LOCATIONS:
             if not remote:
-                raise UnexpectedMarkupError(
+                raise UnexpectedDataError(
                     f"Remote location {location!r}, but the job isn't remote"
                 )
         else:

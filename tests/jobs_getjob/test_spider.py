@@ -12,7 +12,6 @@ from jg.plucker.jobs_getjob.spider import (
     LISTING_PARAMS,
     REMOTE_LISTING_PARAMS,
     Spider,
-    UnexpectedDataError,
     UnknownSourceError,
     get_apply_url,
     get_detail_url,
@@ -25,6 +24,7 @@ from jg.plucker.jobs_getjob.spider import (
     text_to_html,
 )
 from jg.plucker.pipelines import MissingRequiredFields, RequiredFieldsFilterPipeline
+from jg.plucker.scrapers import UnexpectedDataError
 
 
 FIXTURES_DIR = Path(__file__).parent

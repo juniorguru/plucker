@@ -14,12 +14,11 @@ from jg.plucker import settings
 from jg.plucker.items import JobCheck
 from jg.plucker.job_checks.spider import (
     Spider,
-    UnexpectedPageError,
     is_jobscz_url,
     is_profesiask_url,
 )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
-from jg.plucker.scrapers import StatsError
+from jg.plucker.scrapers import StatsError, UnexpectedDataError
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -121,7 +120,7 @@ def test_spider_check_jobscz_unexpected_page(response_url: str, fixture_basename
         response_url, body=Path(FIXTURES_DIR / fixture_basename).read_bytes()
     )
 
-    with pytest.raises(UnexpectedPageError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().check_jobscz(response, urls=[url]))
 
 
@@ -347,7 +346,7 @@ def test_spider_check_profesiask_unknown_page():
     url = "https://www.profesia.sk/praca/softip/O5372508"
     response = HtmlResponse(url, body=b"<html><body>Something else</body></html>")
 
-    with pytest.raises(UnexpectedPageError):
+    with pytest.raises(UnexpectedDataError):
         list(Spider().check_profesiask(response, urls=[url]))
 
 

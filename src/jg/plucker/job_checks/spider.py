@@ -21,17 +21,13 @@ from jg.plucker.jobs_profesiask.spider import (
     raise_for_waf_challenge,
 )
 from jg.plucker.jobs_startupjobs.spider import EXPORT_URL as STARTUPJOBS_EXPORT_URL
-from jg.plucker.scrapers import evaluate_stats, parse_links
+from jg.plucker.scrapers import UnexpectedDataError, evaluate_stats, parse_links
 from jg.plucker.settings import RETRY_HTTP_CODES
 
 
 MIN_CHECKS_PER_HOST = 5
 
 MAX_INCONCLUSIVE_RATIO = 0.5
-
-
-class UnexpectedPageError(Exception):
-    pass
 
 
 class Spider(BaseSpider):
@@ -232,7 +228,7 @@ class Spider(BaseSpider):
             if site := get_jobscz_site(response):
                 yield JobCheck(url=url, ok=True, reason=f"{reason} ({site})")
             else:
-                raise UnexpectedPageError(
+                raise UnexpectedDataError(
                     f"Unexpected jobs.cz page: {url} → {response.url}"
                 )
         else:
@@ -263,7 +259,7 @@ class Spider(BaseSpider):
             elif response.css('[itemprop="datePosted"]').get(None):
                 yield JobCheck(url=url, ok=True, reason="PROFESIASK")
             else:
-                raise UnexpectedPageError(
+                raise UnexpectedDataError(
                     f"Unexpected profesia.sk page: {url} → {response.url}"
                 )
 
