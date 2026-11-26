@@ -18,12 +18,12 @@ from jg.plucker.jobs_getjob.spider import (
     get_employment_types,
     get_listing_url,
     get_skip_reason,
+    has_description,
     has_next_page,
     load_job,
     parse_listing_jobs,
     text_to_html,
 )
-from jg.plucker.pipelines import MissingRequiredFields, RequiredFieldsFilterPipeline
 from jg.plucker.scrapers import UnexpectedDataError
 
 
@@ -309,14 +309,18 @@ def test_load_job_without_company(company: str):
         load_job(data, False, "jobs-getjob", "https://example.com")
 
 
-def test_required_fields_filter_drops_job_without_description():
-    # GetJob has jobs without a description. Without one, junior.guru can't
-    # filter them or tell if they're for juniors, so they get dropped on purpose
-    data = load_fixture("detail_mpsv.json")["nabidka"] | {"popis": ""}
-    job = load_job(data, False, "jobs-getjob", "https://example.com")
+@pytest.mark.parametrize(
+    "description, expected",
+    [
+        ("Hledáme kolegu.", True),
+        ("", False),
+        (" \n ", False),
+    ],
+)
+def test_has_description(description: str, expected: bool):
+    data = load_fixture("detail_mpsv.json")["nabidka"] | {"popis": description}
 
-    with pytest.raises(MissingRequiredFields, match="description_html"):
-        RequiredFieldsFilterPipeline().process_item(job)
+    assert has_description(data) is expected
 
 
 def test_spider_parse_remote_listing_last_page():
@@ -427,3 +431,14 @@ def test_spider_parse_job_gone():
     )
 
     assert list(spider.parse_job(response, remote=True)) == []
+
+
+def test_spider_parse_job_without_description():
+    data = load_fixture("detail_mpsv.json")
+    data["nabidka"]["popis"] = ""
+    url = get_detail_url("it-technik-482786834164")
+    response = TextResponse(url, body=json.dumps(data).encode(), request=Request(url))
+
+    # Skipped by the spider, because the run fails on items dropped
+    # by RequiredFieldsFilterPipeline, see evaluate_stats()
+    assert list(Spider().parse_job(response, remote=True)) == []
