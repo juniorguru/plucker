@@ -8,6 +8,9 @@ from scrapy.http.response import Response
 from jg.plucker.items import Meetup
 
 
+SERIES_URL = "https://nepyvo.cz/"
+
+
 class Spider(BaseSpider):
     name = "meetups-nepyvo"
 
@@ -41,7 +44,7 @@ class Spider(BaseSpider):
 
         return Meetup(
             title=event.summary,
-            url=event.url or "https://nepyvo.cz/",
+            url=get_event_url(event.url, event.uid),
             description=event.description,
             starts_at=starts_at,
             ends_at=ends_at,
@@ -49,5 +52,18 @@ class Spider(BaseSpider):
             source_url=source_url,
             series_name="NePyvo",
             series_org="komunita kolem Pythonu",
-            series_url="https://nepyvo.cz/",
+            series_url=SERIES_URL,
         )
+
+
+def get_event_url(url: str | None, uid: str | None) -> str:
+    """Returns a URL unique to the event, as junior.guru deduplicates meetups by URL
+
+    The calendar has no per-event URLs and the website has no per-event pages,
+    so the homepage URL gets the event's UID as a fragment.
+    """
+    if url:
+        return url
+    if not uid:
+        raise ValueError("Event has neither URL nor UID")
+    return f"{SERIES_URL}#{uid}"
