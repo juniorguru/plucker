@@ -1,0 +1,285 @@
+{
+  "nabidky": [
+    {
+      "id": "5b1e6a98-c9c6-430c-a800-db75d77b0e28",
+      "slug": "tester-testerka-mobilnich-telefonu-na-dpp-1ba729afb999",
+      "title": "Tester / testerka mobilních telefonů na DPP",
+      "company": "Mobilní telefony s.r.o.",
+      "location": "Brno",
+      "job_type": "Dohoda o provedení práce",
+      "uvazky": [
+        "brigada"
+      ],
+      "formy": [
+        "dohoda"
+      ],
+      "jazyky": [],
+      "obor": "IT a technologie",
+      "first_seen_at": "2026-11-24T00:00:00.000+00:00",
+      "published_at": "2026-11-24T00:00:00.000Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "mpsv",
+        "kind": "prevzato",
+        "label": "přes Úřad práce"
+      },
+      "primo_od_zamestnavatele": false,
+      "obsah": "full",
+      "tags": [],
+      "nahled": "Pro naši centrálu - Servisní centrum na ulici Košinova 93 v Brně, hledáme brigádníky na pozici tester / testerka mobilních telefonů na DPP.",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "od 140 Kč/hod.",
+        "je_odhad": false,
+        "zdroj": "inzerat"
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "odkaz",
+        "cil": "https://up.gov.cz/volna-mista-v-cr#/volna-mista-detail/67313186"
+      },
+      "odkaz_zdroje": ""
+    },
+    {
+      "id": "8cefdd9e-cb82-4036-9569-973495d43228",
+      "slug": "it-technik-482786834164",
+      "title": "IT technik",
+      "company": "JUHA s.r.o.",
+      "location": "Brno",
+      "job_type": "Pracovní poměr - zkrácený úvazek",
+      "uvazky": [
+        "parttime"
+      ],
+      "formy": [
+        "smlouva"
+      ],
+      "jazyky": [],
+      "obor": "IT a technologie",
+      "first_seen_at": "2026-11-24T00:00:00.000+00:00",
+      "published_at": "2026-11-24T00:00:00.000Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "mpsv",
+        "kind": "prevzato",
+        "label": "přes Úřad práce"
+      },
+      "primo_od_zamestnavatele": false,
+      "obsah": "full",
+      "tags": [],
+      "nahled": "Při plném úvazku mzda až 26500.",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "od 13 250 Kč/měsíc",
+        "je_odhad": false,
+        "zdroj": "inzerat"
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "odkaz",
+        "cil": "https://up.gov.cz/volna-mista-v-cr#/volna-mista-detail/67312987"
+      },
+      "odkaz_zdroje": ""
+    },
+    {
+      "id": "52c43b87-2ae3-4a53-9321-bcb0c7ed8367",
+      "slug": "senior-java-aws-engineer-xpki-and-xvault-comcast-support-rem-e457a6b67e9a",
+      "title": "Senior Java & AWS Engineer - xPKI and xVault (Comcast support, remote)",
+      "company": "Smart Arcs Ltd",
+      "location": "",
+      "job_type": "Plný úvazek, Částečný úvazek",
+      "uvazky": [
+        "parttime",
+        "fulltime"
+      ],
+      "formy": [
+        "smlouva"
+      ],
+      "jazyky": [
+        "en"
+      ],
+      "obor": "IT a technologie",
+      "first_seen_at": "2026-11-23T00:00:00.000+00:00",
+      "published_at": "2026-11-23T00:00:00.000Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "startupjobs",
+        "kind": "prevzato",
+        "label": "přes StartupJobs"
+      },
+      "primo_od_zamestnavatele": false,
+      "obsah": "full",
+      "tags": [],
+      "nahled": "Who we are Smart Architects is a small company that works on PKI and secret management systems.",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "600 – 1 100 Kč/hod",
+        "je_odhad": false,
+        "zdroj": "inzerat"
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "odkaz",
+        "cil": "https://www.startupjobs.cz/nabidka/109615/senior-java-aws-engineer-xpki-and-xvault-comcast-support-remote?utm_source=getjob&utm_medium=cpc&utm_campaign=getjob"
+      },
+      "odkaz_zdroje": ""
+    },
+    {
+      "id": "c82130f9-e104-45c0-951a-058f5c894748",
+      "slug": "1223-senior-ux-ui-designer-7640f51a30f6",
+      "title": "1223 | Senior UX/UI Designer",
+      "company": "Intetics",
+      "location": "Česko",
+      "job_type": "",
+      "uvazky": [
+        "parttime"
+      ],
+      "formy": [],
+      "jazyky": [
+        "en"
+      ],
+      "obor": "IT a technologie",
+      "first_seen_at": "2026-11-20T23:10:29.000+00:00",
+      "published_at": "2026-11-20T23:10:29.000Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "careerjet",
+        "kind": "prevzato",
+        "label": "přes Careerjet"
+      },
+      "primo_od_zamestnavatele": false,
+      "obsah": "limited",
+      "tags": [
+        "Média a kreativa"
+      ],
+      "nahled": "a leading American technology company specializing in custom software application development",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "60 000 – 98 000 Kč",
+        "je_odhad": true,
+        "zdroj": "odhad_getjob",
+        "min": 60000,
+        "max": 98000
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "odkaz",
+        "cil": "https://jobviewtrack.com/v2/Idb4UpL6fl_8j_iVMfRF7fU_NzKpuKvsWLosGNifRxuW9AufidZgzoJQw_3NSi0wMBe4Fz2wlODd1XfVOhaRHSh3XAMH6iBbLpDAWXwL3r6MN0YbDGGCL2DftFsMOTdtkLbDgmll_uYJJ6uqzKvJNlnNzyrwhSrDua3USf8IyKOB9EJv0ICvpOfUlojVkXAV6euqAhoKuudy0SMOHGBEEQ"
+      },
+      "odkaz_zdroje": ""
+    },
+    {
+      "id": "1832af9c-99e4-49ad-99d6-b542bdda9837",
+      "slug": "digital-marketing-strategist-pro-mobilni-aplikace-abe7bcc58d1f",
+      "title": "Digital Marketing Strategist pro mobilní aplikace",
+      "company": "Seznam.cz, a.s.",
+      "location": "Praha",
+      "job_type": "Plný úvazek, Zkrácený úvazek",
+      "uvazky": [
+        "parttime",
+        "fulltime"
+      ],
+      "formy": [
+        "smlouva"
+      ],
+      "jazyky": [],
+      "obor": "Marketing",
+      "first_seen_at": "2026-05-18T00:00:00.000+00:00",
+      "published_at": "2026-05-18T00:00:00.000Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "seznam",
+        "kind": "vlastni",
+        "label": "z GetJob.cz"
+      },
+      "primo_od_zamestnavatele": true,
+      "obsah": "full",
+      "tags": [],
+      "nahled": "Pokud máte cit pro marketingové strategie, mobilní aplikace a data, pak jste náš člověk!",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "35 000 – 60 000 Kč",
+        "je_odhad": true,
+        "zdroj": "odhad_getjob",
+        "min": 35000,
+        "max": 60000
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "odkaz",
+        "cil": "https://o-seznam.cz/kariera/form/20531-prihlasit"
+      },
+      "odkaz_zdroje": ""
+    },
+    {
+      "id": "d23d3558-7607-4de8-afc3-bb0132260ea5",
+      "slug": "lektor-ka-pripravneho-kurzu-matematiky-na-prijimaci-zkousky-e9d7a4fa4208",
+      "title": "Lektor/ka přípravného kurzu matematiky na přijímací zkoušky",
+      "company": "Zkoušky v klidu",
+      "location": "Praha 6",
+      "job_type": "Brigáda",
+      "uvazky": [
+        "brigada"
+      ],
+      "formy": [
+        "dohoda"
+      ],
+      "jazyky": [],
+      "obor": "Vzdělávání",
+      "first_seen_at": "2026-11-06T14:08:42.919+00:00",
+      "published_at": "2026-11-06T14:08:42.919Z",
+      "je_nove": false,
+      "zdroj": {
+        "kod": "zkouskyvklidu",
+        "kind": "vlastni",
+        "label": "z GetJob.cz"
+      },
+      "primo_od_zamestnavatele": true,
+      "obsah": "full",
+      "tags": [],
+      "nahled": "Zkoušky v klidu připravují žáky na přijímací zkoušky z matematiky a češtiny na gymnázia a střední školy.",
+      "text_u_zdroje": false,
+      "mzda": {
+        "text": "od 350 Kč za lekci (90 minut)",
+        "je_odhad": false,
+        "zdroj": "inzerat"
+      },
+      "benefity": {
+        "pozice": [],
+        "firma": []
+      },
+      "reakce": {
+        "typ": "email",
+        "cil": "i.parizkova@seznam.cz"
+      },
+      "odkaz_zdroje": ""
+    }
+  ],
+  "strana": 1,
+  "na_strance": 20,
+  "celkem": 26,
+  "ma_dalsi": true,
+  "pripnuto": 0,
+  "schopnosti": {
+    "firemni_benefity": true,
+    "slug": true,
+    "odhad_mzdy_ve_filtru": true,
+    "bez_praxe": true,
+    "razeni_mzda": true,
+    "jazyky": true
+  }
+}
