@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import date
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from jg.plucker.jobs_getjob.spider import (
     parse_listing_jobs,
     text_to_html,
 )
+from jg.plucker.pipelines import MissingRequiredFields, RequiredFieldsFilterPipeline
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -303,7 +305,17 @@ def test_load_job_without_company():
     data = load_fixture("detail_email.json")["nabidka"] | {"company": " "}
     job = load_job(data, False, "jobs-getjob", "https://example.com")
 
+    # company_name is a required field of Job, so RequiredFieldsFilterPipeline
+    # drops the item, see test_required_fields_filter_drops_job_without_company
     assert "company_name" not in job
+
+
+def test_required_fields_filter_drops_job_without_company():
+    data = load_fixture("detail_email.json")["nabidka"] | {"company": " "}
+    job = load_job(data, False, "jobs-getjob", "https://example.com")
+
+    with pytest.raises(MissingRequiredFields, match="company_name"):
+        RequiredFieldsFilterPipeline().process_item(job)
 
 
 def test_spider_parse_remote_listing_last_page():
@@ -356,6 +368,40 @@ def test_spider_parse():
             {"remote": False},
         ),
         (get_listing_url(LISTING_PARAMS, 2), {"page": 2}),
+    ]
+
+
+def test_spider_parse_unknown_source(caplog: pytest.LogCaptureFixture):
+    data = load_fixture("listing.json")
+    data["nabidky"][0]["zdroj"] = {
+        "kod": "jenjobs",
+        "kind": "prevzato",
+        "label": "přes JenJobs",
+    }
+    url = get_listing_url(LISTING_PARAMS, 1)
+    response = TextResponse(
+        url,
+        body=json.dumps(data).encode(),
+        request=Request(url),
+    )
+    with caplog.at_level(logging.ERROR, logger="jobs-getjob"):
+        requests = list(Spider().parse(response, page=1))
+
+    assert [request.url for request in requests] == [
+        get_detail_url("it-technik-482786834164"),
+        get_detail_url(
+            "digital-marketing-strategist-pro-mobilni-aplikace-abe7bcc58d1f"
+        ),
+        get_detail_url(
+            "lektor-ka-pripravneho-kurzu-matematiky-na-prijimaci-zkousky-e9d7a4fa4208"
+        ),
+        get_listing_url(LISTING_PARAMS, 2),
+    ]
+    assert [record.getMessage() for record in caplog.records] == [
+        (
+            "Unknown source 'jenjobs', skipping "
+            "'tester-testerka-mobilnich-telefonu-na-dpp-1ba729afb999'"
+        )
     ]
 
 
