@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Generator
+from datetime import datetime
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
 from urllib.parse import quote
@@ -214,8 +215,8 @@ def check(token: str, lookback: int, logs_dir: Path | None):
             f"{schedule.name}\n"
             f"· actors: {len(schedule_actor_ids)}\n"
             f"· cron: {schedule.cron_expression}\n"
-            f"· last: {schedule.last_run_at:%Y-%m-%d %H:%I} UTC\n"
-            f"· next: {schedule.next_run_at:%Y-%m-%d %H:%I} UTC"
+            f"· last: {format_schedule_time(schedule.last_run_at)}\n"
+            f"· next: {format_schedule_time(schedule.next_run_at)}"
         )
         actor_ids.update(schedule_actor_ids)
     logger.info(f"Found {len(actor_ids)} scheduled actors")
@@ -262,6 +263,13 @@ def check(token: str, lookback: int, logs_dir: Path | None):
         raise click.Abort()
     else:
         logger.info("All good!")
+
+
+def format_schedule_time(value: datetime | None) -> str:
+    """Format a schedule's last or next run time, which Apify leaves empty for schedules that never ran"""
+    if value is None:
+        return "never"
+    return f"{value:%Y-%m-%d %H:%M} UTC"
 
 
 def dump_run_logs(

@@ -1,6 +1,7 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from jg.plucker.cli import dump_run_logs
+from jg.plucker.cli import dump_run_logs, format_schedule_time
 
 
 class FakeLog:
@@ -61,3 +62,13 @@ def test_dump_run_logs_fetch_error(tmp_path):
     paths = dump_run_logs(BoomClient(), tmp_path, "apify/some-actor", runs)
 
     assert "failed to fetch log for run run1" in paths[0].read_text()
+
+
+def test_format_schedule_time():
+    value = datetime(2026, 11, 27, 4, 7, tzinfo=UTC)
+
+    assert format_schedule_time(value) == "2026-11-27 04:07 UTC"
+
+
+def test_format_schedule_time_never_ran():
+    assert format_schedule_time(None) == "never"
